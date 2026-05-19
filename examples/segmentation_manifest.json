@@ -1,0 +1,14 @@
+{
+  "dataset_name": "sample-segmentation",
+  "task_family": "segmentation",
+  "train_path": "data/train/images",
+  "val_path": "data/val/images",
+  "test_path": "data/test/images",
+  "annotation_format": "paired_dirs",
+  "recommended_metric": "miou",
+  "num_classes": 2,
+  "class_names": ["background", "object"],
+  "mask_format": "png",
+  "ignore_index": 255,
+  "image_size_hint": 512
+}

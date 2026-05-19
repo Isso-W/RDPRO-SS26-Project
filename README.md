@@ -48,3 +48,57 @@ Readme先用来写一些文档或者注意事项，也可以在下面留言
 别来了就饺子了
 饺子🥟这个名字非常好！ 非常赞成！
 https://huggingface.co/models
+
+## CV Auto-DL Codegen Submodule
+
+This repo now includes a workflow-first implementation for the CV Auto-DL code generation submodule under `cv_autodl_agent/`.
+
+Current scope:
+
+- input contract: `DatasetManifest + RetrievedModelCandidate[]`
+- workflow: candidate selection -> training spec -> baseline codegen -> baseline run -> ablation -> targeted refinement -> review -> notebook export
+- task families: `classification`, `segmentation`, `detection`
+- local fallback execution mode: `simulate`
+- Colab demo execution mode: `real`
+- Colab handoff: generated `train.py`, `dataset.py`, `inference.py`, `requirements.txt`, `notebook.ipynb`
+
+Quickstart:
+
+```bash
+cd /Users/wang/Desktop/TUB2025sose/ML_project/Jiaozi
+python3 -m cv_autodl_agent \
+  --manifest examples/classification_manifest.json \
+  --candidates examples/classification_candidates.json \
+  --output-dir demo_run
+```
+
+Colab demo:
+
+- open `examples/colab_demo.ipynb` from the repository root
+- run the cells in order
+- the output prints the selected model, baseline metric, refined metric, ablation winner, review status, generated notebook path, real CIFAR-10 metric, and checkpoint path
+- the demo uses a small CIFAR-10 subset by default so Colab can finish quickly; increase `max_train_samples`, `max_val_samples`, and `max_epochs` in the manifest for a stronger model
+
+Example inputs:
+
+- `examples/classification_manifest.json`
+- `examples/classification_candidates.json`
+- `examples/cifar10_manifest.json`
+- `examples/cifar10_candidates.json`
+- `examples/food101_manifest.json`
+- `examples/food101_candidates.json`
+- `examples/segmentation_manifest.json`
+- `examples/segmentation_candidates.json`
+- `examples/detection_manifest.json`
+- `examples/detection_candidates.json`
+
+Expected demo output summary:
+
+- `examples/expected_classification_summary.json`
+
+Run tests:
+
+```bash
+cd /Users/wang/Desktop/TUB2025sose/ML_project/Jiaozi
+python3 -m unittest discover -s tests -v
+```

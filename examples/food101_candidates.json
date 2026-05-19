@@ -1,0 +1,17 @@
+[
+  {
+    "rank": 1,
+    "model_id": "timm-resnet18",
+    "source": "timm",
+    "task_family": "classification",
+    "library": "PyTorch",
+    "processor_or_transform": "torchvision_transforms",
+    "default_input_size": 224,
+    "pretrained_weights": "imagenet",
+    "license": "Apache-2.0",
+    "training_notes": "small image classification baseline suitable for a first Food-101 Colab run",
+    "install_deps": ["torch", "torchvision", "datasets"],
+    "reference_code_ref": "https://huggingface.co/datasets/ethz/food101",
+    "selection_reason": "Fast baseline for Food-101"
+  }
+]

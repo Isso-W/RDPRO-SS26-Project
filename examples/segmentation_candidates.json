@@ -1,0 +1,32 @@
+[
+  {
+    "rank": 1,
+    "model_id": "hf-segformer-b0",
+    "source": "huggingface",
+    "task_family": "segmentation",
+    "library": "PyTorch",
+    "processor_or_transform": "AutoImageProcessor",
+    "default_input_size": 512,
+    "pretrained_weights": "ade20k",
+    "license": "Apache-2.0",
+    "training_notes": "compact segmentation baseline",
+    "install_deps": ["torch", "torchvision", "transformers"],
+    "reference_code_ref": "https://example.com/hf-segformer-b0",
+    "selection_reason": "Small segmentation candidate for Colab demo"
+  },
+  {
+    "rank": 2,
+    "model_id": "hf-mask2former-small",
+    "source": "huggingface",
+    "task_family": "segmentation",
+    "library": "PyTorch",
+    "processor_or_transform": "AutoImageProcessor",
+    "default_input_size": 512,
+    "pretrained_weights": "ade20k",
+    "license": "MIT",
+    "training_notes": "larger segmentation alternative",
+    "install_deps": ["torch", "torchvision", "transformers"],
+    "reference_code_ref": "https://example.com/hf-mask2former-small",
+    "selection_reason": "Alternative segmentation candidate"
+  }
+]

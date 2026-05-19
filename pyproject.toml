@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cv-autodl-agent"
+version = "0.1.0"
+description = "Workflow-first CV Auto-DL code generation and ablation submodule."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Jiaozi Project Team" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+llm = [
+  "openai>=2.0.0",
+  "langchain>=1.0.0",
+  "langgraph>=0.2.0"
+]
+
+[tool.setuptools.packages.find]
+include = ["cv_autodl_agent*"]

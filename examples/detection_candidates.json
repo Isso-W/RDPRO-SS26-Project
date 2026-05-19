@@ -1,0 +1,32 @@
+[
+  {
+    "rank": 1,
+    "model_id": "hf-detr-small",
+    "source": "huggingface",
+    "task_family": "detection",
+    "library": "PyTorch",
+    "processor_or_transform": "AutoImageProcessor",
+    "default_input_size": 640,
+    "pretrained_weights": "coco",
+    "license": "Apache-2.0",
+    "training_notes": "small and efficient detection baseline",
+    "install_deps": ["torch", "torchvision", "transformers", "pycocotools"],
+    "reference_code_ref": "https://example.com/hf-detr-small",
+    "selection_reason": "Colab-compatible detection candidate"
+  },
+  {
+    "rank": 2,
+    "model_id": "hf-rt-detr-resnet50",
+    "source": "huggingface",
+    "task_family": "detection",
+    "library": "PyTorch",
+    "processor_or_transform": "AutoImageProcessor",
+    "default_input_size": 640,
+    "pretrained_weights": "coco",
+    "license": "Apache-2.0",
+    "training_notes": "stronger but heavier detection alternative",
+    "install_deps": ["torch", "torchvision", "transformers", "pycocotools"],
+    "reference_code_ref": "https://example.com/hf-rt-detr-resnet50",
+    "selection_reason": "Alternative detection candidate"
+  }
+]
