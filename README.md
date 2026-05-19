@@ -96,6 +96,11 @@ Expected demo output summary:
 
 - `examples/expected_classification_summary.json`
 
+Documentation:
+
+- `docs/CV_AUTODL_TECHNICAL_DOC.md`
+- `docs/cv-autodl-codegen/SKILL.md`
+
 Run tests:
 
 ```bash
