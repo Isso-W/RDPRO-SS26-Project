@@ -176,8 +176,9 @@ These proxy metrics are workflow-level signals, not real benchmark scores.
 They reward reasonable choices in a stable way, such as task-compatible
 optimizers, focal loss for imbalanced classification, Dice-style segmentation
 losses, pretrained configs for small data, and full fine-tuning for larger data.
-Real validation metrics can be integrated later without changing the overall
-loop structure.
+When generated smoke code is available, the loop also folds in the tiny
+synthetic smoke-training loss as a deterministic local signal. Real validation
+metrics can be integrated later without changing the overall loop structure.
 
 ### Reviewer Checks
 

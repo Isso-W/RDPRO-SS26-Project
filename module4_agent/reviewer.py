@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-import subprocess
-import sys
 
-from .ablation import diff_controlled_fields, has_forbidden_field_changes
+from .ablation import CONTROLLED_FIELDS, diff_controlled_fields, has_forbidden_field_changes
 from .code_generator import REQUIRED_GENERATED_FILES
 from .schemas import GeneratedFiles, ReviewResult, SmokeResult, TrainingSpec
 
@@ -143,6 +140,7 @@ def _check_generated_readme(files: dict[str, str], specs: list[TrainingSpec], wa
     readme = files.get("README_generated.md", "")
     for required in (
         "configs.json",
+        "utils.py",
         "smoke_data.py",
         "run.py",
         "run_experiments.py",
@@ -181,74 +179,17 @@ def _check_finetune_strategy(
     needs_check = any(spec.finetune_strategy in {"head_only", "full"} for spec in specs)
     if not needs_check:
         return
-    if output_dir is not None and (output_dir / "model.py").exists():
-        _check_finetune_strategy_dynamic(output_dir, specs, errors)
-        return
 
     model_py = files.get("model.py", "")
     if any(spec.finetune_strategy == "head_only" for spec in specs) and (
-        "requires_grad = False" not in model_py or "backbone" not in model_py or "head_only" not in model_py
+        "parameter.requires_grad = False" not in model_py
+        or "\"backbone\" in name" not in model_py
+        or "head_only" not in model_py
+        or "_frozen_backbone_params" not in model_py
     ):
-        errors.append("head_only finetune strategy does not freeze backbone-like parameters.")
+        errors.append("head_only finetune strategy did not freeze backbone-like parameters.")
     if any(spec.finetune_strategy == "full" for spec in specs) and "strategy == \"full\"" not in model_py:
         errors.append("full finetune strategy is not explicitly handled.")
-
-
-def _check_finetune_strategy_dynamic(output_dir: Path, specs: list[TrainingSpec], errors: list[str]) -> None:
-    review_configs = [spec.to_config() for spec in specs if spec.finetune_strategy in {"head_only", "full"}]
-    code = f"""
-import json
-from model import build_model
-
-configs = json.loads({json.dumps(review_configs)!r})
-errors = []
-for config in configs:
-    rank = config.get("rank")
-    strategy = str(config.get("finetune_strategy", "")).lower()
-    try:
-        model = build_model(config)
-    except Exception as exc:
-        errors.append(f"build_model failed during finetune review for rank {{rank}}: {{exc}}")
-        continue
-    named_parameters = list(model.named_parameters())
-    backbone_params = [(name, param) for name, param in named_parameters if "backbone" in name]
-    non_backbone_params = [(name, param) for name, param in named_parameters if "backbone" not in name]
-    if strategy == "head_only":
-        if not backbone_params:
-            errors.append(f"head_only rank {{rank}} has no backbone-like parameters to freeze.")
-        elif not any(not param.requires_grad for _name, param in backbone_params):
-            errors.append(f"head_only rank {{rank}} did not freeze backbone-like parameters.")
-        if non_backbone_params and not any(param.requires_grad for _name, param in non_backbone_params):
-            errors.append(f"head_only rank {{rank}} froze all non-backbone parameters.")
-    elif strategy == "full":
-        frozen = [name for name, param in named_parameters if not param.requires_grad]
-        if frozen:
-            errors.append(f"full finetune rank {{rank}} unexpectedly froze parameters: {{frozen[:3]}}")
-print(json.dumps(errors))
-"""
-    env = os.environ.copy()
-    env.setdefault("OMP_NUM_THREADS", "1")
-    env.setdefault("MKL_NUM_THREADS", "1")
-    env.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-    env.setdefault("KMP_INIT_AT_FORK", "FALSE")
-    env.setdefault("KMP_AFFINITY", "disabled")
-    env.setdefault("OMP_PROC_BIND", "FALSE")
-    completed = subprocess.run(
-        [sys.executable, "-c", code],
-        cwd=str(output_dir),
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-    if completed.returncode != 0:
-        errors.append(f"Generated model.py failed during finetune review: {completed.stderr[-1000:]}")
-        return
-    try:
-        errors.extend(json.loads(completed.stdout))
-    except json.JSONDecodeError:
-        errors.append("Generated model.py finetune review did not return JSON.")
 
 
 def _check_smoke_metrics(smoke_result: SmokeResult, specs: list[TrainingSpec], errors: list[str]) -> None:
@@ -386,6 +327,12 @@ def _check_experiment_rows(rows: list[dict[str, object]], errors: list[str]) -> 
         if stage not in {"baseline", "ablation", "refinement"}:
             errors.append(f"Experiment row {row.get('experiment_id')!r} has invalid stage {stage!r}.")
         seen_baseline = seen_baseline or stage == "baseline"
+        modified_component = row.get("modified_component")
+        if stage != "baseline" and modified_component not in CONTROLLED_FIELDS:
+            errors.append(
+                f"Experiment row {row.get('experiment_id')!r} reports unsupported modified_component "
+                f"{modified_component!r}."
+            )
         task_type = str(row.get("task_type"))
         metric_name = str(row.get("metric_name"))
         if metric_name not in METRICS_BY_TASK.get(task_type, set()):

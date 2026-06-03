@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import replace
 import hashlib
 import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 from typing import Any
 
 from .ablation import training_spec_summary
@@ -28,6 +32,7 @@ def proxy_evaluate(
     modified_component: str | None = None,
     seed: int = 123,
     notes: str | None = None,
+    smoke_project_dir: str | Path | None = None,
 ) -> ExperimentResult:
     """Evaluate a TrainingSpec with a stable smoke-compatible proxy metric.
 
@@ -38,7 +43,11 @@ def proxy_evaluate(
 
     metric_name = METRIC_BY_TASK.get(spec.task_type, "accuracy")
     config_summary = training_spec_summary(spec)
-    score = _proxy_score(spec, seed=seed)
+    smoke_loss, smoke_note = _smoke_loss_signal(spec, smoke_project_dir=smoke_project_dir, seed=seed)
+    score = _proxy_score(spec, seed=seed, smoke_loss=smoke_loss)
+    result_notes = notes or "Deterministic proxy metric; not a real benchmark score."
+    if smoke_note:
+        result_notes = f"{result_notes} {smoke_note}"
     return ExperimentResult(
         experiment_id=experiment_id,
         spec_id=f"rank{spec.rank}_{spec.task_type}_{spec.backbone}",
@@ -49,7 +58,7 @@ def proxy_evaluate(
         metric_value=score,
         status="success",
         config_summary=config_summary,
-        notes=notes or "Deterministic proxy metric; not a real benchmark score.",
+        notes=result_notes,
     )
 
 
@@ -75,7 +84,7 @@ def select_best_result(results: list[ExperimentResult]) -> ExperimentResult:
     return max(successful, key=lambda result: result.metric_value)
 
 
-def _proxy_score(spec: TrainingSpec, *, seed: int) -> float:
+def _proxy_score(spec: TrainingSpec, *, seed: int, smoke_loss: float | None = None) -> float:
     score = {
         "classification": 0.54,
         "object_detection": 0.40,
@@ -125,8 +134,72 @@ def _proxy_score(spec: TrainingSpec, *, seed: int) -> float:
     if not spec.optimizer:
         score -= 0.020
 
+    if smoke_loss is not None:
+        # Lower synthetic smoke loss is mildly rewarded. This keeps the loop
+        # deterministic and local while adding a real forward/backward signal.
+        score += max(-0.020, min(0.030, (2.0 - smoke_loss) * 0.010))
+
     score += _stable_jitter(training_spec_summary(spec), seed)
     return round(max(0.0, min(0.99, score)), 6)
+
+
+def _smoke_loss_signal(
+    spec: TrainingSpec,
+    *,
+    smoke_project_dir: str | Path | None,
+    seed: int,
+) -> tuple[float | None, str | None]:
+    if smoke_project_dir is None:
+        return None, None
+    project_dir = Path(smoke_project_dir)
+    if not (project_dir / "train.py").exists():
+        return None, None
+
+    code = """
+import json
+import random
+import sys
+
+import torch
+
+from train import train_one
+
+payload = json.load(sys.stdin)
+seed = int(payload.pop("_seed", 123))
+random.seed(seed)
+torch.manual_seed(seed)
+result = train_one(payload, epochs=1, max_steps=1)
+print(json.dumps({"status": result.get("status"), "loss": result.get("loss")}))
+"""
+    payload = spec.to_config()
+    payload["_seed"] = seed
+    env = os.environ.copy()
+    env.setdefault("OMP_NUM_THREADS", "1")
+    env.setdefault("MKL_NUM_THREADS", "1")
+    env.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+    env.setdefault("KMP_USE_SHM", "0")
+    env.setdefault("KMP_BLOCKTIME", "0")
+    env.setdefault("OMP_WAIT_POLICY", "PASSIVE")
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=str(project_dir),
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return None, "Smoke-loss signal unavailable for this variant."
+    try:
+        result = json.loads(completed.stdout)
+        if result.get("status") != "success":
+            return None, "Smoke-loss signal returned a non-success status."
+        loss = float(result.get("loss"))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None, "Smoke-loss signal could not be parsed."
+    return loss, f"Smoke-loss signal={loss:.6f}."
 
 
 def _tune_learning_rate(current: float) -> float:

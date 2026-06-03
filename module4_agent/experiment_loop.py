@@ -30,6 +30,7 @@ def run_refinement_loop(
         experiment_id=baseline_id,
         stage="baseline",
         seed=seed,
+        smoke_project_dir=output_dir,
     )
 
     all_results: list[ExperimentResult] = [baseline_result]
@@ -74,6 +75,7 @@ def run_refinement_loop(
                 modified_component=variant.modified_component,
                 seed=seed,
                 notes="Ablation changes exactly one controlled component; proxy metric only.",
+                smoke_project_dir=output_dir,
             )
             iteration_results.append(result)
             variant_by_result_id[result.experiment_id] = variant
@@ -96,6 +98,7 @@ def run_refinement_loop(
             modified_component=selected_component,
             seed=seed,
             notes="Targeted refinement of the selected ablation component; proxy metric only.",
+            smoke_project_dir=output_dir,
         )
         all_results.append(refined_result)
 

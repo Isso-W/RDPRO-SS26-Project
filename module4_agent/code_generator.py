@@ -12,6 +12,7 @@ from .spec_builder import specs_to_configs
 
 REQUIRED_GENERATED_FILES = (
     "configs.json",
+    "utils.py",
     "smoke_data.py",
     "model.py",
     "train.py",
@@ -27,9 +28,8 @@ REQUIRED_GENERATED_FILES = (
 def generate_files(specs: Sequence[TrainingSpec], feedback: str | None = None) -> GeneratedFiles:
     """Generate all project files as strings.
 
-    The optional feedback argument exists for the Coder -> Reviewer retry loop.
-    The current templates are deterministic, so feedback is retained by the
-    workflow but does not alter generation.
+    The optional feedback argument exists for the Coder -> Reviewer retry loop
+    and is embedded into the generated README so retry output remains auditable.
     """
 
     if not specs:
@@ -40,6 +40,7 @@ def generate_files(specs: Sequence[TrainingSpec], feedback: str | None = None) -
 
     files = {
         "configs.json": configs_json + "\n",
+        "utils.py": _utils_py(),
         "smoke_data.py": _smoke_data_py(),
         "model.py": _model_py(),
         "train.py": _train_py(),
@@ -48,9 +49,142 @@ def generate_files(specs: Sequence[TrainingSpec], feedback: str | None = None) -
         "run.py": _run_py(first_config_json),
         "run_experiments.py": _run_experiments_py(configs_json),
         "requirements.txt": _requirements_txt(),
-        "README_generated.md": _readme_generated_md(specs),
+        "README_generated.md": _readme_generated_md(specs, feedback=feedback),
     }
     return GeneratedFiles(files=files)
+
+
+def _utils_py() -> str:
+    return dedent(
+        '''
+        """Shared utility helpers for generated Module 4 smoke code."""
+
+        from __future__ import annotations
+
+        import json
+        import random
+        from pathlib import Path
+        from typing import Any
+
+        import torch
+
+
+        SUPPORTED_TASK_TYPES = {
+            "classification",
+            "object_detection",
+            "image_segmentation",
+            "feature_extraction",
+        }
+
+
+        def get_value(config: dict[str, Any] | None, key: str, default: Any) -> Any:
+            if isinstance(config, dict):
+                return config.get(key, default)
+            return default
+
+
+        def as_int(value: Any, default: int) -> int:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return default
+
+
+        def as_float(value: Any, default: float) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+
+        def as_bool(value: Any, default: bool) -> bool:
+            if isinstance(value, bool):
+                return value
+            if value is None:
+                return default
+            if isinstance(value, (int, float)):
+                return bool(value)
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered in {"1", "true", "yes", "y"}:
+                    return True
+                if lowered in {"0", "false", "no", "n"}:
+                    return False
+            return default
+
+
+        def task_type(config: dict[str, Any] | None) -> str:
+            task = str(get_value(config, "task_type", "classification")).lower()
+            task = {
+                "detection": "object_detection",
+                "segmentation": "image_segmentation",
+                "semantic_segmentation": "image_segmentation",
+                "features": "feature_extraction",
+                "embedding": "feature_extraction",
+            }.get(task, task)
+            if task not in SUPPORTED_TASK_TYPES:
+                return "classification"
+            return task
+
+
+        def normalize_config(item: dict[str, Any]) -> dict[str, Any]:
+            if not isinstance(item, dict):
+                return {}
+            config = dict(item)
+            model_config = config.get("model_config")
+            if isinstance(model_config, dict):
+                merged = dict(config)
+                merged.update(model_config)
+                config = merged
+            return config
+
+
+        def load_config(path: str | None, default_config: dict[str, Any]) -> dict[str, Any]:
+            if not path:
+                return normalize_config(default_config)
+            data = json.loads(Path(path).read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                if not data:
+                    raise ValueError("Config list is empty.")
+                return normalize_config(data[0])
+            if isinstance(data, dict) and isinstance(data.get("candidates"), list):
+                if not data["candidates"]:
+                    raise ValueError("Candidate list is empty.")
+                return normalize_config(data["candidates"][0])
+            if isinstance(data, dict):
+                return normalize_config(data)
+            raise ValueError("Config file must contain a dict, a list, or {'candidates': [...]}.")
+
+
+        def load_configs(path: str | None, default_configs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            if not path:
+                return [normalize_config(item) for item in default_configs]
+            data = json.loads(Path(path).read_text(encoding="utf-8"))
+            if isinstance(data, dict) and isinstance(data.get("candidates"), list):
+                data = data["candidates"]
+            if isinstance(data, dict):
+                data = [data]
+            if not isinstance(data, list):
+                raise ValueError("Experiment input must be a list, dict, or {'candidates': [...]}.")
+            return [normalize_config(item) for item in data]
+
+
+        def set_seed(seed: int) -> None:
+            random.seed(seed)
+            torch.manual_seed(seed)
+
+
+        def compact_config_summary(config: dict[str, Any], rank_default: int | None = None) -> dict[str, Any]:
+            return {
+                "rank": config.get("rank", rank_default),
+                "backbone": config.get("backbone", "tiny_cnn"),
+                "task_type": config.get("task_type", "classification"),
+                "loss": config.get("loss", ""),
+                "optimizer": config.get("optimizer", ""),
+                "finetune_strategy": config.get("finetune_strategy", ""),
+            }
+        '''
+    ).lstrip()
 
 
 def _smoke_data_py() -> str:
@@ -64,37 +198,15 @@ def _smoke_data_py() -> str:
 
         import torch
 
-
-        def _get(config: dict[str, Any] | None, key: str, default: Any) -> Any:
-            if isinstance(config, dict):
-                return config.get(key, default)
-            return default
-
-
-        def _as_int(value: Any, default: int) -> int:
-            try:
-                return int(value)
-            except (TypeError, ValueError):
-                return default
-
-
-        def task_type(config: dict[str, Any] | None) -> str:
-            task = str(_get(config, "task_type", "classification")).lower()
-            return {
-                "detection": "object_detection",
-                "segmentation": "image_segmentation",
-                "semantic_segmentation": "image_segmentation",
-                "features": "feature_extraction",
-                "embedding": "feature_extraction",
-            }.get(task, task)
+        from utils import as_int, get_value, task_type
 
 
         def synthetic_batch(config: dict[str, Any] | None, batch_size: int = 2) -> tuple[Any, Any]:
             """Create a deterministic-shape synthetic batch for the configured task."""
 
             task = task_type(config)
-            image_size = _as_int(_get(config, "image_size", 224), 224)
-            num_classes = max(1, _as_int(_get(config, "num_classes", 3), 3))
+            image_size = as_int(get_value(config, "image_size", 224), 224)
+            num_classes = max(1, as_int(get_value(config, "num_classes", 3), 3))
             x = synthetic_image(config, batch_size=batch_size)
             if task == "classification":
                 return x, torch.arange(batch_size, dtype=torch.long) % num_classes
@@ -117,7 +229,7 @@ def _smoke_data_py() -> str:
 
 
         def synthetic_image(config: dict[str, Any] | None, batch_size: int = 1) -> torch.Tensor:
-            image_size = _as_int(_get(config, "image_size", 224), 224)
+            image_size = as_int(get_value(config, "image_size", 224), 224)
             return torch.randn(batch_size, 3, image_size, image_size)
         '''
     ).lstrip()
@@ -143,57 +255,7 @@ def _model_py() -> str:
         from torch import nn
         import torch.nn.functional as F
 
-
-        SUPPORTED_TASK_TYPES = {
-            "classification",
-            "object_detection",
-            "image_segmentation",
-            "feature_extraction",
-        }
-
-
-        def _get(config: dict[str, Any] | None, key: str, default: Any) -> Any:
-            if isinstance(config, dict):
-                return config.get(key, default)
-            return default
-
-
-        def _as_int(value: Any, default: int) -> int:
-            try:
-                return int(value)
-            except (TypeError, ValueError):
-                return default
-
-
-        def _as_bool(value: Any, default: bool) -> bool:
-            if isinstance(value, bool):
-                return value
-            if value is None:
-                return default
-            if isinstance(value, (int, float)):
-                return bool(value)
-            if isinstance(value, str):
-                lowered = value.strip().lower()
-                if lowered in {"1", "true", "yes", "y"}:
-                    return True
-                if lowered in {"0", "false", "no", "n"}:
-                    return False
-            return default
-
-
-        def _task_type(config: dict[str, Any] | None) -> str:
-            task = str(_get(config, "task_type", "classification")).lower()
-            aliases = {
-                "detection": "object_detection",
-                "segmentation": "image_segmentation",
-                "semantic_segmentation": "image_segmentation",
-                "features": "feature_extraction",
-                "embedding": "feature_extraction",
-            }
-            task = aliases.get(task, task)
-            if task not in SUPPORTED_TASK_TYPES:
-                return "classification"
-            return task
+        from utils import as_bool, as_int, get_value, task_type
 
 
         class TinyBackbone(nn.Module):
@@ -293,8 +355,11 @@ def _model_py() -> str:
 
 
         def _apply_finetune_strategy(model: nn.Module, config: dict[str, Any] | None) -> nn.Module:
-            strategy = str(_get(config, "finetune_strategy", "head_only")).lower()
-            freeze_backbone = _as_bool(_get(config, "freeze_backbone", strategy == "head_only"), strategy == "head_only")
+            strategy = str(get_value(config, "finetune_strategy", "head_only")).lower()
+            freeze_backbone = as_bool(
+                get_value(config, "freeze_backbone", strategy == "head_only"),
+                strategy == "head_only",
+            )
 
             if strategy == "full":
                 freeze_backbone = False
@@ -315,12 +380,12 @@ def _model_py() -> str:
             """Build a task-compatible smoke model from a config dictionary."""
 
             config = config or {}
-            task = _task_type(config)
-            num_classes = max(1, _as_int(_get(config, "num_classes", 3), 3))
-            embedding_dim = max(2, _as_int(_get(config, "embedding_dim", 32), 32))
+            task = task_type(config)
+            num_classes = max(1, as_int(get_value(config, "num_classes", 3), 3))
+            embedding_dim = max(2, as_int(get_value(config, "embedding_dim", 32), 32))
 
-            offline_smoke = _as_bool(_get(config, "offline_smoke", True), True)
-            use_pretrained = _as_bool(_get(config, "use_pretrained", False), False)
+            offline_smoke = as_bool(get_value(config, "offline_smoke", True), True)
+            use_pretrained = as_bool(get_value(config, "use_pretrained", False), False)
             if use_pretrained and not offline_smoke:
                 warnings.warn(
                     "Generated smoke code does not download checkpoints by default; "
@@ -358,34 +423,12 @@ def _train_py() -> str:
 
         from model import build_model
         from smoke_data import synthetic_batch
-
-
-        def _get(config: dict[str, Any] | None, key: str, default: Any) -> Any:
-            if isinstance(config, dict):
-                return config.get(key, default)
-            return default
-
-
-        def _task_type(config: dict[str, Any] | None) -> str:
-            task = str(_get(config, "task_type", "classification")).lower()
-            return {
-                "detection": "object_detection",
-                "segmentation": "image_segmentation",
-                "features": "feature_extraction",
-                "embedding": "feature_extraction",
-            }.get(task, task)
-
-
-        def _as_float(value: Any, default: float) -> float:
-            try:
-                return float(value)
-            except (TypeError, ValueError):
-                return default
+        from utils import as_float, get_value, task_type
 
 
         def _build_optimizer(model: torch.nn.Module, config: dict[str, Any] | None) -> torch.optim.Optimizer:
-            optimizer_name = str(_get(config, "optimizer", "adamw")).lower()
-            lr = _as_float(_get(config, "learning_rate", 1.0e-3), 1.0e-3)
+            optimizer_name = str(get_value(config, "optimizer", "adamw")).lower()
+            lr = as_float(get_value(config, "learning_rate", 1.0e-3), 1.0e-3)
             trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
             if not trainable:
                 trainable = list(model.parameters())
@@ -399,8 +442,8 @@ def _train_py() -> str:
 
 
         def _loss_for_output(output: Any, target: Any, config: dict[str, Any] | None) -> torch.Tensor:
-            task = _task_type(config)
-            loss_name = str(_get(config, "loss", "")).lower()
+            task = task_type(config)
+            loss_name = str(get_value(config, "loss", "")).lower()
             if task == "classification":
                 if "focal" in loss_name:
                     ce = F.cross_entropy(output, target, reduction="none")
@@ -424,12 +467,17 @@ def _train_py() -> str:
             return F.cross_entropy(output, target)
 
 
-        def train_one(config: dict[str, Any] | None, data: tuple[Any, Any] | None = None, epochs: int = 1, max_steps: int = 1) -> dict[str, Any]:
-            """Run a tiny CPU smoke-training loop and return a summary."""
+        def train_model(
+            config: dict[str, Any] | None,
+            data: tuple[Any, Any] | None = None,
+            epochs: int = 1,
+            max_steps: int = 1,
+        ) -> tuple[torch.nn.Module, dict[str, Any]]:
+            """Run a tiny CPU smoke-training loop and return the trained model and summary."""
 
             start = time.time()
             config = config or {}
-            task = _task_type(config)
+            task = task_type(config)
             model = build_model(config)
             model.train()
             optimizer = _build_optimizer(model, config)
@@ -437,7 +485,7 @@ def _train_py() -> str:
             loss_value = 0.0
 
             steps = max(1, int(max_steps))
-            for _ in range(max(1, int(epochs))):
+            for _epoch in range(max(1, int(epochs))):
                 for _step in range(steps):
                     x, target = batch
                     optimizer.zero_grad(set_to_none=True)
@@ -449,23 +497,29 @@ def _train_py() -> str:
                     loss.backward()
                     optimizer.step()
                     loss_value = float(loss.detach().cpu().item())
-                    break
-                break
 
-            return {
+            summary = {
                 "status": "success",
                 "task_type": task,
                 "loss": loss_value,
                 "runtime_sec": round(time.time() - start, 4),
                 "config_summary": {
-                    "rank": _get(config, "rank", None),
-                    "backbone": _get(config, "backbone", "tiny_cnn"),
-                    "loss": _get(config, "loss", "cross_entropy_loss"),
-                    "optimizer": _get(config, "optimizer", "adamw"),
-                    "finetune_strategy": _get(config, "finetune_strategy", "head_only"),
+                    "rank": get_value(config, "rank", None),
+                    "backbone": get_value(config, "backbone", "tiny_cnn"),
+                    "loss": get_value(config, "loss", "cross_entropy_loss"),
+                    "optimizer": get_value(config, "optimizer", "adamw"),
+                    "finetune_strategy": get_value(config, "finetune_strategy", "head_only"),
                     "frozen_backbone_params": int(getattr(model, "_frozen_backbone_params", 0)),
                 },
             }
+            return model, summary
+
+
+        def train_one(config: dict[str, Any] | None, data: tuple[Any, Any] | None = None, epochs: int = 1, max_steps: int = 1) -> dict[str, Any]:
+            """Run a tiny CPU smoke-training loop and return a summary."""
+
+            _model, summary = train_model(config, data=data, epochs=epochs, max_steps=max_steps)
+            return summary
         '''
     ).lstrip()
 
@@ -482,29 +536,7 @@ def _evaluate_py() -> str:
         import torch
 
         from smoke_data import synthetic_batch
-
-
-        def _get(config: dict[str, Any] | None, key: str, default: Any) -> Any:
-            if isinstance(config, dict):
-                return config.get(key, default)
-            return default
-
-
-        def _task_type(config: dict[str, Any] | None) -> str:
-            task = str(_get(config, "task_type", "classification")).lower()
-            return {
-                "detection": "object_detection",
-                "segmentation": "image_segmentation",
-                "features": "feature_extraction",
-                "embedding": "feature_extraction",
-            }.get(task, task)
-
-
-        def _as_int(value: Any, default: int) -> int:
-            try:
-                return int(value)
-            except (TypeError, ValueError):
-                return default
+        from utils import as_int, get_value, task_type
 
 
         def _macro_f1(preds: torch.Tensor, labels: torch.Tensor, num_classes: int) -> float:
@@ -562,15 +594,12 @@ def _evaluate_py() -> str:
             """Evaluate a model with synthetic data when data is not provided."""
 
             config = config or {}
-            task = _task_type(config)
-            num_classes = max(1, _as_int(_get(config, "num_classes", 3), 3))
+            task = task_type(config)
+            num_classes = max(1, as_int(get_value(config, "num_classes", 3), 3))
             x, target = data if data is not None else synthetic_batch(config)
             model.eval()
             with torch.no_grad():
-                if task == "object_detection":
-                    output = model(x)
-                else:
-                    output = model(x)
+                output = model(x)
 
             if task == "classification":
                 preds = output.argmax(dim=1)
@@ -635,29 +664,14 @@ def _infer_py() -> str:
 
         from model import build_model
         from smoke_data import synthetic_image
-
-
-        def _get(config: dict[str, Any] | None, key: str, default: Any) -> Any:
-            if isinstance(config, dict):
-                return config.get(key, default)
-            return default
-
-
-        def _task_type(config: dict[str, Any] | None) -> str:
-            task = str(_get(config, "task_type", "classification")).lower()
-            return {
-                "detection": "object_detection",
-                "segmentation": "image_segmentation",
-                "features": "feature_extraction",
-                "embedding": "feature_extraction",
-            }.get(task, task)
+        from utils import task_type
 
 
         def predict(weights_path: str | None = None, image: torch.Tensor | None = None, config: dict[str, Any] | None = None) -> dict[str, Any]:
             """Run one forward pass and return a JSON-friendly prediction."""
 
             config = config or {}
-            task = _task_type(config)
+            task = task_type(config)
             model = build_model(config)
             if weights_path and Path(weights_path).exists():
                 checkpoint = torch.load(weights_path, map_location="cpu")
@@ -717,55 +731,15 @@ def _run_py(first_config_json: str) -> str:
 
         import argparse
         import json
-        import random
-        from pathlib import Path
-        from typing import Any
 
-        import numpy as np
-        import torch
 
         from evaluate import evaluate
         from infer import predict
-        from model import build_model
-        from train import train_one
+        from train import train_model
+        from utils import compact_config_summary, load_config, set_seed
 
 
         DEFAULT_CONFIG = json.loads(__DEFAULT_CONFIG_JSON__)
-
-
-        def set_seed(seed: int) -> None:
-            random.seed(seed)
-            np.random.seed(seed)
-            torch.manual_seed(seed)
-
-
-        def normalize_config(item: dict[str, Any]) -> dict[str, Any]:
-            if not isinstance(item, dict):
-                return {}
-            config = dict(item)
-            model_config = config.get("model_config")
-            if isinstance(model_config, dict):
-                merged = dict(config)
-                merged.update(model_config)
-                config = merged
-            return config
-
-
-        def load_config(path: str | None) -> dict[str, Any]:
-            if not path:
-                return normalize_config(DEFAULT_CONFIG)
-            data = json.loads(Path(path).read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                if not data:
-                    raise ValueError("Config list is empty.")
-                return normalize_config(data[0])
-            if isinstance(data, dict) and isinstance(data.get("candidates"), list):
-                if not data["candidates"]:
-                    raise ValueError("Candidate list is empty.")
-                return normalize_config(data["candidates"][0])
-            if isinstance(data, dict):
-                return normalize_config(data)
-            raise ValueError("Config file must contain a dict, a list, or {'candidates': [...]}.")
 
 
         def main() -> None:
@@ -775,21 +749,13 @@ def _run_py(first_config_json: str) -> str:
             args = parser.parse_args()
 
             set_seed(args.seed)
-            config = load_config(args.config)
-            model = build_model(config)
-            train_result = train_one(config, epochs=1, max_steps=1)
+            config = load_config(args.config, DEFAULT_CONFIG)
+            model, train_result = train_model(config, epochs=1, max_steps=1)
             eval_result = evaluate(model, config)
             infer_result = predict(config=config)
             summary = {
                 "status": "success",
-                "config": {
-                    "rank": config.get("rank"),
-                    "backbone": config.get("backbone"),
-                    "task_type": config.get("task_type"),
-                    "loss": config.get("loss"),
-                    "optimizer": config.get("optimizer"),
-                    "finetune_strategy": config.get("finetune_strategy"),
-                },
+                "config": compact_config_summary(config),
                 "train": train_result,
                 "evaluate": eval_result,
                 "infer": infer_result,
@@ -813,50 +779,14 @@ def _run_experiments_py(configs_json: str) -> str:
 
         import argparse
         import json
-        import random
-        from pathlib import Path
-        from typing import Any
 
-        import numpy as np
-        import torch
 
         from evaluate import evaluate
-        from model import build_model
-        from train import train_one
+        from train import train_model
+        from utils import compact_config_summary, load_configs, set_seed
 
 
         DEFAULT_CONFIGS = json.loads(__DEFAULT_CONFIGS_JSON__)
-
-
-        def set_seed(seed: int) -> None:
-            random.seed(seed)
-            np.random.seed(seed)
-            torch.manual_seed(seed)
-
-
-        def normalize_config(item: dict[str, Any]) -> dict[str, Any]:
-            if not isinstance(item, dict):
-                return {}
-            config = dict(item)
-            model_config = config.get("model_config")
-            if isinstance(model_config, dict):
-                merged = dict(config)
-                merged.update(model_config)
-                config = merged
-            return config
-
-
-        def load_configs(path: str | None) -> list[dict[str, Any]]:
-            if not path:
-                return [normalize_config(item) for item in DEFAULT_CONFIGS]
-            data = json.loads(Path(path).read_text(encoding="utf-8"))
-            if isinstance(data, dict) and isinstance(data.get("candidates"), list):
-                data = data["candidates"]
-            if isinstance(data, dict):
-                data = [data]
-            if not isinstance(data, list):
-                raise ValueError("Experiment input must be a list, dict, or {'candidates': [...]}.")
-            return [normalize_config(item) for item in data]
 
 
         def run_all(configs: list[dict[str, Any]], seed: int = 123) -> list[dict[str, Any]]:
@@ -864,22 +794,17 @@ def _run_experiments_py(configs_json: str) -> str:
             for index, config in enumerate(configs, start=1):
                 # Reset before every candidate so synthetic smoke data is comparable.
                 set_seed(seed)
-                train_result = train_one(config, epochs=1, max_steps=1)
-                model = build_model(config)
+                model, train_result = train_model(config, epochs=1, max_steps=1)
                 eval_result = evaluate(model, config)
-                rows.append(
+                row = compact_config_summary(config, rank_default=index)
+                row.update(
                     {
-                        "rank": config.get("rank", index),
-                        "backbone": config.get("backbone", "tiny_cnn"),
-                        "task_type": config.get("task_type", "classification"),
-                        "loss": config.get("loss", ""),
-                        "optimizer": config.get("optimizer", ""),
-                        "finetune_strategy": config.get("finetune_strategy", ""),
                         "metric_name": eval_result.get("metric_name"),
                         "metric_value": eval_result.get("metric_value"),
                         "status": "success" if train_result.get("status") == "success" and eval_result.get("status") == "success" else "failed",
                     }
                 )
+                rows.append(row)
             return rows
 
 
@@ -888,7 +813,7 @@ def _run_experiments_py(configs_json: str) -> str:
             parser.add_argument("--input", default="configs.json", help="Optional JSON file with one or more configs.")
             parser.add_argument("--seed", type=int, default=123)
             args = parser.parse_args()
-            rows = run_all(load_configs(args.input), seed=args.seed)
+            rows = run_all(load_configs(args.input, DEFAULT_CONFIGS), seed=args.seed)
             print(json.dumps(rows, indent=2, sort_keys=True))
 
 
@@ -900,10 +825,10 @@ def _run_experiments_py(configs_json: str) -> str:
 
 
 def _requirements_txt() -> str:
-    return "torch\ntorchvision\nnumpy\nscikit-learn\n"
+    return "torch\n"
 
 
-def _readme_generated_md(specs: Sequence[TrainingSpec]) -> str:
+def _readme_generated_md(specs: Sequence[TrainingSpec], feedback: str | None = None) -> str:
     candidate_lines = "\n".join(
         f"- rank {spec.rank}: {spec.task_type}, backbone={spec.backbone}, "
         f"loss={spec.loss}, optimizer={spec.optimizer}, finetune={spec.finetune_strategy}"
@@ -933,6 +858,7 @@ def _readme_generated_md(specs: Sequence[TrainingSpec]) -> str:
         ## Files
 
         - `configs.json`: normalized candidate configs used by this project.
+        - `utils.py`: shared config parsing, seed, and task-type helpers.
         - `smoke_data.py`: shared synthetic data helpers for local smoke runs.
         - `model.py`: task-compatible lightweight PyTorch models with
           `build_model(config)`.
@@ -945,8 +871,8 @@ def _readme_generated_md(specs: Sequence[TrainingSpec]) -> str:
         - `module4_summary.json`: written by the Module 4 workflow after
           generation, smoke testing, and review.
         - `experiments.jsonl`, `leaderboard.json`, `refinement_summary.json`,
-          and `best_config.json`: written only when Module 4 is run with
-          `--run-refinement`.
+          and `best_config.json`: written by the outer Module 4 workflow only
+          when it is run with `--run-refinement`.
 
         ## Usage
 
@@ -975,5 +901,21 @@ def _readme_generated_md(specs: Sequence[TrainingSpec]) -> str:
         - HuggingFace checkpoint loading is intentionally disabled by default.
         - Module 3 controls candidate scale; this project only executes the
           supplied configs.
+
+        {_feedback_section(feedback)}
         """
     ).lstrip()
+
+
+def _feedback_section(feedback: str | None) -> str:
+    if not feedback:
+        return ""
+    sanitized = feedback.strip().replace("```", "'''")
+    return f"""## Previous Reviewer Feedback
+
+This project was regenerated after reviewer feedback:
+
+```text
+{sanitized}
+```
+"""

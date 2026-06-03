@@ -61,9 +61,9 @@ def diff_controlled_fields(
 ) -> dict[str, tuple[Any, Any]]:
     """Return changed allowed fields between two specs or summaries.
 
-    ``freeze_backbone`` is treated as part of a finetune-strategy change. That
-    keeps the one-component rule honest without forcing internally inconsistent
-    variants such as ``finetune_strategy="full"`` with a frozen backbone.
+    ``freeze_backbone`` is folded into ``finetune_strategy`` only when the
+    strategy itself changes. A standalone freeze change is reported separately
+    so the reviewer can reject it as outside the allowed refinement surface.
     """
 
     before_summary = _summary(before)
@@ -74,11 +74,8 @@ def diff_controlled_fields(
             changes[field] = (before_summary.get(field), after_summary.get(field))
 
     if before_summary.get("freeze_backbone") != after_summary.get("freeze_backbone"):
-        if "finetune_strategy" in changes:
-            old, new = changes["finetune_strategy"]
-            changes["finetune_strategy"] = (old, new)
-        else:
-            changes["finetune_strategy"] = (
+        if "finetune_strategy" not in changes:
+            changes["freeze_backbone"] = (
                 before_summary.get("freeze_backbone"),
                 after_summary.get("freeze_backbone"),
             )
