@@ -1,109 +1,221 @@
-# Jiaozi
-<img width="1355" height="794" alt="图片" src="https://github.com/user-attachments/assets/2fb43697-3493-402c-849b-50d41078cd9d" />
+# CV Auto-DL
 
-饺子（暂定）
-平台地址：https://jiaozi-automl-891059684610.us-west1.run.app/
+This repository currently keeps the active Module 3 retrieval layer and the new
+Module 4 local code-generation agent.
 
-Readme先用来写一些文档或者注意事项，也可以在下面留言
+## Module 4: Local Code-Generation Agent
 
-## 计划
-目前计划将项目分成4个大部分
-1. 处理用户自然语言输入 @codetraveller66
-    接受用户自然语言输入，输出为字符串的list，包含模型输入，输出，模型大小，类型 等等
-    1. 准备测试，测试输入  x5
-    2. 选择并调用大语言模型agent
-    3. 测试不同提示词效果
-    4. （可选）生成用于RAG Agent的模型提示词
-关键词qwen api, system message, user message, api key
+Module 4 consumes ranked candidate configurations from Module 3 and generates a
+small runnable PyTorch project for local CPU smoke testing. The generated code is
+intended as a stable prototype that users can later adapt for Colab/GPU training.
 
-2. 处理用户数据集输入
-   接受用户数据集输入，输出为数据集信息，数据类型的json，（可选）数据集理解的字符串list。包含数据集大小，离群值 等等 @haoyue-chen
-    1. 找找数据集，包括adult在内的3个小数据集
-    2. 优先完成csv类型数据，准备json输出，包含数据列名以及数据类型，包含label列相关信息
-    3. 询问可能的数据attribute，作为另一个输出，包含比如数据集大小等相关信息
-    4. （可选）数据清洗
-    5. （可选）结合agent理解数据集相关信息，并输出类似模块一的字符串list
-    6. （可选）准备应付不同数据类型，如图像数据，表格数据等
+Module 3 is the Knowledge Base / retrieval module. It recommends up to three CV
+model configurations from structured user and task constraints. Module 4 treats
+each Module 3 candidate as one experiment configuration and sweeps all of them in
+`run_experiments.py`.
 
-  
-3. 选择正确模型
-   1. 收集资料，准备模型数据库
-   2. 选择RAG或者词向量匹配，寻找最适配的模型
+The structured `model_config` is the source of truth. Natural-language `tasks`
+are only used as explanatory context. If they conflict, Module 4 follows
+`model_config`.
 
+### Expected Input
 
-4. 生成模型代码
-   1. 讨论一下这一块的输入
-   2. 用ReAct框架构建agent
-   3. 看看有没有测试代码能否运行的工具
-   4. 输出training code和inference code
-   5. 考虑evaluation metrics
+Module 4 accepts a JSON file containing either one candidate object, a list of
+candidate objects, or an object with a `candidates` list.
 
-
-
-# 周会时间 周五 德国时间/中国时间 1 p.m./ 8 p.m.
-## 留言板
-
-
-急急急，真得先来个项目名字了！
-别来了就饺子了
-饺子🥟这个名字非常好！ 非常赞成！
-https://huggingface.co/models
-
-## CV Auto-DL Codegen Submodule
-
-This repo now includes a workflow-first implementation for the CV Auto-DL code generation submodule under `cv_autodl_agent/`.
-
-Current scope:
-
-- input contract: `DatasetManifest + RetrievedModelCandidate[]`
-- workflow: candidate selection -> training spec -> baseline codegen -> baseline run -> ablation -> targeted refinement -> review -> notebook export
-- task families: `classification`, `segmentation`, `detection`
-- local fallback execution mode: `simulate`
-- Colab demo execution mode: `real`
-- Colab handoff: generated `train.py`, `dataset.py`, `inference.py`, `requirements.txt`, `notebook.ipynb`
-
-Quickstart:
-
-```bash
-cd /Users/wang/Desktop/TUB2025sose/ML_project/Jiaozi
-python3 -m cv_autodl_agent \
-  --manifest examples/classification_manifest.json \
-  --candidates examples/classification_candidates.json \
-  --output-dir demo_run
+```json
+[
+  {
+    "format": "nl",
+    "rank": 1,
+    "score": 0.92,
+    "model_config": {
+      "task_type": "classification",
+      "backbone": "efficientnet_b0",
+      "pretrained_hf_id": "google/efficientnet-b0",
+      "head": "classification_head",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "finetune_strategy": "head_only",
+      "freeze_backbone": true
+    },
+    "tasks": [
+      "Load EfficientNet-B0 pretrained on ImageNet.",
+      "Use head-only fine-tuning and freeze the backbone."
+    ],
+    "alternatives": []
+  }
+]
 ```
 
-Colab demo:
+Supported task types:
 
-- open `examples/colab_demo.ipynb` from the repository root
-- run the cells in order
-- the output prints the selected model, baseline metric, refined metric, ablation winner, review status, generated notebook path, real CIFAR-10 metric, and checkpoint path
-- the demo uses a small CIFAR-10 subset by default so Colab can finish quickly; increase `max_train_samples`, `max_val_samples`, and `max_epochs` in the manifest for a stronger model
+- `classification`
+- `object_detection`
+- `image_segmentation`
+- `feature_extraction`
 
-Example inputs:
-
-- `examples/classification_manifest.json`
-- `examples/classification_candidates.json`
-- `examples/cifar10_manifest.json`
-- `examples/cifar10_candidates.json`
-- `examples/food101_manifest.json`
-- `examples/food101_candidates.json`
-- `examples/segmentation_manifest.json`
-- `examples/segmentation_candidates.json`
-- `examples/detection_manifest.json`
-- `examples/detection_candidates.json`
-
-Expected demo output summary:
-
-- `examples/expected_classification_summary.json`
-
-Documentation:
-
-- `docs/CV_AUTODL_TECHNICAL_DOC.md`
-- `docs/cv-autodl-codegen/SKILL.md`
-
-Run tests:
+### CLI Usage
 
 ```bash
-cd /Users/wang/Desktop/TUB2025sose/ML_project/Jiaozi
-python3 -m unittest discover -s tests -v
+python -m module4_agent --input module4_agent/examples/sample_m3_output.json --output generated/
 ```
+
+All supported task families can be smoke-tested with:
+
+```bash
+python -m module4_agent --input module4_agent/examples/sample_m3_output_all_tasks.json --output generated_all_tasks/
+```
+
+To generate and run static review without executing smoke subprocesses:
+
+```bash
+python -m module4_agent --input module4_agent/examples/sample_m3_output.json --output generated/ --no-smoke
+```
+
+To also run the experiment-level refinement loop after code generation, smoke
+testing, and review pass:
+
+```bash
+python -m module4_agent --input module4_agent/examples/sample_m3_output.json --output generated/ --run-refinement
+python -m module4_agent --input module4_agent/examples/sample_m3_output.json --output generated/ --run-refinement --max-refinement-iters 2 --improvement-threshold 0.01
+```
+
+The CLI will:
+
+1. load Module 3 candidate configs;
+2. build internal training specs;
+3. generate all required files into the output directory;
+4. run CPU smoke tests with synthetic data;
+5. run deterministic reviewer checks;
+6. optionally run baseline → ablation → targeted refinement when
+   `--run-refinement` is enabled;
+7. write `module4_summary.json` and print the same JSON-like final summary.
+
+### Generated Files
+
+```text
+generated/
+  configs.json
+  smoke_data.py
+  model.py
+  train.py
+  evaluate.py
+  infer.py
+  run.py
+  run_experiments.py
+  requirements.txt
+  README_generated.md
+  module4_summary.json
+```
+
+When `--run-refinement` is enabled, Module 4 also writes:
+
+```text
+generated/
+  experiments.jsonl
+  leaderboard.json
+  refinement_summary.json
+  best_config.json
+```
+
+`configs.json` contains the normalized candidate configs that Module 4 actually
+generated from Module 3 output. `run.py` runs the first configuration by default:
+
+```bash
+python run.py --config configs.json
+```
+
+`run_experiments.py` sweeps every Module 3 candidate using the same random seed
+and synthetic data setup for fair smoke comparison:
+
+```bash
+python run_experiments.py --input configs.json
+```
+
+`module4_summary.json` records the final workflow status, generated files,
+smoke command results, reviewer feedback, warnings/errors, iteration history,
+per-candidate summaries, and optional refinement results.
+
+### Smoke Test vs Proxy Evaluation
+
+Module 4 now has two separate iteration levels:
+
+- Code correctness loop: Coder → Executor → Reviewer. This generates runnable
+  files, executes tiny CPU smoke tests on synthetic tensors, and checks that the
+  generated project is complete and consistent with Module 3 configs.
+- Experiment refinement loop: baseline → ablation → targeted refinement →
+  proxy evaluation. This is enabled only with `--run-refinement`.
+
+The refinement loop selects the top-ranked Module 3 candidate as the baseline,
+generates controlled ablations that modify only one allowed component at a time,
+evaluates them with a deterministic proxy metric, applies a small targeted
+refinement to the best ablation, and repeats until the improvement threshold is
+reached, max iterations are reached, or no variant improves.
+
+Allowed refinement components are:
+
+- `optimizer`
+- `learning_rate`
+- `augmentation`
+- `finetune_strategy`
+- `loss`
+- `backbone` / `checkpoint`, only when Module 3 supplied alternatives
+
+The loop does not modify task type, metric choice, logging format, data split
+policy, experiment loop structure, or unrelated task fields.
+
+`experiments.jsonl` records every baseline, ablation, and refinement result.
+`leaderboard.json` sorts successful proxy results by metric value, with higher
+being better for the current proxy metrics. `refinement_summary.json` reports
+the baseline result, best result, selected component, improvement, and stop
+reason. `best_config.json` exports the best proxy-selected config directly,
+with `_module4_refinement` metadata for traceability.
+
+These proxy metrics are workflow-level signals, not real benchmark scores.
+They reward reasonable choices in a stable way, such as task-compatible
+optimizers, focal loss for imbalanced classification, Dice-style segmentation
+losses, pretrained configs for small data, and full fine-tuning for larger data.
+Real validation metrics can be integrated later without changing the overall
+loop structure.
+
+### Reviewer Checks
+
+The deterministic reviewer rejects generated code when:
+
+- required generated files are missing;
+- generated Python files do not compile;
+- smoke tests fail, unless `--no-smoke` was explicitly used;
+- `run_experiments.py` does not visibly sweep all candidates;
+- `configs.json` does not match the internal `TrainingSpec` list;
+- important `model_config` fields are not represented;
+- metric names do not match task types;
+- experiment rows omit required summary fields;
+- `head_only` does not freeze backbone-like parameters, or `full` unexpectedly
+  freezes parameters.
+- refinement artifacts are missing when `--run-refinement` is enabled;
+- ablation/refinement rows modify multiple components at once;
+- refinement changes forbidden fields such as `task_type` or metric choice.
+
+### Current Limitations
+
+- Real long training is not performed locally.
+- Generated code uses lightweight dummy PyTorch models by default.
+- Refinement uses deterministic proxy metrics, not real benchmark metrics.
+- Real HuggingFace checkpoint loading can be added later.
+- Object detection and segmentation are smoke-test compatible first, not full
+  benchmark training implementations.
+- LangGraph and an LLM reviewer are optional future extensions; the current
+  implementation uses deterministic templates and deterministic review checks.
+
+### Tests
+
+```bash
+pytest module4_agent/tests
+pytest retrieval/test_rag_retrieval.py
+pytest
+```
+
+Module 3 retrieval tests use a deterministic local embedding fallback by
+default so they do not require HuggingFace network access. Set
+`CV_AUTODL_EMBEDDINGS=hf` to use the real SentenceTransformer embedding path.

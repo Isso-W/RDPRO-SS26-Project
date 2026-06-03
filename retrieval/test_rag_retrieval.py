@@ -5,15 +5,26 @@ RAG Retrieval 测试套件
 
 import unittest
 
-from rag_retrieval import (
-    build_graph,
-    build_vector_index,
-    retrieve_top3_hybrid,
-    build_task_list,
-    build_all_task_lists,
-    MODULE1_EXAMPLES,
-    _SIZE_TIER_ORDER,
-)
+try:
+    from retrieval.rag_retrieval import (
+        build_graph,
+        build_vector_index,
+        retrieve_top3_hybrid,
+        build_task_list,
+        build_all_task_lists,
+        MODULE1_EXAMPLES,
+        _SIZE_TIER_ORDER,
+    )
+except ModuleNotFoundError:
+    from rag_retrieval import (
+        build_graph,
+        build_vector_index,
+        retrieve_top3_hybrid,
+        build_task_list,
+        build_all_task_lists,
+        MODULE1_EXAMPLES,
+        _SIZE_TIER_ORDER,
+    )
 
 _REQUIRED_FIELDS = {
     "backbone", "head", "loss", "optimizer",
