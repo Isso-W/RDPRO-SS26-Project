@@ -6,8 +6,8 @@ Module 4 local code-generation agent.
 ## Module 4: Local Code-Generation Agent
 
 Module 4 consumes ranked candidate configurations from Module 3 and generates a
-small runnable PyTorch project for local CPU smoke testing. The generated code is
-intended as a stable prototype that users can later adapt for Colab/GPU training.
+small runnable PyTorch project for local CPU smoke testing. The generated code
+can later be adapted for Colab/GPU training.
 
 Module 3 is the Knowledge Base / retrieval module. It recommends up to three CV
 model configurations from structured user and task constraints. Module 4 treats
@@ -87,7 +87,7 @@ The CLI will:
 2. build internal training specs;
 3. generate all required files into the output directory;
 4. run CPU smoke tests with synthetic data;
-5. run deterministic reviewer checks;
+5. run static review checks;
 6. optionally run baseline → ablation → targeted refinement when
    `--run-refinement` is enabled;
 7. write `module4_summary.json` and print the same JSON-like final summary.
@@ -141,9 +141,9 @@ per-candidate summaries, and optional refinement results.
 
 Module 4 now has two separate iteration levels:
 
-- Code correctness loop: Coder → Executor → Reviewer. This generates runnable
-  files, executes tiny CPU smoke tests on synthetic tensors, and checks that the
-  generated project is complete and consistent with Module 3 configs.
+- Code validation loop: generate files, execute tiny CPU smoke tests on
+  synthetic tensors, and check that the generated project is complete and
+  consistent with Module 3 configs.
 - Experiment refinement loop: baseline → ablation → targeted refinement →
   proxy evaluation. This is enabled only with `--run-refinement`.
 
@@ -173,16 +173,16 @@ reason. `best_config.json` exports the best proxy-selected config directly,
 with `_module4_refinement` metadata for traceability.
 
 These proxy metrics are workflow-level signals, not real benchmark scores.
-They reward reasonable choices in a stable way, such as task-compatible
+They reward reasonable choices consistently, such as task-compatible
 optimizers, focal loss for imbalanced classification, Dice-style segmentation
 losses, pretrained configs for small data, and full fine-tuning for larger data.
 When generated smoke code is available, the loop also folds in the tiny
-synthetic smoke-training loss as a deterministic local signal. Real validation
-metrics can be integrated later without changing the overall loop structure.
+synthetic smoke-training loss as a local signal. Real validation metrics can be
+integrated later without changing the overall loop structure.
 
-### Reviewer Checks
+### Review Checks
 
-The deterministic reviewer rejects generated code when:
+The review step rejects generated code when:
 
 - required generated files are missing;
 - generated Python files do not compile;
@@ -202,12 +202,11 @@ The deterministic reviewer rejects generated code when:
 
 - Real long training is not performed locally.
 - Generated code uses lightweight dummy PyTorch models by default.
-- Refinement uses deterministic proxy metrics, not real benchmark metrics.
+- Refinement uses proxy metrics, not real benchmark metrics.
 - Real HuggingFace checkpoint loading can be added later.
 - Object detection and segmentation are smoke-test compatible first, not full
   benchmark training implementations.
-- LangGraph and an LLM reviewer are optional future extensions; the current
-  implementation uses deterministic templates and deterministic review checks.
+- Graph-based orchestration and richer review integrations can be added later.
 
 ### Tests
 

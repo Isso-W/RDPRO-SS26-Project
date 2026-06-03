@@ -1,8 +1,8 @@
 """Lightweight data contracts for Module 4.
 
-The dataclasses intentionally stay small and JSON-friendly. Module 4 consumes
-Module 3 output, normalizes it into TrainingSpec objects, generates a local
-project, runs smoke tests, and reviews the generated files.
+The dataclasses stay small and JSON-friendly. Module 4 consumes Module 3 output,
+normalizes it into TrainingSpec objects, generates a local project, runs smoke
+tests, and reviews the generated files.
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ class ReviewResult:
 
 @dataclass
 class IterationRecord:
-    """One Coder -> Executor -> Reviewer loop iteration."""
+    """One generation, execution, and review iteration."""
 
     iteration: int
     smoke_success: bool
@@ -189,7 +189,7 @@ class WorkflowResult:
     review_result: ReviewResult
     iterations: int
     iteration_history: list[IterationRecord] = field(default_factory=list)
-    refinement_summary: "RefinementSummary | None" = None
+    refinement_summary: RefinementSummary | None = None
 
     @property
     def is_approved(self) -> bool:

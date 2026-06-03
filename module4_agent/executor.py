@@ -15,6 +15,29 @@ from pathlib import Path
 from .schemas import CommandResult, GeneratedFiles, SmokeResult
 
 
+SUBPROCESS_ENV_DEFAULTS = {
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "KMP_DUPLICATE_LIB_OK": "TRUE",
+    "KMP_INIT_AT_FORK": "FALSE",
+    "KMP_AFFINITY": "disabled",
+    "KMP_USE_SHM": "0",
+    "KMP_BLOCKTIME": "0",
+    "OMP_WAIT_POLICY": "PASSIVE",
+    "OMP_PROC_BIND": "FALSE",
+    "TOKENIZERS_PARALLELISM": "false",
+}
+
+
+def subprocess_env() -> dict[str, str]:
+    """Return the stable low-thread environment used by generated-code subprocesses."""
+
+    env = os.environ.copy()
+    for key, value in SUBPROCESS_ENV_DEFAULTS.items():
+        env.setdefault(key, value)
+    return env
+
+
 def write_generated_files(generated: GeneratedFiles, output_dir: str | Path) -> list[Path]:
     """Write generated files into an output directory."""
 
@@ -34,21 +57,10 @@ def run_command(command: list[str], cwd: str | Path, timeout: int = 60) -> Comma
 
     start = time.time()
     try:
-        env = os.environ.copy()
-        env.setdefault("OMP_NUM_THREADS", "1")
-        env.setdefault("MKL_NUM_THREADS", "1")
-        env.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-        env.setdefault("KMP_INIT_AT_FORK", "FALSE")
-        env.setdefault("KMP_AFFINITY", "disabled")
-        env.setdefault("KMP_USE_SHM", "0")
-        env.setdefault("KMP_BLOCKTIME", "0")
-        env.setdefault("OMP_WAIT_POLICY", "PASSIVE")
-        env.setdefault("OMP_PROC_BIND", "FALSE")
-        env.setdefault("TOKENIZERS_PARALLELISM", "false")
         completed = subprocess.run(
             command,
             cwd=str(cwd),
-            env=env,
+            env=subprocess_env(),
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -109,6 +121,9 @@ def _run_python_script_inprocess(command: list[str], cwd: str | Path, start: flo
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             runpy.run_path(str(script_path), run_name="__main__")
         return_code = 0
+    except SystemExit as exc:
+        code = exc.code
+        return_code = code if isinstance(code, int) else 1
     except Exception:
         return_code = 1
         stderr.write(traceback.format_exc())

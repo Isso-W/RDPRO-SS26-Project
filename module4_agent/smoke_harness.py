@@ -1,4 +1,9 @@
-"""Synthetic data helpers for Module 4 smoke testing."""
+"""Synthetic data helpers for Module 4 smoke testing.
+
+These public helpers are shared test/support utilities. Generated projects
+still emit their own standalone ``smoke_data.py`` so users can copy the
+generated folder without importing this package.
+"""
 
 from __future__ import annotations
 
@@ -77,4 +82,3 @@ def _normalize_task_type(task_type: str) -> str:
         "features": "feature_extraction",
         "embedding": "feature_extraction",
     }.get(task, task)
-

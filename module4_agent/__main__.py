@@ -13,7 +13,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate and smoke-test Module 4 training code.")
     parser.add_argument("--input", required=True, help="Path to Module 3 candidate JSON output.")
     parser.add_argument("--output", required=True, help="Directory for generated files.")
-    parser.add_argument("--max-iter", type=int, default=2, help="Maximum Coder/Reviewer iterations.")
+    parser.add_argument("--max-iter", type=int, default=2, help="Maximum generation/review iterations.")
     parser.add_argument("--timeout", type=int, default=60, help="Per-command smoke-test timeout in seconds.")
     parser.add_argument("--no-smoke", action="store_true", help="Generate and review files without running smoke tests.")
     parser.add_argument(

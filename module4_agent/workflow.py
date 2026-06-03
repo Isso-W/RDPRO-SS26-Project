@@ -1,4 +1,4 @@
-"""End-to-end Module 4 Coder -> Executor -> Reviewer workflow."""
+"""End-to-end Module 4 workflow."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def run_workflow(
     max_refinement_iters: int = 2,
     improvement_threshold: float = 0.01,
 ) -> WorkflowResult:
-    """Run deterministic generation, execution, and review."""
+    """Run generation, smoke execution, and static review."""
 
     m3_configs = load_m3_configs(input_path)
     specs = build_training_specs(m3_configs)
@@ -90,17 +90,15 @@ def run_workflow(
             output_dir=output_dir,
             refinement_enabled=True,
         )
-    generated_files = sorted(generated.files)
-    if "module4_summary.json" not in generated_files:
-        generated_files.append("module4_summary.json")
+    generated_files = set(generated.files)
+    generated_files.add("module4_summary.json")
     if refinement_summary is not None:
         for artifact in ("experiments.jsonl", "leaderboard.json", "refinement_summary.json", "best_config.json"):
-            if artifact not in generated_files:
-                generated_files.append(artifact)
+            generated_files.add(artifact)
     result = WorkflowResult(
         output_dir=str(Path(output_dir)),
         specs=specs,
-        generated_files=generated_files,
+        generated_files=sorted(generated_files),
         smoke_result=smoke_result,
         review_result=review_result,
         iterations=iterations,

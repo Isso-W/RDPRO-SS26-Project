@@ -45,6 +45,7 @@ def test_run_experiments_embeds_and_sweeps_all_candidates():
     assert "DEFAULT_CONFIGS" in content
     assert '"rank": 1' in content
     assert '"rank": 2' in content
+    assert "from typing import Any" in content
     assert "for index, config in enumerate(configs" in content
     assert "model, train_result = train_model" in content
 
@@ -60,7 +61,7 @@ def test_run_uses_trained_model_for_evaluation():
 def test_feedback_is_embedded_into_generated_readme():
     generated = generate_files(_specs(), feedback="Smoke test failed.")
 
-    assert "Previous Reviewer Feedback" in generated.files["README_generated.md"]
+    assert "Previous Review Notes" in generated.files["README_generated.md"]
     assert "Smoke test failed." in generated.files["README_generated.md"]
 
 

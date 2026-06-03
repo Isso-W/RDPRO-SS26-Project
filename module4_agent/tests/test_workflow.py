@@ -1,8 +1,16 @@
 from pathlib import Path
 import json
+import sys
+import time
 
 from module4_agent.code_generator import generate_files
-from module4_agent.executor import run_command, write_generated_files
+from module4_agent.executor import (
+    SUBPROCESS_ENV_DEFAULTS,
+    _run_python_script_inprocess,
+    run_command,
+    subprocess_env,
+    write_generated_files,
+)
 from module4_agent.reviewer import review_generated
 from module4_agent.schemas import CommandResult, GeneratedFiles, SmokeResult
 from module4_agent.spec_builder import build_training_specs
@@ -92,7 +100,7 @@ def test_reviewer_rejects_missing_experiment_row_fields():
         success=True,
         command_results=[
             CommandResult(
-                command=["python", "run_experiments.py"],
+                command=[sys.executable, "run_experiments.py"],
                 return_code=0,
                 stdout='[{"metric_name": "accuracy", "status": "success"}]',
                 stderr="",
@@ -129,7 +137,7 @@ def test_reviewer_dynamically_rejects_broken_head_only_freeze(tmp_path):
         success=True,
         command_results=[
             CommandResult(
-                command=["python", "run_experiments.py"],
+                command=[sys.executable, "run_experiments.py"],
                 return_code=0,
                 stdout='[{"metric_name": "accuracy", "status": "success"}]',
                 stderr="",
@@ -144,6 +152,33 @@ def test_reviewer_dynamically_rejects_broken_head_only_freeze(tmp_path):
     assert any("did not freeze backbone-like parameters" in error for error in review.errors)
 
 
+def test_executor_subprocess_environment_is_shared():
+    env = subprocess_env()
+
+    for key, value in SUBPROCESS_ENV_DEFAULTS.items():
+        assert env[key] == value
+
+
+def test_inprocess_fallback_captures_argparse_system_exit(tmp_path):
+    script = tmp_path / "exit_script.py"
+    script.write_text(
+        "import argparse\n"
+        "parser = argparse.ArgumentParser()\n"
+        "parser.add_argument('--ok', action='store_true')\n"
+        "parser.parse_args()\n",
+        encoding="utf-8",
+    )
+
+    result = _run_python_script_inprocess(
+        [sys.executable, "exit_script.py", "--bad-arg"],
+        cwd=tmp_path,
+        start=time.time(),
+    )
+
+    assert result.return_code == 2
+    assert "unrecognized arguments" in result.stderr
+
+
 def test_generated_scripts_accept_raw_module3_input(tmp_path):
     sample = Path(__file__).resolve().parents[1] / "examples" / "sample_m3_output_all_tasks.json"
     output = tmp_path / "generated"
@@ -151,7 +186,7 @@ def test_generated_scripts_accept_raw_module3_input(tmp_path):
 
     assert result.is_approved
     command = run_command(
-        ["python", "run_experiments.py", "--input", str(sample)],
+        [sys.executable, "run_experiments.py", "--input", str(sample)],
         cwd=output,
         timeout=60,
     )

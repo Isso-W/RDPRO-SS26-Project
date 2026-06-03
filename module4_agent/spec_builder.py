@@ -55,8 +55,8 @@ TASK_DEFAULTS = {
 def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[TrainingSpec]:
     """Build normalized specs from a list of Module 3 candidates.
 
-    The parser is intentionally defensive. Module 3 has both structured and
-    natural-language output styles, and some examples use older field names.
+    The parser accepts both structured and natural-language output styles, and
+    some examples use older field names.
     """
 
     if not isinstance(candidates, Sequence) or isinstance(candidates, (str, bytes)):

@@ -18,7 +18,7 @@ def run_refinement_loop(
     improvement_threshold: float = 0.01,
     seed: int = 123,
 ) -> RefinementSummary:
-    """Run a deterministic experiment refinement loop and write artifacts."""
+    """Run the experiment refinement loop and write artifacts."""
 
     if not specs:
         raise ValueError("At least one TrainingSpec is required for refinement.")

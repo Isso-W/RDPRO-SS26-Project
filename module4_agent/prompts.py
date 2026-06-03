@@ -1,8 +1,8 @@
-"""Prompt text placeholders for future LLM-backed Module 4 variants.
+"""Prompt templates reserved for optional guided generation.
 
-The current implementation is deterministic and template-based. These strings
-document the intended Coder -> Executor -> Reviewer loop without requiring an
-LLM dependency.
+The current implementation uses fixed templates and static checks. These
+strings document the expected generation and review context for integrations
+that need prompt text.
 """
 
 CODER_PROMPT = """
@@ -15,4 +15,3 @@ REVIEWER_PROMPT = """
 Review generated code for required files, compile success, smoke-test success,
 candidate sweep coverage, metric/task consistency, and finetune freezing.
 """
-

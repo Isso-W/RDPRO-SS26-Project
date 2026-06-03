@@ -1,17 +1,17 @@
-"""Deterministic proxy evaluation and targeted refinement helpers."""
+"""Proxy evaluation and targeted refinement helpers."""
 
 from __future__ import annotations
 
 from dataclasses import replace
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
 from typing import Any
 
 from .ablation import training_spec_summary
+from .executor import subprocess_env
 from .schemas import ExperimentResult, TrainingSpec
 
 
@@ -34,18 +34,13 @@ def proxy_evaluate(
     notes: str | None = None,
     smoke_project_dir: str | Path | None = None,
 ) -> ExperimentResult:
-    """Evaluate a TrainingSpec with a stable smoke-compatible proxy metric.
-
-    This function intentionally does not perform real training. It scores
-    configuration choices with deterministic heuristics so the refinement
-    workflow can be tested locally before real validation metrics are wired in.
-    """
+    """Evaluate a TrainingSpec with a local proxy metric."""
 
     metric_name = METRIC_BY_TASK.get(spec.task_type, "accuracy")
     config_summary = training_spec_summary(spec)
     smoke_loss, smoke_note = _smoke_loss_signal(spec, smoke_project_dir=smoke_project_dir, seed=seed)
     score = _proxy_score(spec, seed=seed, smoke_loss=smoke_loss)
-    result_notes = notes or "Deterministic proxy metric; not a real benchmark score."
+    result_notes = notes or "Local proxy metric; not a benchmark score."
     if smoke_note:
         result_notes = f"{result_notes} {smoke_note}"
     return ExperimentResult(
@@ -63,7 +58,7 @@ def proxy_evaluate(
 
 
 def apply_targeted_refinement(spec: TrainingSpec, selected_component: str | None) -> TrainingSpec:
-    """Apply a small deterministic refinement to the selected component."""
+    """Apply a small refinement to the selected component."""
 
     if selected_component == "learning_rate":
         tuned_lr = _tune_learning_rate(spec.learning_rate)
@@ -135,8 +130,7 @@ def _proxy_score(spec: TrainingSpec, *, seed: int, smoke_loss: float | None = No
         score -= 0.020
 
     if smoke_loss is not None:
-        # Lower synthetic smoke loss is mildly rewarded. This keeps the loop
-        # deterministic and local while adding a real forward/backward signal.
+        # Lower synthetic smoke loss gets a small bonus.
         score += max(-0.020, min(0.030, (2.0 - smoke_loss) * 0.010))
 
     score += _stable_jitter(training_spec_summary(spec), seed)
@@ -173,13 +167,6 @@ print(json.dumps({"status": result.get("status"), "loss": result.get("loss")}))
 """
     payload = spec.to_config()
     payload["_seed"] = seed
-    env = os.environ.copy()
-    env.setdefault("OMP_NUM_THREADS", "1")
-    env.setdefault("MKL_NUM_THREADS", "1")
-    env.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-    env.setdefault("KMP_USE_SHM", "0")
-    env.setdefault("KMP_BLOCKTIME", "0")
-    env.setdefault("OMP_WAIT_POLICY", "PASSIVE")
     completed = subprocess.run(
         [sys.executable, "-c", code],
         cwd=str(project_dir),
@@ -187,7 +174,7 @@ print(json.dumps({"status": result.get("status"), "loss": result.get("loss")}))
         capture_output=True,
         text=True,
         timeout=30,
-        env=env,
+        env=subprocess_env(),
         check=False,
     )
     if completed.returncode != 0:
