@@ -300,3 +300,4 @@ class ImageStandardizer:
             quality=95,
             optimize=True
         )
+        

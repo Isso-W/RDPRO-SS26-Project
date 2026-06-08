@@ -1,3 +1,4 @@
+from email.mime import image
 import os
 import json
 import csv
@@ -128,11 +129,6 @@ class ImageFeatureExtractor:
             labels=labels_array,
             image_paths=all_paths
         )
-
-        self._save_metadata(
-            image_records=image_records,
-            class_to_idx=class_to_idx
-        )
         
         self._save_class_mapping(
             class_to_idx
@@ -242,13 +238,17 @@ class ImageFeatureExtractor:
 
                     if not filename.lower().endswith(".jpg"):
                         continue
+                    
+                    image_path = os.path.join(
+                        class_dir,
+                        filename
+                    )
+
+                    image = Image.open(image_path)
 
                     image_records.append({
 
-                        "path": os.path.join(
-                            class_dir,
-                            filename
-                        ),
+                        "path": image_path,
 
                         "class_name": class_name,
 
@@ -333,60 +333,6 @@ class ImageFeatureExtractor:
                 f,
                 indent=2
             )
-
-    def _save_metadata(
-        self,
-        image_records: list[dict],
-        class_to_idx: dict[str, int]
-    ) -> None:
-        # Write one CSV row per image with path, class, split and array index
-
-        filepath = os.path.join(
-            self._output_dir,
-            "metadata.csv"
-        )
-
-        with open(
-            filepath,
-            "w",
-            newline="",
-            encoding="utf-8"
-        ) as f:
-
-            writer = csv.DictWriter(
-                f,
-                fieldnames=[
-                    "image_path",
-                    "class_name",
-                    "label_id",
-                    "split",
-                    "feature_index"
-                ]
-            )
-
-            writer.writeheader()
-
-            for feature_index, record in enumerate(
-                image_records
-            ):
-
-                writer.writerow({
-
-                    "image_path":
-                        record["path"],
-
-                    "class_name":
-                        record["class_name"],
-                        
-                    "label_id":
-                        class_to_idx[record["class_name"]],
-
-                    "split":
-                        record["split"],
-
-                    "feature_index":
-                        feature_index
-                })
 
     def _save_class_mapping(
         self,

@@ -1,15 +1,16 @@
 import os
 
 from ingestion.image_loader import ImageLoader
+from analyzer.image_metadata import ImageMetadataExtractor
 from analyzer.image_statistics import ImageStatisticsAnalyzer
-from analyzer.summary_generator import SummaryGenerator
 from analyzer.image_quality import ImageQualityAnalyzer
+from analyzer.summary_generator import SummaryGenerator
 from processors.image_standardizer import ImageStandardizer
 from features.feature_extractor import ImageFeatureExtractor
 
 
 
-DATASET_ID = "ethz/food101"
+DATASET_ID = "uoft-cs/cifar10"
 
 
 # Load dataset
@@ -33,14 +34,35 @@ dataset = loaded["dataset"]
 print(dataset)
 print(dataset.keys())
 
+report = {}
+
+
+# Metadata extraction
+
+metadata_extractor = ImageMetadataExtractor(
+    output_dir=workspace_dir
+)
+
+metadata_report = metadata_extractor.extract(
+    dataset
+)
+
+report.update(
+    metadata_report
+)
+
 
 # Statistics analysis
 statistics_analyzer = ImageStatisticsAnalyzer()
 
-report = statistics_analyzer.analyze(dataset)
+report.update(
+    statistics_analyzer.analyze(dataset)
+)
+
 
 
 # Quality analysis
+
 quality_analyzer = ImageQualityAnalyzer()
 
 quality_report = quality_analyzer.analyze(
@@ -92,9 +114,15 @@ print(
 
 extractor = ImageFeatureExtractor(
 
-    dataset_dir=os.path.join(workspace_dir, "processed_dataset"),
+    dataset_dir=os.path.join(
+        workspace_dir, 
+        "processed_dataset"
+        ),
 
-    output_dir=os.path.join(workspace_dir, "features"),
+    output_dir=os.path.join(
+        workspace_dir, 
+        "features"
+        ),
 
     batch_size=64
 )
@@ -111,7 +139,7 @@ report.update(
 
 
 
-# Save final/summary report
+# Save summary report
 generator = SummaryGenerator()
 
 safe_name = dataset_name.replace("/", "_")
