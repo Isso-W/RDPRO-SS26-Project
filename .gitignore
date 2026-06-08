@@ -1,4 +1,3 @@
-# Virtual env
 .venv/
 
 # Python cache
@@ -11,12 +10,6 @@ processed_dataset/
 
 # Feature files
 *.npy
-
-# Generated reports
-*.json
-
-# Metadata
-*.csv
 
 # Model weights
 *.pt
