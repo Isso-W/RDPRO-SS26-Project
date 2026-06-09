@@ -9,7 +9,6 @@ from processors.image_standardizer import ImageStandardizer
 from features.feature_extractor import ImageFeatureExtractor
 
 
-
 DATASET_ID = "uoft-cs/cifar10"
 
 
@@ -136,7 +135,6 @@ print(
 report.update(
     feature_report
 )
-
 
 
 # Save summary report

@@ -1,68 +1,225 @@
-# Vision Data Pipeline
-
-A modular image data engineering pipeline for dataset ingestion, quality assessment, metadata extraction, image standardization, deep feature extraction, and agent-ready feature generation.
-
----
+# Vision Data Engineering Pipeline
 
 ## Overview
 
-This project provides an end-to-end pipeline for processing image datasets from Hugging Face and transforming them into machine-learning-ready and agent-ready assets.
+Vision Data Engineering Pipeline is an automated image dataset processing framework designed for large-scale computer vision datasets.
 
-The pipeline supports:
+The project provides:
 
 * Dataset ingestion
 * Metadata extraction
 * Dataset statistics analysis
-* Image quality assessment
+* Image quality analysis
 * Image standardization
-* Deep feature extraction using ResNet50
-* Tabular feature engineering preparation
-* Future AI Agent integration
+* CNN feature extraction
+* Metadata feature engineering using Skrub
+
+The output can be consumed by downstream Machine Learning systems, Data Engineering workflows, or AI Agents.
 
 ---
 
-## Pipeline Architecture
+## Architecture
+
+Pipeline consists of two independent stages.
+
+### Stage 1 — Image Processing Pipeline
+
+Raw Dataset
+
+↓
+
+Metadata Extraction
+
+↓
+
+Statistics Analysis
+
+↓
+
+Quality Analysis
+
+↓
+
+Image Standardization
+
+↓
+
+CNN Feature Extraction
+
+↓
+
+Workspace Outputs
+
+---
+
+### Stage 2 — Metadata Feature Engineering Pipeline
+
+metadata.csv
+
+↓
+
+DataFrame Conversion
+
+↓
+
+Skrub TableVectorizer
+
+↓
+
+Engineered Feature Table
+
+↓
+
+Agent / ML Consumption
+
+---
+
+## Stage 1 — Image Processing Pipeline
+
+Entry Point:
+
+```bash
+python image_processor.py
+```
+
+Modules:
+
+### ImageLoader
+
+Loads image datasets from Hugging Face.
+
+### ImageMetadataExtractor
+
+Extracts original image metadata.
+
+Outputs:
+
+* image_path
+* class_name
+* label_id
+* split
+* original_width
+* original_height
+* original_aspect_ratio
+* original_mode
+* original_format
+
+### ImageStatisticsAnalyzer
+
+Computes:
+
+* dataset size
+* class distribution
+* image dimensions
+* resolution statistics
+
+### ImageQualityAnalyzer
+
+Computes:
+
+* corrupted images
+* color mode distribution
+* format distribution
+* resolution outliers
+
+### ImageStandardizer
+
+Performs:
+
+* RGB conversion
+* JPEG conversion
+* image resizing
+* letterbox padding
+
+Output:
+
+224×224 JPEG images
+
+### ImageFeatureExtractor
+
+Uses:
+
+* ResNet50
+* PyTorch
+* torchvision
+
+Outputs:
+
+2048-dimensional feature vectors
+
+Saved files:
+
+* features.npy
+* labels.npy
+* image_paths.json
+* class_mapping.json
+
+---
+
+## Stage 2 — Metadata Feature Engineering Pipeline
+
+Entry Point:
+
+```bash
+python feature_processor.py
+```
+
+Modules:
+
+### MetadataDataFrameBuilder
+
+Converts:
 
 ```text
-Dataset
-    │
-    ▼
-Metadata Extraction
-    │
-    ├── metadata.csv
-    │
-    ▼
-Statistics Analysis
-    │
-    ▼
-Quality Analysis
-    │
-    ▼
-Image Standardization
-    │
-    ├── processed_dataset/
-    │
-    ▼
-Deep Feature Extraction
-    │
-    ├── features.npy
-    ├── labels.npy
-    ├── image_paths.json
-    └── class_mapping.json
-    │
-    ▼
-Tabular Feature Engineering (Skrub)
-    │
-    ▼
-Agent Integration (Future)
+metadata.csv
 ```
+
+into:
+
+```text
+dataframe.parquet
+```
+
+### SkrubProcessor
+
+Uses:
+
+```python
+from skrub import TableVectorizer
+```
+
+Transforms metadata into machine-learning-ready features.
+
+Numerical Features:
+
+* original_width
+* original_height
+* original_aspect_ratio
+
+Categorical Features:
+
+* class_name
+* split
+* original_mode
+* original_format
+
+Preserved Columns:
+
+* label_id
+* image_path
+
+Outputs:
+
+* engineered_features.parquet
+* feature_names.csv
+* vectorizer.pkl
 
 ---
 
 ## Project Structure
 
 ```text
-image_data_processor/
+project/
 
 ├── ingestion/
 │   └── image_loader.py
@@ -77,147 +234,65 @@ image_data_processor/
 │   └── image_standardizer.py
 │
 ├── features/
-│   └── feature_extractor.py
+│   ├── feature_extractor.py
+│   └── metadata_dataframe.py
 │
-├── workspace/
+├── etl/
+│   └── skrub_processor.py
 │
-└── main.py
+├── image_processor.py
+├── feature_processor.py
+│
+└── workspace/
 ```
 
 ---
 
-## Components
+## Workspace Structure
 
-### Dataset Ingestion
-
-Loads image datasets directly from Hugging Face.
-
-Outputs:
-
-* Dataset object
-* Dataset metadata
-
----
-
-### Metadata Extraction
-
-Extracts image-level metadata before any transformation.
-
-Generated fields:
-
-* image_path
-* class_name
-* label_id
-* split
-* original_width
-* original_height
-* original_aspect_ratio
-* original_mode
-* original_format
-
-Output:
-
-```text
-metadata.csv
-```
-
----
-
-### Statistics Analysis
-
-Computes dataset-wide statistics:
-
-* Number of images
-* Number of classes
-* Class distribution
-* Width statistics
-* Height statistics
-* Dataset split sizes
-
----
-
-### Quality Analysis
-
-Performs quality checks:
-
-* Corrupted image detection
-* Color mode distribution
-* Resolution outlier detection
-
----
-
-### Image Standardization
-
-Converts images into a consistent format.
-
-Operations:
-
-* RGB conversion
-* Letterbox resize
-* JPEG conversion
-
-Output:
-
-```text
-processed_dataset/
-```
-
----
-
-### Deep Feature Extraction
-
-Uses a pretrained ResNet50 encoder to generate visual embeddings.
-
-Output dimension:
-
-```text
-2048
-```
-
-Generated files:
-
-```text
-features.npy
-labels.npy
-image_paths.json
-class_mapping.json
-```
-
----
-
-## Generated Outputs
+Example:
 
 ```text
 workspace/
-└── dataset_name/
 
-    metadata.csv
+└── uoft-cs_cifar10/
 
-    report.json
+    ├── metadata.csv
 
-    processed_dataset/
+    ├── dataframe.parquet
 
-    features/
-        features.npy
-        labels.npy
-        image_paths.json
-        class_mapping.json
+    ├── engineered_features.parquet
+
+    ├── feature_names.csv
+
+    ├── vectorizer.pkl
+
+    ├── report.json
+
+    ├── processed_dataset/
+
+    └── features/
 ```
-
----
-
-## Future Work
-
-* Skrub-based tabular feature engineering
-* Feature store generation
-* Similarity search
-* Vector database integration
-* AI Agent querying layer
-* Multimodal retrieval workflows
 
 ---
 
 ## Installation
+
+Create virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate:
+
+Windows
+
+```bash
+.venv\Scripts\activate
+```
+
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -225,8 +300,48 @@ pip install -r requirements.txt
 
 ---
 
-## Run Pipeline
+## Usage
+
+Run image processing:
 
 ```bash
-python main.py
+python image_processor.py
 ```
+
+Run metadata feature engineering:
+
+```bash
+python feature_processor.py
+```
+
+---
+
+## Generated Artifacts
+
+| File                        | Description                |
+| --------------------------- | -------------------------- |
+| metadata.csv                | Original image metadata    |
+| report.json                 | Dataset analysis report    |
+| processed_dataset/          | Standardized images        |
+| features.npy                | CNN feature vectors        |
+| labels.npy                  | Image labels               |
+| image_paths.json            | Image path mapping         |
+| class_mapping.json          | Class-to-label mapping     |
+| dataframe.parquet           | Metadata DataFrame         |
+| engineered_features.parquet | ML-ready metadata features |
+| feature_names.csv           | Generated feature names    |
+| vectorizer.pkl              | Trained Skrub vectorizer   |
+
+---
+
+## Future Work
+
+Planned extensions:
+
+* Image augmentation pipeline
+* Feature store integration
+* AI Agent integration
+* Natural language dataset querying
+* Automated dataset profiling
+* Multi-modal data processing
+* Vector database support

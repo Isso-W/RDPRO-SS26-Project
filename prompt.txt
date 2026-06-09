@@ -1,0 +1,163 @@
+Please refactor `etl/skrub_processor.py`.
+
+Current functionality already works, but I want the module to be more production-ready.
+
+Requirements:
+
+1. Keep the existing class structure:
+
+```python
+class SkrubProcessor:
+```
+
+2. Input:
+
+```text
+workspace/
+└── <dataset_name>/
+    └── dataframe.parquet
+```
+
+3. Read:
+
+```python
+dataframe.parquet
+```
+
+using pandas.
+
+4. Use Skrub:
+
+```python
+from skrub import TableVectorizer
+```
+
+to transform the metadata table.
+
+Use the following feature columns:
+
+Numerical:
+
+```python
+[
+    "original_width",
+    "original_height",
+    "original_aspect_ratio"
+]
+```
+
+Categorical:
+
+```python
+[
+    "class_name",
+    "split",
+    "original_mode",
+    "original_format"
+]
+```
+
+5. Preserve:
+
+```python
+label_id
+image_path
+```
+
+These columns must NOT be transformed.
+
+Store them separately and append them back after feature engineering.
+
+6. Save the trained vectorizer:
+
+```text
+vectorizer.pkl
+```
+
+inside the workspace directory.
+
+Use:
+
+```python
+import joblib
+```
+
+and:
+
+```python
+joblib.dump(
+    vectorizer,
+    vectorizer_path
+)
+```
+
+7. Generate:
+
+```text
+feature_names.csv
+```
+
+containing ONLY engineered feature columns.
+
+Do NOT include:
+
+```text
+label_id
+image_path
+```
+
+inside feature_names.csv.
+
+8. Save engineered output as:
+
+```text
+engineered_features.parquet
+```
+
+inside the workspace directory.
+
+9. Add useful logging:
+
+Print:
+
+```python
+Input shape
+Output shape
+Generated feature count
+Column dtypes
+```
+
+10. Return a report dictionary:
+
+```python
+{
+    "engineered_rows": ...,
+    "engineered_columns": ...,
+    "engineered_features_path": ...,
+    "vectorizer_path": ...,
+    "feature_names_path": ...
+}
+```
+
+11. Use clear helper methods:
+
+```python
+_load_dataframe()
+
+_transform_dataframe()
+
+_save_dataframe()
+
+_save_feature_names()
+
+_save_vectorizer()
+```
+
+12. Follow the same coding style as the rest of the project:
+
+* OOP
+* type hints
+* descriptive comments
+* one responsibility per method
+
+Generate the complete updated skrub_processor.py file.
