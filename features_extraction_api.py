@@ -1,12 +1,15 @@
+import json
 import os
-from openai import OpenAI
+import re
 import textwrap
+
+from openai import OpenAI
 
 def extract_model_features_api(user_message: str):
     try:
         client = OpenAI(
             api_key = os.getenv("JIAOZI_DASHSCOPE_API_KEY"),
-            base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
         )
         system_message = textwrap.dedent('''\
                     【身份】Huggingface模型检索专家。
@@ -43,7 +46,150 @@ def extract_model_features_api(user_message: str):
     except Exception as e:
         print(f"错误信息：{e}")
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Module 3 对接：CV 任务特征提取 + 校验
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_CV_SYSTEM_PROMPT = textwrap.dedent("""\
+    You are a computer vision task analysis expert. The user will describe a CV task
+    in natural language (in any language). Extract structured fields and return pure
+    JSON only — no extra text, no markdown fences.
+
+    Required fields:
+
+    1. task_type — exactly one of:
+       "classification"  (image classification, recognition, labeling)
+       "object_detection" (object detection, localization, bounding boxes, counting)
+       "image_segmentation" (segmentation, masks, pixel-level annotation)
+       "feature_extraction" (feature extraction, embeddings, similarity retrieval)
+
+    2. priority — exactly one of:
+       "speed"    (user emphasizes fast, real-time, lightweight, low latency, efficient)
+       "accuracy" (user emphasizes high accuracy, best performance, state-of-the-art)
+       "balanced" (no clear preference, or user wants both)
+
+    3. constraints — an object with the following boolean fields:
+       "real_time": real-time inference needed (30fps, video stream, online inference)
+       "edge_deployment": deploy on edge/mobile (phone, embedded, Raspberry Pi, Jetson)
+       "class_imbalance": dataset has class imbalance (rare classes, long-tail distribution)
+       "cross_modal": cross-modal capability needed (image-text alignment, text-to-image search, multimodal)
+       "medical": medical imaging scenario (CT, X-ray, MRI, pathology, ultrasound)
+       "zero_shot": zero-shot capability needed (no labeled data, zero-shot classification)
+       "few_shot": few-shot capability needed (very few labeled samples)
+
+    Rules:
+    - Only extract what the user explicitly mentions or what can be reasonably inferred.
+    - Set any unmentioned constraint to false.
+    - If priority cannot be determined, set it to "balanced".
+    - Output pure JSON only — no greetings, no explanations, no markdown.
+""").strip()
+
+_VALID_TASK_TYPES = {
+    "classification", "object_detection", "image_segmentation", "feature_extraction",
+}
+_VALID_PRIORITIES = {"speed", "accuracy", "balanced"}
+_CONSTRAINT_KEYS = [
+    "real_time", "edge_deployment", "class_imbalance",
+    "cross_modal", "medical", "zero_shot", "few_shot",
+]
+
+_TASK_TYPE_ALIASES = {
+    "detection":            "object_detection",
+    "det":                  "object_detection",
+    "segmentation":         "image_segmentation",
+    "semantic_segmentation":"image_segmentation",
+    "seg":                  "image_segmentation",
+    "cls":                  "classification",
+    "extraction":           "feature_extraction",
+    "embedding":            "feature_extraction",
+    "retrieval":            "feature_extraction",
+}
+
+
+def _extract_cv_features(user_message: str) -> str | None:
+    """调用 Qwen 提取 CV 任务结构化字段，返回原始 LLM 输出字符串。"""
+    try:
+        client = OpenAI(
+            api_key=os.getenv("JIAOZI_DASHSCOPE_API_KEY"),
+            base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        )
+        completion = client.chat.completions.create(
+            model="qwen-plus",
+            messages=[
+                {"role": "system", "content": _CV_SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"Qwen API 调用失败：{e}")
+        return None
+
+
+def parse_module1_output(raw: str, user_message: str) -> dict:
+    """
+    解析 LLM 返回的 JSON 字符串，校验并补全为 Module 3 可消费的 dict。
+
+    容错处理：
+    - 去除 markdown 代码块包裹
+    - enum 值不合法时回退默认值
+    - 缺失字段自动补全
+    - data_size 不在此处提取（由 Module 2 提供），默认留 "medium"
+    """
+    # 去除 markdown 代码块
+    cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`")
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # LLM 返回了非法 JSON，用全默认值兜底
+        parsed = {}
+
+    # task_type 校验 + 别名映射
+    task_type = parsed.get("task_type", "").lower().strip()
+    if task_type not in _VALID_TASK_TYPES:
+        task_type = _TASK_TYPE_ALIASES.get(task_type, "classification")
+
+    # priority 校验
+    priority = parsed.get("priority", "").lower().strip()
+    if priority not in _VALID_PRIORITIES:
+        priority = "balanced"
+
+    # constraints 校验
+    raw_constraints = parsed.get("constraints", {})
+    if not isinstance(raw_constraints, dict):
+        raw_constraints = {}
+    constraints = {k: bool(raw_constraints.get(k, False)) for k in _CONSTRAINT_KEYS}
+
+    return {
+        "task_type":   task_type,
+        "data_size":   "medium",
+        "priority":    priority,
+        "constraints": constraints,
+        "description": user_message,
+    }
+
+
+def module1_pipeline(user_message: str) -> dict | None:
+    """
+    Module 1 入口：用户自然语言 → Module 3 可消费的结构化 dict。
+
+    返回格式与 Module 3 的 retrieve_top3_hybrid() 输入完全对齐。
+    data_size 字段预填 "medium"，待 Module 2 覆盖。
+    """
+    raw = _extract_cv_features(user_message)
+    if raw is None:
+        return None
+    return parse_module1_output(raw, user_message)
+
+
 if __name__ == "__main__":
     user_message = input("请输入您对于模型的要求：")
+
+    print("\n--- 原始 14 维提取 ---")
     result = extract_model_features_api(user_message)
     print(result)
+
+    print("\n--- Module 3 对接输出 ---")
+    m3_input = module1_pipeline(user_message)
+    print(json.dumps(m3_input, indent=2, ensure_ascii=False))

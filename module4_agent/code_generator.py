@@ -1,0 +1,1080 @@
+"""Project file generator for Module 4 outputs."""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Sequence
+from textwrap import dedent
+
+from .llm_codegen import generate_model_py
+from .schemas import GeneratedFiles, TrainingSpec
+from .spec_builder import specs_to_configs
+
+
+REQUIRED_GENERATED_FILES = (
+    "configs.json",
+    "utils.py",
+    "model_utils.py",
+    "smoke_data.py",
+    "model.py",
+    "train.py",
+    "evaluate.py",
+    "infer.py",
+    "run.py",
+    "run_experiments.py",
+    "requirements.txt",
+    "README_generated.md",
+)
+
+
+def generate_files(specs: Sequence[TrainingSpec], feedback: str | None = None) -> GeneratedFiles:
+    """Return generated project files keyed by relative path."""
+
+    if not specs:
+        raise ValueError("At least one TrainingSpec is required.")
+
+    configs_json = json.dumps(specs_to_configs(specs), indent=2, sort_keys=True)
+    first_config_json = json.dumps(specs[0].to_config(), indent=2, sort_keys=True)
+
+    # LLM 只生成 model.py（使用 model_utils helper），train/evaluate 始终用模板
+    llm_model = generate_model_py(specs[0], feedback=feedback or "")
+
+    files = {
+        "configs.json": configs_json + "\n",
+        "utils.py": _utils_py(),
+        "model_utils.py": _model_utils_py(),
+        "smoke_data.py": _smoke_data_py(),
+        "model.py": llm_model if llm_model else _model_py(),
+        "train.py": _train_py(),
+        "evaluate.py": _evaluate_py(),
+        "infer.py": _infer_py(),
+        "run.py": _run_py(first_config_json),
+        "run_experiments.py": _run_experiments_py(configs_json),
+        "requirements.txt": _requirements_txt(),
+        "README_generated.md": _readme_generated_md(specs, feedback=feedback),
+    }
+    return GeneratedFiles(files=files)
+
+
+def _utils_py() -> str:
+    return dedent(
+        '''
+        """Utility helpers for generated scripts."""
+
+        from __future__ import annotations
+
+        import json
+        import random
+        from pathlib import Path
+        from typing import Any
+
+        import torch
+
+
+        SUPPORTED_TASK_TYPES = {
+            "classification",
+            "object_detection",
+            "image_segmentation",
+            "feature_extraction",
+        }
+
+
+        def get_value(config: dict[str, Any] | None, key: str, default: Any) -> Any:
+            if isinstance(config, dict):
+                return config.get(key, default)
+            return default
+
+
+        def as_int(value: Any, default: int) -> int:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return default
+
+
+        def as_float(value: Any, default: float) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+
+        def as_bool(value: Any, default: bool) -> bool:
+            if isinstance(value, bool):
+                return value
+            if value is None:
+                return default
+            if isinstance(value, (int, float)):
+                return bool(value)
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered in {"1", "true", "yes", "y"}:
+                    return True
+                if lowered in {"0", "false", "no", "n"}:
+                    return False
+            return default
+
+
+        def task_type(config: dict[str, Any] | None) -> str:
+            task = str(get_value(config, "task_type", "classification")).lower()
+            task = {
+                "detection": "object_detection",
+                "segmentation": "image_segmentation",
+                "semantic_segmentation": "image_segmentation",
+                "features": "feature_extraction",
+                "embedding": "feature_extraction",
+            }.get(task, task)
+            if task not in SUPPORTED_TASK_TYPES:
+                return "classification"
+            return task
+
+
+        def normalize_config(item: dict[str, Any]) -> dict[str, Any]:
+            if not isinstance(item, dict):
+                return {}
+            config = dict(item)
+            model_config = config.get("model_config")
+            if isinstance(model_config, dict):
+                merged = dict(config)
+                merged.update(model_config)
+                config = merged
+            return config
+
+
+        def load_config(path: str | None, default_config: dict[str, Any]) -> dict[str, Any]:
+            if not path:
+                return normalize_config(default_config)
+            data = json.loads(Path(path).read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                if not data:
+                    raise ValueError("Config list is empty.")
+                return normalize_config(data[0])
+            if isinstance(data, dict) and isinstance(data.get("candidates"), list):
+                if not data["candidates"]:
+                    raise ValueError("Candidate list is empty.")
+                return normalize_config(data["candidates"][0])
+            if isinstance(data, dict):
+                return normalize_config(data)
+            raise ValueError("Config file must contain a dict, a list, or {'candidates': [...]}.")
+
+
+        def load_configs(path: str | None, default_configs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            if not path:
+                return [normalize_config(item) for item in default_configs]
+            data = json.loads(Path(path).read_text(encoding="utf-8"))
+            if isinstance(data, dict) and isinstance(data.get("candidates"), list):
+                data = data["candidates"]
+            if isinstance(data, dict):
+                data = [data]
+            if not isinstance(data, list):
+                raise ValueError("Experiment input must be a list, dict, or {'candidates': [...]}.")
+            return [normalize_config(item) for item in data]
+
+
+        def set_seed(seed: int) -> None:
+            random.seed(seed)
+            torch.manual_seed(seed)
+
+
+        def compact_config_summary(config: dict[str, Any], rank_default: int | None = None) -> dict[str, Any]:
+            return {
+                "rank": config.get("rank", rank_default),
+                "backbone": config.get("backbone", "tiny_cnn"),
+                "task_type": config.get("task_type", "classification"),
+                "loss": config.get("loss", ""),
+                "optimizer": config.get("optimizer", ""),
+                "finetune_strategy": config.get("finetune_strategy", ""),
+            }
+        '''
+    ).lstrip()
+
+
+def _smoke_data_py() -> str:
+    return dedent(
+        '''
+        """Synthetic data helpers for local smoke runs."""
+
+        from __future__ import annotations
+
+        from typing import Any
+
+        import torch
+
+        from utils import as_int, get_value, task_type
+
+
+        def synthetic_batch(config: dict[str, Any] | None, batch_size: int = 2) -> tuple[Any, Any]:
+            """Create a synthetic batch for the configured task."""
+
+            task = task_type(config)
+            image_size = as_int(get_value(config, "image_size", 224), 224)
+            num_classes = max(1, as_int(get_value(config, "num_classes", 3), 3))
+            x = synthetic_image(config, batch_size=batch_size)
+            if task == "classification":
+                return x, torch.arange(batch_size, dtype=torch.long) % num_classes
+            if task == "image_segmentation":
+                mask = torch.randint(0, num_classes, (batch_size, image_size, image_size), dtype=torch.long)
+                return x, mask
+            if task == "object_detection":
+                targets = []
+                for idx in range(batch_size):
+                    targets.append(
+                        {
+                            "boxes": torch.tensor([[0.1, 0.1, 0.8, 0.8]], dtype=torch.float32),
+                            "class_labels": torch.tensor([idx % num_classes], dtype=torch.long),
+                        }
+                    )
+                return x, targets
+            if task == "feature_extraction":
+                return x, torch.zeros(batch_size, dtype=torch.long)
+            return x, torch.arange(batch_size, dtype=torch.long) % num_classes
+
+
+        def synthetic_image(config: dict[str, Any] | None, batch_size: int = 1) -> torch.Tensor:
+            image_size = as_int(get_value(config, "image_size", 224), 224)
+            return torch.randn(batch_size, 3, image_size, image_size)
+        '''
+    ).lstrip()
+
+
+def _model_utils_py() -> str:
+    return dedent(
+        '''
+        """Backbone loading and feature extraction utilities.
+
+        Provides load_backbone() for reliable model loading with dynamic dimension
+        inference, and apply_freeze() for finetune strategy. Used by both LLM-generated
+        and template model.py.
+        """
+
+        from __future__ import annotations
+
+        from typing import Any
+
+        import torch
+        from torch import nn
+        import torch.nn.functional as F
+
+        from utils import as_bool, as_int, get_value
+
+
+        class TinyBackbone(nn.Module):
+            """Minimal CNN fallback when torchvision model is unavailable."""
+
+            def __init__(self, width: int = 16) -> None:
+                super().__init__()
+                self.net = nn.Sequential(
+                    nn.Conv2d(3, width // 2, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(width // 2, width, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                )
+                self.out_channels = width
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return self.net(x)
+
+
+        _TORCHVISION_MODELS: dict[str, str] = {
+            "resnet": "resnet50",
+            "resnet18": "resnet18",
+            "resnet34": "resnet34",
+            "resnet50": "resnet50",
+            "resnet101": "resnet101",
+            "mobilenet_v3": "mobilenet_v3_small",
+            "mobilenetv3": "mobilenet_v3_small",
+            "efficientnet": "efficientnet_b0",
+            "efficientnet_b0": "efficientnet_b0",
+            "efficientnet_b1": "efficientnet_b1",
+            "convnext": "convnext_tiny",
+            "convnext_tiny": "convnext_tiny",
+            "regnet": "regnet_y_400mf",
+            "vit": "vit_b_16",
+            "vit_b_16": "vit_b_16",
+            "swin": "swin_t",
+            "swin_transformer": "swin_t",
+            "swin_t": "swin_t",
+        }
+
+
+        class _SpatialExtractor(nn.Module):
+            """Wraps a model's feature layers to output spatial features [B, C, H', W']."""
+
+            def __init__(self, layers: nn.Module) -> None:
+                super().__init__()
+                self.layers = layers
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return self.layers(x)
+
+
+        def _try_torchvision(name: str) -> nn.Module | None:
+            try:
+                import torchvision.models as tv
+            except ImportError:
+                return None
+            model_name = _TORCHVISION_MODELS.get(name.lower())
+            if model_name is None:
+                return None
+            factory = getattr(tv, model_name, None)
+            if factory is None:
+                return None
+            try:
+                return factory(weights=None)
+            except Exception:
+                return None
+
+
+        def _extract_features(model: nn.Module) -> nn.Module:
+            """Strip classifier from torchvision model, keep feature extractor."""
+            if hasattr(model, "features"):
+                return _SpatialExtractor(model.features)
+            children = list(model.children())
+            if len(children) > 2:
+                return _SpatialExtractor(nn.Sequential(*children[:-2]))
+            for attr in ("heads", "head", "fc", "classifier"):
+                if hasattr(model, attr):
+                    setattr(model, attr, nn.Identity())
+            return model
+
+
+        def _infer_channels(backbone: nn.Module, image_size: int = 224) -> int:
+            """Run a dummy forward to determine output channel/feature count."""
+            dummy = torch.randn(1, 3, image_size, image_size)
+            with torch.no_grad():
+                out = backbone(dummy)
+            if isinstance(out, (tuple, list)):
+                out = out[0]
+            if isinstance(out, dict):
+                out = next(iter(out.values()))
+            if out.dim() == 4:
+                return int(out.shape[1])
+            if out.dim() == 3:
+                return int(out.shape[-1])
+            return int(out.shape[-1])
+
+
+        def load_backbone(config: dict[str, Any] | None) -> tuple[nn.Module, int]:
+            """Load backbone and return (backbone_module, out_channels).
+
+            The backbone outputs spatial features [B, C, H', W'] for CNN models.
+            Transformer models may return [B, D]. Falls back to TinyBackbone
+            if the requested model is unavailable.
+            """
+            config = config or {}
+            name = str(get_value(config, "backbone", "tiny_cnn")).lower()
+            image_size = as_int(get_value(config, "image_size", 224), 224)
+
+            model = _try_torchvision(name)
+            if model is None:
+                bb = TinyBackbone()
+                return bb, bb.out_channels
+
+            extractor = _extract_features(model)
+            channels = _infer_channels(extractor, image_size)
+            return extractor, channels
+
+
+        def apply_freeze(model: nn.Module, config: dict[str, Any] | None) -> None:
+            """Freeze backbone parameters based on finetune_strategy config."""
+            config = config or {}
+            strategy = str(get_value(config, "finetune_strategy", "head_only")).lower()
+            freeze = as_bool(
+                get_value(config, "freeze_backbone", strategy == "head_only"),
+                strategy == "head_only",
+            )
+            if strategy in ("full", "either"):
+                freeze = False
+
+            if freeze:
+                for param_name, param in model.named_parameters():
+                    if "backbone" in param_name or "features" in param_name or "layers" in param_name:
+                        param.requires_grad = False
+        '''
+    ).lstrip()
+
+
+def _model_py() -> str:
+    return dedent(
+        '''
+        """Local model builders for smoke runs.
+
+        The models stay lightweight and offline by default. They match
+        task-specific tensor contracts used by the local checks.
+        """
+
+        from __future__ import annotations
+
+        import warnings
+        from typing import Any
+
+        import torch
+        from torch import nn
+        import torch.nn.functional as F
+
+        from utils import as_bool, as_int, get_value, task_type
+
+
+        class TinyBackbone(nn.Module):
+            """Small CNN backbone shared by all smoke models."""
+
+            def __init__(self, in_channels: int = 3, width: int = 16) -> None:
+                super().__init__()
+                self.net = nn.Sequential(
+                    nn.Conv2d(in_channels, width // 2, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(width // 2, width, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                )
+                self.out_channels = width
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return self.net(x)
+
+
+        class ClassificationModel(nn.Module):
+            def __init__(self, num_classes: int) -> None:
+                super().__init__()
+                self.backbone = TinyBackbone()
+                self.head = nn.Linear(self.backbone.out_channels, num_classes)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                features = self.backbone(x)
+                pooled = F.adaptive_avg_pool2d(features, 1).flatten(1)
+                return self.head(pooled)
+
+
+        class SegmentationModel(nn.Module):
+            def __init__(self, num_classes: int) -> None:
+                super().__init__()
+                self.backbone = TinyBackbone()
+                self.head = nn.Conv2d(self.backbone.out_channels, num_classes, kernel_size=1)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                features = self.backbone(x)
+                logits = self.head(features)
+                if logits.shape[-2:] != x.shape[-2:]:
+                    logits = F.interpolate(logits, size=x.shape[-2:], mode="bilinear", align_corners=False)
+                return logits
+
+
+        class DetectionModel(nn.Module):
+            """Minimal detector that returns DETR-like smoke outputs."""
+
+            def __init__(self, num_classes: int) -> None:
+                super().__init__()
+                self.backbone = TinyBackbone()
+                self.box_head = nn.Linear(self.backbone.out_channels, 4)
+                self.class_head = nn.Linear(self.backbone.out_channels, num_classes)
+
+            def forward(self, x: torch.Tensor, targets: list[dict[str, torch.Tensor]] | None = None) -> dict[str, torch.Tensor]:
+                features = self.backbone(x)
+                pooled = F.adaptive_avg_pool2d(features, 1).flatten(1)
+                pred_boxes = torch.sigmoid(self.box_head(pooled)).unsqueeze(1)
+                pred_logits = self.class_head(pooled).unsqueeze(1)
+                output: dict[str, torch.Tensor] = {
+                    "pred_boxes": pred_boxes,
+                    "pred_logits": pred_logits,
+                }
+                if targets is not None:
+                    target_boxes = []
+                    target_classes = []
+                    for item in targets:
+                        boxes = item.get("boxes")
+                        labels = item.get("class_labels", item.get("labels"))
+                        if boxes is None or boxes.numel() == 0:
+                            target_boxes.append(torch.zeros(4, device=x.device))
+                        else:
+                            target_boxes.append(boxes.to(x.device).float()[0])
+                        if labels is None or labels.numel() == 0:
+                            target_classes.append(torch.tensor(0, device=x.device, dtype=torch.long))
+                        else:
+                            target_classes.append(labels.to(x.device).long()[0])
+                    target_box_tensor = torch.stack(target_boxes, dim=0)
+                    target_class_tensor = torch.stack(target_classes, dim=0)
+                    cls_loss = F.cross_entropy(pred_logits[:, 0, :], target_class_tensor)
+                    box_loss = F.l1_loss(pred_boxes[:, 0, :], target_box_tensor)
+                    output["loss"] = cls_loss + box_loss
+                return output
+
+
+        class FeatureExtractorModel(nn.Module):
+            def __init__(self, embedding_dim: int) -> None:
+                super().__init__()
+                self.backbone = TinyBackbone()
+                self.head = nn.Linear(self.backbone.out_channels, embedding_dim)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                features = self.backbone(x)
+                pooled = F.adaptive_avg_pool2d(features, 1).flatten(1)
+                embeddings = self.head(pooled)
+                return F.normalize(embeddings, dim=1)
+
+
+        def _apply_finetune_strategy(model: nn.Module, config: dict[str, Any] | None) -> nn.Module:
+            strategy = str(get_value(config, "finetune_strategy", "head_only")).lower()
+            freeze_backbone = as_bool(
+                get_value(config, "freeze_backbone", strategy == "head_only"),
+                strategy == "head_only",
+            )
+
+            if strategy == "full":
+                freeze_backbone = False
+            elif strategy == "either":
+                freeze_backbone = False
+
+            frozen = 0
+            if freeze_backbone:
+                for name, parameter in model.named_parameters():
+                    if "backbone" in name:
+                        parameter.requires_grad = False
+                        frozen += 1
+            model._frozen_backbone_params = frozen
+            return model
+
+
+        def build_model(config: dict[str, Any] | None) -> nn.Module:
+            """Build a task-compatible local model from a config dictionary."""
+
+            config = config or {}
+            task = task_type(config)
+            num_classes = max(1, as_int(get_value(config, "num_classes", 3), 3))
+            embedding_dim = max(2, as_int(get_value(config, "embedding_dim", 32), 32))
+
+            offline_smoke = as_bool(get_value(config, "offline_smoke", True), True)
+            use_pretrained = as_bool(get_value(config, "use_pretrained", False), False)
+            if use_pretrained and not offline_smoke:
+                warnings.warn(
+                    "Local smoke code does not download checkpoints by default; "
+                    "replace build_model with real pretrained loading for GPU runs.",
+                    RuntimeWarning,
+                )
+
+            if task == "classification":
+                model = ClassificationModel(num_classes=num_classes)
+            elif task == "object_detection":
+                model = DetectionModel(num_classes=num_classes)
+            elif task == "image_segmentation":
+                model = SegmentationModel(num_classes=num_classes)
+            elif task == "feature_extraction":
+                model = FeatureExtractorModel(embedding_dim=embedding_dim)
+            else:
+                model = ClassificationModel(num_classes=num_classes)
+            return _apply_finetune_strategy(model, config)
+        '''
+    ).lstrip()
+
+
+def _train_py() -> str:
+    return dedent(
+        '''
+        """Small local training loop for generated configs."""
+
+        from __future__ import annotations
+
+        import time
+        from typing import Any
+
+        import torch
+        import torch.nn.functional as F
+
+        from model import build_model
+        from smoke_data import synthetic_batch
+        from utils import as_float, get_value, task_type
+
+
+        def _build_optimizer(model: torch.nn.Module, config: dict[str, Any] | None) -> torch.optim.Optimizer:
+            optimizer_name = str(get_value(config, "optimizer", "adamw")).lower()
+            lr = as_float(get_value(config, "learning_rate", 1.0e-3), 1.0e-3)
+            trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
+            if not trainable:
+                trainable = list(model.parameters())
+            if "sgd" in optimizer_name:
+                return torch.optim.SGD(trainable, lr=lr, momentum=0.9)
+            if "rmsprop" in optimizer_name:
+                return torch.optim.RMSprop(trainable, lr=lr)
+            if optimizer_name == "adam":
+                return torch.optim.Adam(trainable, lr=lr)
+            return torch.optim.AdamW(trainable, lr=lr)
+
+
+        def _loss_for_output(output: Any, target: Any, config: dict[str, Any] | None) -> torch.Tensor:
+            task = task_type(config)
+            loss_name = str(get_value(config, "loss", "")).lower()
+            if task == "classification":
+                if "focal" in loss_name:
+                    ce = F.cross_entropy(output, target, reduction="none")
+                    pt = torch.exp(-ce)
+                    return (((1.0 - pt) ** 2.0) * ce).mean()
+                return F.cross_entropy(output, target)
+            if task == "image_segmentation":
+                if "focal" in loss_name:
+                    ce = F.cross_entropy(output, target, reduction="none")
+                    pt = torch.exp(-ce)
+                    return (((1.0 - pt) ** 2.0) * ce).mean()
+                return F.cross_entropy(output, target)
+            if task == "object_detection":
+                if isinstance(output, dict) and "loss" in output:
+                    return output["loss"]
+                return torch.as_tensor(0.0, requires_grad=True)
+            if task == "feature_extraction":
+                embedding_dim = output.shape[1]
+                target_embeddings = F.one_hot(target % embedding_dim, num_classes=embedding_dim).float()
+                return F.mse_loss(output, target_embeddings)
+            return F.cross_entropy(output, target)
+
+
+        def train_model(
+            config: dict[str, Any] | None,
+            data: tuple[Any, Any] | None = None,
+            epochs: int = 1,
+            max_steps: int = 1,
+        ) -> tuple[torch.nn.Module, dict[str, Any]]:
+            """Run a short CPU training loop and return the trained model plus summary."""
+
+            start = time.time()
+            config = config or {}
+            task = task_type(config)
+            model = build_model(config)
+            model.train()
+            optimizer = _build_optimizer(model, config)
+            batch = data if data is not None else synthetic_batch(config)
+            loss_value = 0.0
+
+            steps = max(1, int(max_steps))
+            for _epoch in range(max(1, int(epochs))):
+                for _step in range(steps):
+                    x, target = batch
+                    optimizer.zero_grad(set_to_none=True)
+                    if task == "object_detection":
+                        output = model(x, target)
+                    else:
+                        output = model(x)
+                    loss = _loss_for_output(output, target, config)
+                    loss.backward()
+                    optimizer.step()
+                    loss_value = float(loss.detach().cpu().item())
+
+            summary = {
+                "status": "success",
+                "task_type": task,
+                "loss": loss_value,
+                "runtime_sec": round(time.time() - start, 4),
+                "config_summary": {
+                    "rank": get_value(config, "rank", None),
+                    "backbone": get_value(config, "backbone", "tiny_cnn"),
+                    "loss": get_value(config, "loss", "cross_entropy_loss"),
+                    "optimizer": get_value(config, "optimizer", "adamw"),
+                    "finetune_strategy": get_value(config, "finetune_strategy", "head_only"),
+                    "frozen_backbone_params": int(getattr(model, "_frozen_backbone_params", 0)),
+                },
+            }
+            return model, summary
+
+
+        def train_one(config: dict[str, Any] | None, data: tuple[Any, Any] | None = None, epochs: int = 1, max_steps: int = 1) -> dict[str, Any]:
+            """Run a short CPU training loop and return a summary."""
+
+            _model, summary = train_model(config, data=data, epochs=epochs, max_steps=max_steps)
+            return summary
+        '''
+    ).lstrip()
+
+
+def _evaluate_py() -> str:
+    return dedent(
+        '''
+        """Evaluation helpers for generated configs."""
+
+        from __future__ import annotations
+
+        from typing import Any
+
+        import torch
+
+        from smoke_data import synthetic_batch
+        from utils import as_int, get_value, task_type
+
+
+        def _macro_f1(preds: torch.Tensor, labels: torch.Tensor, num_classes: int) -> float:
+            scores = []
+            for cls in range(num_classes):
+                pred_pos = preds == cls
+                label_pos = labels == cls
+                tp = torch.logical_and(pred_pos, label_pos).sum().item()
+                fp = torch.logical_and(pred_pos, torch.logical_not(label_pos)).sum().item()
+                fn = torch.logical_and(torch.logical_not(pred_pos), label_pos).sum().item()
+                denom = (2 * tp) + fp + fn
+                if denom > 0:
+                    scores.append((2 * tp) / denom)
+            return float(sum(scores) / len(scores)) if scores else 0.0
+
+
+        def _mean_iou(preds: torch.Tensor, labels: torch.Tensor, num_classes: int) -> float:
+            values = []
+            for cls in range(num_classes):
+                pred_mask = preds == cls
+                label_mask = labels == cls
+                intersection = torch.logical_and(pred_mask, label_mask).sum().item()
+                union = torch.logical_or(pred_mask, label_mask).sum().item()
+                if union > 0:
+                    values.append(intersection / union)
+            return float(sum(values) / len(values)) if values else 0.0
+
+
+        def _dice(preds: torch.Tensor, labels: torch.Tensor, num_classes: int) -> float:
+            values = []
+            for cls in range(num_classes):
+                pred_mask = preds == cls
+                label_mask = labels == cls
+                intersection = torch.logical_and(pred_mask, label_mask).sum().item()
+                denom = pred_mask.sum().item() + label_mask.sum().item()
+                if denom > 0:
+                    values.append((2 * intersection) / denom)
+            return float(sum(values) / len(values)) if values else 0.0
+
+
+        def _box_iou(box_a: torch.Tensor, box_b: torch.Tensor) -> torch.Tensor:
+            top_left = torch.maximum(box_a[:2], box_b[:2])
+            bottom_right = torch.minimum(box_a[2:], box_b[2:])
+            wh = (bottom_right - top_left).clamp(min=0)
+            inter = wh[0] * wh[1]
+            area_a = (box_a[2] - box_a[0]).clamp(min=0) * (box_a[3] - box_a[1]).clamp(min=0)
+            area_b = (box_b[2] - box_b[0]).clamp(min=0) * (box_b[3] - box_b[1]).clamp(min=0)
+            union = area_a + area_b - inter
+            if float(union.item()) <= 0.0:
+                return torch.tensor(0.0)
+            return inter / union
+
+
+        def evaluate(model: torch.nn.Module, config: dict[str, Any] | None, data: tuple[Any, Any] | None = None) -> dict[str, Any]:
+            """Evaluate a model with synthetic data when data is not provided."""
+
+            config = config or {}
+            task = task_type(config)
+            num_classes = max(1, as_int(get_value(config, "num_classes", 3), 3))
+            x, target = data if data is not None else synthetic_batch(config)
+            model.eval()
+            with torch.no_grad():
+                output = model(x)
+
+            if task == "classification":
+                preds = output.argmax(dim=1)
+                accuracy = float((preds == target).float().mean().item())
+                return {
+                    "metric_name": "accuracy",
+                    "metric_value": accuracy,
+                    "macro_f1": _macro_f1(preds, target, num_classes),
+                    "status": "success",
+                }
+            if task == "image_segmentation":
+                preds = output.argmax(dim=1)
+                return {
+                    "metric_name": "mIoU",
+                    "metric_value": _mean_iou(preds, target, num_classes),
+                    "dice": _dice(preds, target, num_classes),
+                    "status": "success",
+                }
+            if task == "object_detection":
+                pred_boxes = output["pred_boxes"][:, 0, :]
+                pred_logits = output["pred_logits"][:, 0, :]
+                pred_classes = pred_logits.argmax(dim=1)
+                hits = []
+                for idx, item in enumerate(target):
+                    label = item.get("class_labels", item.get("labels"))[0]
+                    box = item["boxes"][0]
+                    class_hit = int(pred_classes[idx].item()) == int(label.item())
+                    box_hit = float(_box_iou(pred_boxes[idx].cpu(), box.cpu()).item()) >= 0.5
+                    hits.append(1.0 if class_hit and box_hit else 0.0)
+                return {
+                    "metric_name": "mAP@0.5",
+                    "metric_value": float(sum(hits) / len(hits)) if hits else 0.0,
+                    "status": "success",
+                }
+            if task == "feature_extraction":
+                embeddings = output
+                distances = torch.cdist(embeddings, embeddings)
+                distances.fill_diagonal_(float("inf"))
+                nearest = distances.argmin(dim=1)
+                recall = float((target[nearest] == target).float().mean().item())
+                return {
+                    "metric_name": "recall@1",
+                    "metric_value": recall,
+                    "status": "success",
+                }
+            return {"metric_name": "accuracy", "metric_value": 0.0, "status": "success"}
+        '''
+    ).lstrip()
+
+
+def _infer_py() -> str:
+    return dedent(
+        '''
+        """Inference entry point for generated configs."""
+
+        from __future__ import annotations
+
+        from pathlib import Path
+        from typing import Any
+
+        import torch
+
+        from model import build_model
+        from smoke_data import synthetic_image
+        from utils import task_type
+
+
+        def predict(weights_path: str | None = None, image: torch.Tensor | None = None, config: dict[str, Any] | None = None) -> dict[str, Any]:
+            """Run one forward pass and return a JSON-friendly prediction."""
+
+            config = config or {}
+            task = task_type(config)
+            model = build_model(config)
+            if weights_path and Path(weights_path).exists():
+                checkpoint = torch.load(weights_path, map_location="cpu")
+                state_dict = checkpoint.get("model_state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
+                model.load_state_dict(state_dict, strict=False)
+            model.eval()
+            if image is None:
+                image = synthetic_image(config, batch_size=1)
+            if image.dim() == 3:
+                image = image.unsqueeze(0)
+
+            with torch.no_grad():
+                output = model(image)
+
+            if task == "classification":
+                probs = output.softmax(dim=1)
+                return {
+                    "task_type": task,
+                    "class_id": int(probs.argmax(dim=1)[0].item()),
+                    "confidence": float(probs.max(dim=1).values[0].item()),
+                }
+            if task == "image_segmentation":
+                mask = output.argmax(dim=1)
+                return {
+                    "task_type": task,
+                    "mask_shape": list(mask.shape),
+                    "unique_labels": sorted(int(value) for value in mask.unique().tolist()),
+                }
+            if task == "object_detection":
+                pred_logits = output["pred_logits"][0]
+                pred_boxes = output["pred_boxes"][0]
+                scores = pred_logits.softmax(dim=-1).max(dim=-1).values
+                labels = pred_logits.argmax(dim=-1)
+                return {
+                    "task_type": task,
+                    "boxes": pred_boxes.cpu().tolist(),
+                    "labels": labels.cpu().tolist(),
+                    "scores": scores.cpu().tolist(),
+                }
+            if task == "feature_extraction":
+                return {
+                    "task_type": task,
+                    "embedding_shape": list(output.shape),
+                    "embedding_preview": output[0, : min(5, output.shape[1])].cpu().tolist(),
+                }
+            return {"task_type": task, "status": "success"}
+        '''
+    ).lstrip()
+
+
+def _run_py(first_config_json: str) -> str:
+    template = dedent(
+        '''
+        """Single-configuration smoke runner."""
+
+        from __future__ import annotations
+
+        import argparse
+        import json
+        from typing import Any
+
+
+        from evaluate import evaluate
+        from infer import predict
+        from train import train_model
+        from utils import compact_config_summary, load_config, set_seed
+
+
+        DEFAULT_CONFIG = json.loads(__DEFAULT_CONFIG_JSON__)
+
+
+        def main() -> None:
+            parser = argparse.ArgumentParser(description="Run one generated smoke experiment.")
+            parser.add_argument("--config", default="configs.json", help="Optional JSON config path.")
+            parser.add_argument("--seed", type=int, default=123)
+            args = parser.parse_args()
+
+            set_seed(args.seed)
+            config = load_config(args.config, DEFAULT_CONFIG)
+            model, train_result = train_model(config, epochs=1, max_steps=1)
+            eval_result = evaluate(model, config)
+            infer_result = predict(config=config)
+            summary = {
+                "status": "success",
+                "config": compact_config_summary(config),
+                "train": train_result,
+                "evaluate": eval_result,
+                "infer": infer_result,
+            }
+            print(json.dumps(summary, indent=2, sort_keys=True))
+
+
+        if __name__ == "__main__":
+            main()
+        '''
+    ).lstrip()
+    return template.replace("__DEFAULT_CONFIG_JSON__", repr(first_config_json))
+
+
+def _run_experiments_py(configs_json: str) -> str:
+    template = dedent(
+        '''
+        """Sweep all Module 3 candidates."""
+
+        from __future__ import annotations
+
+        import argparse
+        import json
+        from typing import Any
+
+
+        from evaluate import evaluate
+        from train import train_model
+        from utils import compact_config_summary, load_configs, set_seed
+
+
+        DEFAULT_CONFIGS = json.loads(__DEFAULT_CONFIGS_JSON__)
+
+
+        def run_all(configs: list[dict[str, Any]], seed: int = 123) -> list[dict[str, Any]]:
+            rows = []
+            for index, config in enumerate(configs, start=1):
+                # Keep synthetic runs comparable across candidates.
+                set_seed(seed)
+                model, train_result = train_model(config, epochs=1, max_steps=1)
+                eval_result = evaluate(model, config)
+                row = compact_config_summary(config, rank_default=index)
+                row.update(
+                    {
+                        "metric_name": eval_result.get("metric_name"),
+                        "metric_value": eval_result.get("metric_value"),
+                        "status": "success" if train_result.get("status") == "success" and eval_result.get("status") == "success" else "failed",
+                    }
+                )
+                rows.append(row)
+            return rows
+
+
+        def main() -> None:
+            parser = argparse.ArgumentParser(description="Sweep all Module 3 candidate configs.")
+            parser.add_argument("--input", default="configs.json", help="Optional JSON file with one or more configs.")
+            parser.add_argument("--seed", type=int, default=123)
+            args = parser.parse_args()
+            rows = run_all(load_configs(args.input, DEFAULT_CONFIGS), seed=args.seed)
+            print(json.dumps(rows, indent=2, sort_keys=True))
+
+
+        if __name__ == "__main__":
+            main()
+        '''
+    ).lstrip()
+    return template.replace("__DEFAULT_CONFIGS_JSON__", repr(configs_json))
+
+
+def _requirements_txt() -> str:
+    return "torch\n"
+
+
+def _readme_generated_md(specs: Sequence[TrainingSpec], feedback: str | None = None) -> str:
+    candidate_lines = "\n".join(
+        f"- rank {spec.rank}: {spec.task_type}, backbone={spec.backbone}, "
+        f"loss={spec.loss}, optimizer={spec.optimizer}, finetune={spec.finetune_strategy}"
+        for spec in specs
+    )
+    return dedent(
+        f"""
+        # Generated Module 4 Project
+
+        This folder was generated from Module 3 candidate configurations. The
+        structured `model_config` fields drive the generated code; task text is
+        kept only for context. The project runs local smoke checks and does not
+        perform long training.
+
+        ## Candidates
+
+        {candidate_lines}
+
+        ## Config Contract
+
+        - `configs.json` contains the normalized Module 4 configs consumed by
+          the generated scripts.
+        - `model_config` remains the provenance record from Module 3.
+        - If `model_config` and natural-language `tasks` disagree, generated
+          code follows the structured config.
+
+        ## Files
+
+        - `configs.json`: normalized candidate configs used by this project.
+        - `utils.py`: shared config parsing, seed, and task-type helpers.
+        - `smoke_data.py`: shared synthetic data helpers for local smoke runs.
+        - `model.py`: task-compatible lightweight PyTorch models with
+          `build_model(config)`.
+        - `train.py`: `train_one(config, data=None, epochs=1, max_steps=1)` for
+          local CPU smoke training.
+        - `evaluate.py`: smoke-compatible metrics by task type.
+        - `infer.py`: `predict(weights_path=None, image=None, config=None)`.
+        - `run.py`: single-configuration smoke flow.
+        - `run_experiments.py`: sweeps every Module 3 candidate.
+        - `module4_summary.json`: written by the Module 4 workflow after
+          generation, smoke testing, and review.
+        - `experiments.jsonl`, `leaderboard.json`, `refinement_summary.json`,
+          and `best_config.json`: written by the outer Module 4 workflow only
+          when it is run with `--run-refinement`.
+
+        ## Usage
+
+        ```bash
+        python run.py --config configs.json
+        python run_experiments.py --input configs.json
+        ```
+
+        `run.py` loads the first config from `configs.json`. `run_experiments.py`
+        sweeps every candidate using the same random seed and synthetic data
+        setup for each candidate.
+
+        ## Smoke vs Real Training
+
+        The generated code uses dummy local models by default and does not
+        download HuggingFace checkpoints. Replace `build_model` or set up real
+        checkpoint loading when moving to Colab/GPU training. The local smoke
+        path verifies tensor shapes, loss computation, backward pass, optimizer
+        step, evaluation output, inference output, and experiment sweep coverage.
+
+        ## Current Limitations
+
+        - No real long training is performed locally.
+        - Object detection and segmentation metrics are smoke-compatible
+          placeholders, not benchmark scores.
+        - HuggingFace checkpoint loading is disabled by default.
+        - Module 3 controls candidate scale; this project only executes the
+          supplied configs.
+
+        {_feedback_section(feedback)}
+        """
+    ).lstrip()
+
+
+def _feedback_section(feedback: str | None) -> str:
+    if not feedback:
+        return ""
+    sanitized = feedback.strip().replace("```", "'''")
+    return f"""## Previous Review Notes
+
+This project was regenerated after these review notes:
+
+```text
+{sanitized}
+```
+"""

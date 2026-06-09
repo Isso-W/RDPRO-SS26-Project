@@ -5,3 +5,8 @@ demo_run/
 .tmp_example_test/
 .tmp_cifar10_test/
 colab_demo_output/
+*.csv
+.env
+.tmp_e2e_test/
+chroma_db_kb/
+CLAUDE.local.md
