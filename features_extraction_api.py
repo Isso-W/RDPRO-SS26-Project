@@ -1,16 +1,36 @@
+from __future__ import annotations
+
 import json
 import os
 import re
 import textwrap
 
-from openai import OpenAI
+from env_loader import load_env_file
+
+
+def _provider() -> str:
+    load_env_file()
+    return os.getenv("JIAOZI_LLM_PROVIDER", os.getenv("M1_LLM_PROVIDER", "qwen")).strip().lower()
+
+
+def _client_for_provider(provider: str):
+    from openai import OpenAI
+
+    if provider == "openai":
+        return OpenAI(api_key=os.getenv("OPENAI_API_KEY")), os.getenv("M1_OPENAI_MODEL", "gpt-4o")
+    return (
+        OpenAI(
+            api_key=os.getenv("JIAOZI_DASHSCOPE_API_KEY"),
+            base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        ),
+        os.getenv("M1_QWEN_MODEL", "qwen-plus"),
+    )
+
 
 def extract_model_features_api(user_message: str):
     try:
-        client = OpenAI(
-            api_key = os.getenv("JIAOZI_DASHSCOPE_API_KEY"),
-            base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-        )
+        provider = _provider()
+        client, model = _client_for_provider(provider)
         system_message = textwrap.dedent('''\
                     【身份】Huggingface模型检索专家。
                     【任务】从自然语言提取搜索特征。
@@ -36,7 +56,7 @@ def extract_model_features_api(user_message: str):
                         3.若提及具体的输出语言，则仅使用具体的输出语言，若无提及任何输出语言，则默认将【输出语言】的值置于"English"；
                     【规则】只提取用户提及或能合理推断的维度，未提及的维度直接忽略。（不准有问候语，不准有markdown符号）。''').strip()
         completion = client.chat.completions.create(
-            model="qwen-plus",
+            model=model,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_message}
@@ -107,14 +127,12 @@ _TASK_TYPE_ALIASES = {
 
 
 def _extract_cv_features(user_message: str) -> str | None:
-    """调用 Qwen 提取 CV 任务结构化字段，返回原始 LLM 输出字符串。"""
+    """调用配置的模型提取 CV 任务结构化字段，返回原始输出字符串。"""
     try:
-        client = OpenAI(
-            api_key=os.getenv("JIAOZI_DASHSCOPE_API_KEY"),
-            base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-        )
+        provider = _provider()
+        client, model = _client_for_provider(provider)
         completion = client.chat.completions.create(
-            model="qwen-plus",
+            model=model,
             messages=[
                 {"role": "system", "content": _CV_SYSTEM_PROMPT},
                 {"role": "user", "content": user_message},
@@ -122,7 +140,7 @@ def _extract_cv_features(user_message: str) -> str | None:
         )
         return completion.choices[0].message.content
     except Exception as e:
-        print(f"Qwen API 调用失败：{e}")
+        print(f"Module 1 LLM 调用失败：{e}")
         return None
 
 

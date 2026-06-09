@@ -6,10 +6,46 @@ Pipeline 整合层测试
       或 python test_pipeline.py
 """
 
+import json
+import os
+from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
-from pipeline import derive_data_size, derive_class_imbalance, merge_modules
+from pipeline import derive_data_size, derive_class_imbalance, merge_modules, run_module4_generation
 from features_extraction_api import parse_module1_output
+from env_loader import load_env_file
+
+
+class TestEnvLoader(unittest.TestCase):
+
+    def test_load_env_file_sets_missing_values_only(self):
+        previous = {
+            "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY"),
+            "M4_LLM_PROVIDER": os.environ.get("M4_LLM_PROVIDER"),
+        }
+        os.environ["OPENAI_API_KEY"] = "existing-value"
+        os.environ.pop("M4_LLM_PROVIDER", None)
+
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                env_path = Path(tmpdir) / ".env"
+                env_path.write_text(
+                    "OPENAI_API_KEY=from-file\n"
+                    "M4_LLM_PROVIDER=openai\n",
+                    encoding="utf-8",
+                )
+
+                self.assertTrue(load_env_file(env_path))
+                self.assertEqual(os.environ["OPENAI_API_KEY"], "existing-value")
+                self.assertEqual(os.environ["M4_LLM_PROVIDER"], "openai")
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
 
 class TestDeriveDataSize(unittest.TestCase):
@@ -123,6 +159,64 @@ class TestMergeModules(unittest.TestCase):
         merged = merge_modules(m1, m2)
         self.assertTrue(merged["constraints"]["medical"])
         self.assertFalse(merged["constraints"]["cross_modal"])
+
+
+class TestModule4Handoff(unittest.TestCase):
+
+    def test_run_module4_generation_writes_input_and_restores_provider(self):
+        task_lists = [
+            {
+                "format": "nl",
+                "rank": 1,
+                "score": 0.9,
+                "model_config": {
+                    "task_type": "classification",
+                    "backbone": "efficientnet_b0",
+                    "loss": "cross_entropy_loss",
+                    "optimizer": "adamw",
+                },
+                "tasks": ["Use EfficientNet-B0."],
+                "alternatives": [],
+            }
+        ]
+        previous_provider = os.environ.get("M4_LLM_PROVIDER")
+
+        class DummyResult:
+            def to_summary(self):
+                return {"status": "approved"}
+
+        captured = {}
+
+        def fake_run_workflow(input_path, output_dir, *, timeout, skip_smoke, run_refinement):
+            captured["input_path"] = Path(input_path)
+            captured["output_dir"] = Path(output_dir)
+            captured["provider_during_call"] = os.environ.get("M4_LLM_PROVIDER")
+            captured["timeout"] = timeout
+            captured["skip_smoke"] = skip_smoke
+            captured["run_refinement"] = run_refinement
+            return DummyResult()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("module4_agent.workflow.run_workflow", side_effect=fake_run_workflow):
+                result = run_module4_generation(
+                    task_lists,
+                    tmpdir,
+                    skip_smoke=True,
+                    run_refinement=True,
+                    timeout=7,
+                    llm_provider="qwen",
+                )
+
+            input_path = Path(result["input_path"])
+            self.assertTrue(input_path.exists())
+            self.assertEqual(json.loads(input_path.read_text(encoding="utf-8")), task_lists)
+            self.assertEqual(result["summary"], {"status": "approved"})
+            self.assertEqual(captured["provider_during_call"], "qwen")
+            self.assertEqual(captured["timeout"], 7)
+            self.assertTrue(captured["skip_smoke"])
+            self.assertTrue(captured["run_refinement"])
+
+        self.assertEqual(os.environ.get("M4_LLM_PROVIDER"), previous_provider)
 
 
 class TestParseModule1Output(unittest.TestCase):

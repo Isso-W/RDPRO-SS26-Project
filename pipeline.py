@@ -8,15 +8,15 @@ Jiaozi 整合流水线：Module 1 + Module 2 + Module 3
     用户自然语言 ──→ Module 1 ──→ task_type / priority / constraints
     数据集 ID    ──→ Module 2 ──→ data_size / class_imbalance
     合并         ──→ Module 3 ──→ Top 3 模型推荐
+    可选         ──→ Module 4 ──→ 生成训练/评估/推理代码
 """
+
+from __future__ import annotations
 
 import argparse
 import json
 import os
-import sys
-
-from features_extraction_api import module1_pipeline
-
+from pathlib import Path
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Module 2 → Module 3 字段映射
@@ -107,6 +107,52 @@ def merge_modules(m1_output: dict, m2_report: dict) -> dict:
     return merged
 
 
+def run_module4_generation(
+    task_lists: list[dict],
+    output_dir: str | Path,
+    *,
+    skip_smoke: bool = False,
+    run_refinement: bool = False,
+    timeout: int = 60,
+    llm_provider: str | None = None,
+) -> dict:
+    """Generate Module 4 code from Module 3 task lists."""
+
+    from module4_agent.workflow import run_workflow
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    module4_input = output_path / "module3_candidates.json"
+    module4_input.write_text(
+        json.dumps(task_lists, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    previous_provider = os.environ.get("M4_LLM_PROVIDER")
+    if llm_provider:
+        os.environ["M4_LLM_PROVIDER"] = llm_provider
+    try:
+        result = run_workflow(
+            module4_input,
+            output_path,
+            timeout=timeout,
+            skip_smoke=skip_smoke,
+            run_refinement=run_refinement,
+        )
+    finally:
+        if llm_provider:
+            if previous_provider is None:
+                os.environ.pop("M4_LLM_PROVIDER", None)
+            else:
+                os.environ["M4_LLM_PROVIDER"] = previous_provider
+
+    return {
+        "input_path": str(module4_input),
+        "output_dir": str(output_path),
+        "summary": result.to_summary(),
+    }
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 完整流水线
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -115,6 +161,11 @@ def run_pipeline(
     user_message: str,
     dataset_id: str,
     fmt: str = "structured",
+    module4_output: str | Path | None = None,
+    module4_skip_smoke: bool = False,
+    module4_run_refinement: bool = False,
+    module4_timeout: int = 60,
+    module4_llm_provider: str | None = None,
 ) -> dict:
     """
     完整流水线入口。
@@ -124,14 +175,17 @@ def run_pipeline(
         "module3_input": dict,       # 合并后的 Module 3 输入
         "recommendations": list,     # retrieve_top3_hybrid 原始结果
         "task_lists": list,          # Module 4 可消费的任务清单
+        "module4": dict | None,      # 可选的 Module 4 生成结果
       }
     """
     # Step 1: Module 1 — 用户自然语言 → 结构化字段
     print("[Pipeline] Module 1: 解析用户需求...")
+    from features_extraction_api import module1_pipeline
+
     m1_output = module1_pipeline(user_message)
     if m1_output is None:
         print("[Pipeline] Module 1 失败，无法继续。")
-        return {"module3_input": None, "recommendations": [], "task_lists": []}
+        return {"module3_input": None, "recommendations": [], "task_lists": [], "module4": None}
 
     # Step 2: Module 2 — 数据集分析 → data_size / class_imbalance
     print(f"[Pipeline] Module 2: 分析数据集 {dataset_id}...")
@@ -156,11 +210,27 @@ def run_pipeline(
     # 输出结果
     print_results(m3_input, recommendations, G)
     task_lists = build_all_task_lists(recommendations, G, fmt=fmt)
+    module4_result = None
+
+    if module4_output:
+        print(f"[Pipeline] Module 4: 生成代码到 {module4_output}...")
+        module4_task_lists = task_lists
+        if fmt != "nl":
+            module4_task_lists = build_all_task_lists(recommendations, G, fmt="nl")
+        module4_result = run_module4_generation(
+            module4_task_lists,
+            module4_output,
+            skip_smoke=module4_skip_smoke,
+            run_refinement=module4_run_refinement,
+            timeout=module4_timeout,
+            llm_provider=module4_llm_provider,
+        )
 
     return {
         "module3_input":   m3_input,
         "recommendations": recommendations,
         "task_lists":       task_lists,
+        "module4":          module4_result,
     }
 
 
@@ -170,9 +240,32 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", required=True, help="HuggingFace 数据集 ID")
     parser.add_argument("--fmt", default="structured", choices=["structured", "nl"],
                         help="Module 4 任务清单格式")
+    parser.add_argument("--module4-output", default=None,
+                        help="可选：继续运行 Module 4，并把生成代码写到该目录")
+    parser.add_argument("--module4-no-smoke", action="store_true",
+                        help="Module 4 只生成和静态检查，不运行本地 smoke tests")
+    parser.add_argument("--module4-run-refinement", action="store_true",
+                        help="Module 4 通过后继续运行 refinement loop")
+    parser.add_argument("--module4-timeout", type=int, default=60,
+                        help="Module 4 每个 smoke command 的超时时间")
+    parser.add_argument("--module4-llm-provider", default=None,
+                        choices=["none", "qwen", "openai", "vertex"],
+                        help="Module 4 model.py 生成 provider；例如 qwen。默认使用环境变量或模板")
     args = parser.parse_args()
 
-    result = run_pipeline(args.query, args.dataset, fmt=args.fmt)
+    result = run_pipeline(
+        args.query,
+        args.dataset,
+        fmt=args.fmt,
+        module4_output=args.module4_output,
+        module4_skip_smoke=args.module4_no_smoke,
+        module4_run_refinement=args.module4_run_refinement,
+        module4_timeout=args.module4_timeout,
+        module4_llm_provider=args.module4_llm_provider,
+    )
 
     print("\n═══ Module 4 Task Lists ═══")
     print(json.dumps(result["task_lists"], indent=2, ensure_ascii=False))
+    if result["module4"]:
+        print("\n═══ Module 4 Code Generation Summary ═══")
+        print(json.dumps(result["module4"]["summary"], indent=2, ensure_ascii=False))

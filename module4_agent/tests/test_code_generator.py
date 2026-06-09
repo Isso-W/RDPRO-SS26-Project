@@ -1,3 +1,5 @@
+import json
+
 from module4_agent.code_generator import REQUIRED_GENERATED_FILES, generate_files
 from module4_agent.spec_builder import build_training_specs
 
@@ -32,10 +34,23 @@ def test_generate_files_contains_required_files_and_compiles():
 
     assert set(REQUIRED_GENERATED_FILES).issubset(generated.files)
     assert "configs.json" in generated.files
+    assert "generation_info.json" in generated.files
     assert "utils.py" in generated.files
     for filename, content in generated.files.items():
         if filename.endswith(".py"):
             compile(content, filename, "exec")
+
+
+def test_generation_info_defaults_to_template(monkeypatch):
+    monkeypatch.delenv("M4_LLM_PROVIDER", raising=False)
+
+    generated = generate_files(_specs())
+    info = json.loads(generated.files["generation_info.json"])
+
+    assert info["llm_provider"] == "none"
+    assert info["model_py_source"] == "template"
+    assert info["llm_used"] is False
+    assert info["template_fallback"] is True
 
 
 def test_run_experiments_embeds_and_sweeps_all_candidates():
@@ -70,8 +85,11 @@ def test_generated_readme_documents_runtime_files():
     readme = generated.files["README_generated.md"]
 
     assert "configs.json" in readme
+    assert "generation_info.json" in readme
     assert "utils.py" in readme
+    assert "model_utils.py" in readme
     assert "smoke_data.py" in readme
+    assert "M4_LLM_PROVIDER=qwen" in readme
     assert "module4_summary.json" in readme
     assert "best_config.json" in readme
     assert "Smoke vs Real Training" in readme

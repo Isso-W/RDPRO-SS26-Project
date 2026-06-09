@@ -2,10 +2,10 @@
 LLM 代码生成层 — 通过环境变量切换 provider。
 
 支持的 provider（通过 M4_LLM_PROVIDER 环境变量）：
-  - "qwen"     — 阿里 DashScope（默认，需要 JIAOZI_DASHSCOPE_API_KEY）
+  - "none"     — 跳过 LLM，回退到模板生成（默认）
+  - "qwen"     — 阿里 DashScope（需要 JIAOZI_DASHSCOPE_API_KEY）
   - "openai"   — OpenAI（需要 OPENAI_API_KEY）
   - "vertex"   — Google Vertex AI Gemini（需要 GOOGLE_APPLICATION_CREDENTIALS）
-  - "none"     — 跳过 LLM，回退到模板生成
 """
 
 from __future__ import annotations
@@ -13,6 +13,8 @@ from __future__ import annotations
 import os
 import re
 from typing import Any
+
+from env_loader import load_env_file
 
 from .schemas import TrainingSpec
 
@@ -23,7 +25,7 @@ from .schemas import TrainingSpec
 
 def _call_llm(system_prompt: str, user_prompt: str) -> str | None:
     """调用 LLM，返回原始文本。失败返回 None。"""
-    provider = os.environ.get("M4_LLM_PROVIDER", "qwen").strip().lower()
+    provider = get_provider()
 
     if provider == "none":
         return None
@@ -32,19 +34,28 @@ def _call_llm(system_prompt: str, user_prompt: str) -> str | None:
         return _call_openai(system_prompt, user_prompt)
     if provider == "vertex":
         return _call_vertex(system_prompt, user_prompt)
-    # 默认 qwen
-    return _call_qwen(system_prompt, user_prompt)
+    if provider == "qwen":
+        return _call_qwen(system_prompt, user_prompt)
+    return None
+
+
+def get_provider() -> str:
+    """Return the configured model.py generation provider."""
+
+    load_env_file()
+    return os.environ.get("M4_LLM_PROVIDER", "none").strip().lower()
 
 
 def _call_qwen(system_prompt: str, user_prompt: str) -> str | None:
     try:
+        load_env_file()
         from openai import OpenAI
         client = OpenAI(
             api_key=os.environ["JIAOZI_DASHSCOPE_API_KEY"],
             base_url=os.environ.get("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
         )
         resp = client.chat.completions.create(
-            model="qwen-plus",
+            model=os.environ.get("M4_QWEN_MODEL", "qwen-plus"),
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -58,6 +69,7 @@ def _call_qwen(system_prompt: str, user_prompt: str) -> str | None:
 
 def _call_openai(system_prompt: str, user_prompt: str) -> str | None:
     try:
+        load_env_file()
         from openai import OpenAI
         client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         resp = client.chat.completions.create(
@@ -75,6 +87,7 @@ def _call_openai(system_prompt: str, user_prompt: str) -> str | None:
 
 def _call_vertex(system_prompt: str, user_prompt: str) -> str | None:
     try:
+        load_env_file()
         import vertexai
         from vertexai.generative_models import GenerativeModel
 

@@ -6,13 +6,14 @@ import json
 from collections.abc import Sequence
 from textwrap import dedent
 
-from .llm_codegen import generate_model_py
+from .llm_codegen import generate_model_py, get_provider
 from .schemas import GeneratedFiles, TrainingSpec
 from .spec_builder import specs_to_configs
 
 
 REQUIRED_GENERATED_FILES = (
     "configs.json",
+    "generation_info.json",
     "utils.py",
     "model_utils.py",
     "smoke_data.py",
@@ -36,11 +37,14 @@ def generate_files(specs: Sequence[TrainingSpec], feedback: str | None = None) -
     configs_json = json.dumps(specs_to_configs(specs), indent=2, sort_keys=True)
     first_config_json = json.dumps(specs[0].to_config(), indent=2, sort_keys=True)
 
+    provider = get_provider()
     # LLM 只生成 model.py（使用 model_utils helper），train/evaluate 始终用模板
     llm_model = generate_model_py(specs[0], feedback=feedback or "")
+    model_source = provider if llm_model else "template"
 
     files = {
         "configs.json": configs_json + "\n",
+        "generation_info.json": _generation_info_json(provider, model_source, llm_model is not None),
         "utils.py": _utils_py(),
         "model_utils.py": _model_utils_py(),
         "smoke_data.py": _smoke_data_py(),
@@ -51,9 +55,20 @@ def generate_files(specs: Sequence[TrainingSpec], feedback: str | None = None) -
         "run.py": _run_py(first_config_json),
         "run_experiments.py": _run_experiments_py(configs_json),
         "requirements.txt": _requirements_txt(),
-        "README_generated.md": _readme_generated_md(specs, feedback=feedback),
+        "README_generated.md": _readme_generated_md(specs, feedback=feedback, provider=provider, model_source=model_source),
     }
     return GeneratedFiles(files=files)
+
+
+def _generation_info_json(provider: str, model_source: str, llm_used: bool) -> str:
+    info = {
+        "model_py_source": model_source,
+        "llm_provider": provider,
+        "llm_used": llm_used,
+        "template_fallback": not llm_used,
+        "generated_by": "module4_agent",
+    }
+    return json.dumps(info, indent=2, sort_keys=True) + "\n"
 
 
 def _utils_py() -> str:
@@ -987,7 +1002,13 @@ def _requirements_txt() -> str:
     return "torch\n"
 
 
-def _readme_generated_md(specs: Sequence[TrainingSpec], feedback: str | None = None) -> str:
+def _readme_generated_md(
+    specs: Sequence[TrainingSpec],
+    feedback: str | None = None,
+    *,
+    provider: str = "none",
+    model_source: str = "template",
+) -> str:
     candidate_lines = "\n".join(
         f"- rank {spec.rank}: {spec.task_type}, backbone={spec.backbone}, "
         f"loss={spec.loss}, optimizer={spec.optimizer}, finetune={spec.finetune_strategy}"
@@ -1010,14 +1031,25 @@ def _readme_generated_md(specs: Sequence[TrainingSpec], feedback: str | None = N
 
         - `configs.json` contains the normalized Module 4 configs consumed by
           the generated scripts.
+        - `generation_info.json` records whether `model.py` came from a model
+          provider or from the template fallback.
         - `model_config` remains the provenance record from Module 3.
         - If `model_config` and natural-language `tasks` disagree, generated
           code follows the structured config.
 
+        ## Code Generation
+
+        - model.py source: `{model_source}`
+        - configured provider: `{provider}`
+        - set `M4_LLM_PROVIDER=qwen` to request Qwen generation for `model.py`.
+        - set `M4_LLM_PROVIDER=none` for template-only generation.
+
         ## Files
 
         - `configs.json`: normalized candidate configs used by this project.
+        - `generation_info.json`: records provider and fallback status.
         - `utils.py`: shared config parsing, seed, and task-type helpers.
+        - `model_utils.py`: shared backbone loading and freeze helpers.
         - `smoke_data.py`: shared synthetic data helpers for local smoke runs.
         - `model.py`: task-compatible lightweight PyTorch models with
           `build_model(config)`.

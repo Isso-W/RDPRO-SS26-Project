@@ -49,61 +49,110 @@ Readme先用来写一些文档或者注意事项，也可以在下面留言
 饺子🥟这个名字非常好！ 非常赞成！
 https://huggingface.co/models
 
-## CV Auto-DL Codegen Submodule
+## Current Pipeline
 
-This repo now includes a workflow-first implementation for the CV Auto-DL code generation submodule under `cv_autodl_agent/`.
+当前主线是 `pipeline.py`，它串联 Module 1、Module 2、Module 3 和
+`module4_agent`：
 
-Current scope:
-
-- input contract: `DatasetManifest + RetrievedModelCandidate[]`
-- workflow: candidate selection -> training spec -> baseline codegen -> baseline run -> ablation -> targeted refinement -> review -> notebook export
-- task families: `classification`, `segmentation`, `detection`
-- local fallback execution mode: `simulate`
-- Colab demo execution mode: `real`
-- Colab handoff: generated `train.py`, `dataset.py`, `inference.py`, `requirements.txt`, `notebook.ipynb`
-
-Quickstart:
-
-```bash
-cd /Users/wang/Desktop/TUB2025sose/ML_project/Jiaozi
-python3 -m cv_autodl_agent \
-  --manifest examples/classification_manifest.json \
-  --candidates examples/classification_candidates.json \
-  --output-dir demo_run
+```text
+用户自然语言 + HuggingFace 数据集 ID
+→ Module 1: 解析任务类型、优先级和约束
+→ Module 2: 分析数据集规模和类别分布
+→ Module 3: 推荐 Top 3 CV 模型配置
+→ Module 4: 生成训练、评估和推理代码
 ```
 
-Colab demo:
+Integrated pipeline example:
 
-- open `examples/colab_demo.ipynb` from the repository root
-- run the cells in order
-- the output prints the selected model, baseline metric, refined metric, ablation winner, review status, generated notebook path, real CIFAR-10 metric, and checkpoint path
-- the demo uses a small CIFAR-10 subset by default so Colab can finish quickly; increase `max_train_samples`, `max_val_samples`, and `max_epochs` in the manifest for a stronger model
+```bash
+python pipeline.py \
+  --query "classify images on a small dataset" \
+  --dataset uoft-cs/cifar10 \
+  --fmt nl \
+  --module4-output generated_pipeline \
+  --module4-no-smoke
+```
 
-Example inputs:
+`pipeline.py` writes the Module 3 candidates to
+`generated_pipeline/module3_candidates.json`, then asks Module 4 to generate the
+training/evaluation/inference project.
 
-- `examples/classification_manifest.json`
-- `examples/classification_candidates.json`
-- `examples/cifar10_manifest.json`
-- `examples/cifar10_candidates.json`
-- `examples/food101_manifest.json`
-- `examples/food101_candidates.json`
-- `examples/segmentation_manifest.json`
-- `examples/segmentation_candidates.json`
-- `examples/detection_manifest.json`
-- `examples/detection_candidates.json`
+## Module 4 Agent
 
-Expected demo output summary:
+`module4_agent/` is the active Module 4 implementation. It consumes Module 3
+candidate outputs, treats structured `model_config` as the source of truth, and
+generates a local runnable project:
 
-- `examples/expected_classification_summary.json`
+```text
+generated/
+  configs.json
+  generation_info.json
+  utils.py
+  model_utils.py
+  smoke_data.py
+  model.py
+  train.py
+  evaluate.py
+  infer.py
+  run.py
+  run_experiments.py
+  requirements.txt
+  README_generated.md
+  module4_summary.json
+```
 
-Documentation:
+Standalone Module 4 usage:
 
-- `docs/CV_AUTODL_TECHNICAL_DOC.md`
-- `docs/cv-autodl-codegen/SKILL.md`
+```bash
+python3 -m module4_agent \
+  --input module4_agent/examples/sample_m3_output.json \
+  --output generated/
+```
+
+Run without local smoke tests:
+
+```bash
+python3 -m module4_agent \
+  --input module4_agent/examples/sample_m3_output.json \
+  --output generated/ \
+  --no-smoke
+```
+
+Local API keys can be stored in `.env`. Copy `.env.example` to `.env`, then fill
+in your local key:
+
+```bash
+cp .env.example .env
+```
+
+The pipeline loads `.env` automatically. To use Qwen/DashScope:
+
+```bash
+JIAOZI_LLM_PROVIDER=qwen
+M4_LLM_PROVIDER=qwen
+JIAOZI_DASHSCOPE_API_KEY=...
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+M1_QWEN_MODEL=qwen-plus
+M4_QWEN_MODEL=qwen-plus
+```
+
+For fully offline Module 4 generation, use the template fallback:
+
+```bash
+M4_LLM_PROVIDER=none
+```
+
+You can also override Module 4 from the command line:
+
+```bash
+--module4-llm-provider qwen
+```
+
+Generated projects include `generation_info.json`, which records whether
+`model.py` came from Qwen or from the template fallback.
 
 Run tests:
 
 ```bash
-cd /Users/wang/Desktop/TUB2025sose/ML_project/Jiaozi
-python3 -m unittest discover -s tests -v
+python3 -m unittest test_pipeline.py -v
 ```

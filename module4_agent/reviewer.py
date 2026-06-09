@@ -140,7 +140,9 @@ def _check_generated_readme(files: dict[str, str], specs: list[TrainingSpec], wa
     readme = files.get("README_generated.md", "")
     for required in (
         "configs.json",
+        "generation_info.json",
         "utils.py",
+        "model_utils.py",
         "smoke_data.py",
         "run.py",
         "run_experiments.py",
@@ -181,14 +183,26 @@ def _check_finetune_strategy(
         return
 
     model_py = files.get("model.py", "")
+    model_utils_py = files.get("model_utils.py", "")
+    has_inline_freeze = (
+        "parameter.requires_grad = False" in model_py
+        and "\"backbone\" in name" in model_py
+        and "_frozen_backbone_params" in model_py
+    )
+    has_helper_freeze = (
+        "apply_freeze" in model_py
+        and "param.requires_grad = False" in model_utils_py
+        and "\"backbone\" in param_name" in model_utils_py
+    )
     if any(spec.finetune_strategy == "head_only" for spec in specs) and (
-        "parameter.requires_grad = False" not in model_py
-        or "\"backbone\" in name" not in model_py
-        or "head_only" not in model_py
-        or "_frozen_backbone_params" not in model_py
+        not has_inline_freeze
+        and not has_helper_freeze
     ):
         errors.append("head_only finetune strategy did not freeze backbone-like parameters.")
-    if any(spec.finetune_strategy == "full" for spec in specs) and "strategy == \"full\"" not in model_py:
+    if any(spec.finetune_strategy == "full" for spec in specs) and (
+        "strategy == \"full\"" not in model_py
+        and "strategy in (\"full\", \"either\")" not in model_utils_py
+    ):
         errors.append("full finetune strategy is not explicitly handled.")
 
 
