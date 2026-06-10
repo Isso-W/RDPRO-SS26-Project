@@ -9,6 +9,7 @@ colab_demo_output/
 .env
 .tmp_e2e_test/
 chroma_db_kb/
+test_runs/
 CLAUDE.local.md
 workspace/
 .DS_Store
