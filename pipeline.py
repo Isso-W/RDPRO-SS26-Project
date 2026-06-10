@@ -53,6 +53,8 @@ def derive_class_imbalance(class_distribution: dict) -> bool:
 def _patch_torch_metadata():
     """datasets 库在 import 时会读 torch 版本 metadata，某些 torch 安装方式下 metadata 缺失会导致崩溃。"""
     import importlib.metadata
+    if getattr(importlib.metadata.version, "_torch_patched", False):
+        return
     _orig = importlib.metadata.version
     def _patched(name):
         v = _orig(name)
@@ -60,6 +62,7 @@ def _patch_torch_metadata():
             import torch
             return torch.__version__.split("+")[0]
         return v
+    _patched._torch_patched = True
     importlib.metadata.version = _patched
 
 
@@ -92,6 +95,8 @@ def merge_modules(m1_output: dict, m2_report: dict) -> dict:
       - constraints.class_imbalance：从 class_distribution 推断（与 Module 1 取 OR）
     """
     merged = dict(m1_output)
+    # constraints 单独拷贝，避免原地修改 m1_output 内层 dict
+    merged["constraints"] = dict(m1_output.get("constraints", {}))
 
     # data_size 由 Module 2 决定
     total_images = m2_report.get("total_images", 0)

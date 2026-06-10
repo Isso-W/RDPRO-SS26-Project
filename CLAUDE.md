@@ -106,8 +106,6 @@ See `docs/MODULE3_API.md` for full field reference and Module 2→3 alignment qu
 - `recommended_when` on pretrained_model nodes is defined but not consumed
 - Missing component type: LR Scheduler (relevant for transformer finetuning)
 - Vector index only covers backbones; heads and losses are not semantically searchable
-- `_input_to_query_text` does not include `zero_shot` / `few_shot` flags — the vector-scoring channel is blind to them
-- `build_vector_index` only adds new ids; changed backbone descriptions keep their stale embeddings (switch to `upsert`)
 
 ## Future: domain-specific pretrained models
 

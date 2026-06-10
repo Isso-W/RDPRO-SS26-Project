@@ -18,6 +18,29 @@ Module 3 知识库 — CV任务专用
 """
 
 import json
+
+
+def _patch_torch_metadata():
+    """某些 torch 安装方式下 importlib.metadata.version("torch") 返回 None，
+    sentence-transformers 导入时解析版本号会崩溃。在导入 chromadb 前打补丁。"""
+    import importlib.metadata
+    if getattr(importlib.metadata.version, "_torch_patched", False):
+        return
+    _orig = importlib.metadata.version
+
+    def _patched(name):
+        v = _orig(name)
+        if v is None and name == "torch":
+            import torch
+            return torch.__version__.split("+")[0]
+        return v
+
+    _patched._torch_patched = True
+    importlib.metadata.version = _patched
+
+
+_patch_torch_metadata()
+
 import networkx as nx
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
@@ -1053,26 +1076,22 @@ def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collect
     collection = client.get_or_create_collection("cv_backbones", embedding_function=ef)
 
     backbones = [c for c in COMPONENTS if c["component_type"] == "backbone"]
-    existing_ids = set(collection.get()["ids"])
-    new = [b for b in backbones if b["id"] not in existing_ids]
 
-    if new:
-        collection.add(
-            ids=[b["id"] for b in new],
-            documents=[b["description"] for b in new],
-            metadatas=[
-                {
-                    "task_type":            json.dumps(b["task_type"]),
-                    "data_size":            json.dumps(b["data_size"]),
-                    "complexity":           b["complexity"],
-                    "finetune_recommended": str(b["finetune_recommended"]),
-                }
-                for b in new
-            ],
-        )
-        print(f"[Index] Added {len(new)} backbone entries.")
-    else:
-        print("[Index] Already up to date.")
+    # upsert 而非 add：description 修改后旧 embedding 会被覆盖刷新
+    collection.upsert(
+        ids=[b["id"] for b in backbones],
+        documents=[b["description"] for b in backbones],
+        metadatas=[
+            {
+                "task_type":            json.dumps(b["task_type"]),
+                "data_size":            json.dumps(b["data_size"]),
+                "complexity":           b["complexity"],
+                "finetune_recommended": str(b["finetune_recommended"]),
+            }
+            for b in backbones
+        ],
+    )
+    print(f"[Index] Upserted {len(backbones)} backbone entries.")
 
     return collection
 
@@ -1126,6 +1145,8 @@ def _input_to_query_text(input_json: dict) -> str:
     if c.get("class_imbalance"):  flags.append("class-imbalanced data")
     if c.get("cross_modal"):      flags.append("cross-modal language-aligned features")
     if c.get("medical"):          flags.append("medical imaging domain")
+    if c.get("zero_shot"):        flags.append("zero-shot prediction without labeled training data")
+    if c.get("few_shot"):         flags.append("few-shot learning from very few labeled samples")
     if flags:
         parts.append(", ".join(flags))
 

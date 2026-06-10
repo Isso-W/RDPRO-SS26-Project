@@ -160,16 +160,21 @@ def parse_module1_output(raw: str, user_message: str) -> dict:
     try:
         parsed = json.loads(cleaned)
     except json.JSONDecodeError:
-        # LLM 返回了非法 JSON，用全默认值兜底
+        # LLM 返回了非法 JSON，用全默认值兜底——但要让用户知道结果已退化
+        print(
+            "[Module 1] 警告：LLM 输出不是合法 JSON，已回退到默认值 "
+            "(task_type=classification, priority=balanced)。原始输出片段："
+            f"{cleaned[:200]!r}"
+        )
         parsed = {}
 
-    # task_type 校验 + 别名映射
-    task_type = parsed.get("task_type", "").lower().strip()
+    # task_type 校验 + 别名映射（LLM 可能返回 null 或非字符串）
+    task_type = str(parsed.get("task_type") or "").lower().strip()
     if task_type not in _VALID_TASK_TYPES:
         task_type = _TASK_TYPE_ALIASES.get(task_type, "classification")
 
     # priority 校验
-    priority = parsed.get("priority", "").lower().strip()
+    priority = str(parsed.get("priority") or "").lower().strip()
     if priority not in _VALID_PRIORITIES:
         priority = "balanced"
 
