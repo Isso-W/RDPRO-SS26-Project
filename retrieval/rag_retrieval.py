@@ -17,7 +17,12 @@ Module 3 知识库 — CV任务专用
   preferred_when   — 某条件下更优（edge attr: condition）
 """
 
+from __future__ import annotations
+
+import hashlib
 import json
+import os
+import re
 
 
 def _patch_torch_metadata():
@@ -43,7 +48,92 @@ _patch_torch_metadata()
 
 import networkx as nx
 import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+
+
+class LocalHashEmbeddingFunction:
+    """Small deterministic embedding function for offline tests and demos."""
+
+    def __init__(self, dim: int = 384):
+        self.dim = dim
+
+    def is_legacy(self) -> bool:
+        return False
+
+    def default_space(self) -> str:
+        return "l2"
+
+    def supported_spaces(self) -> list[str]:
+        return ["l2"]
+
+    def get_config(self) -> dict:
+        return {"dim": self.dim}
+
+    @staticmethod
+    def build_from_config(config: dict) -> "LocalHashEmbeddingFunction":
+        return LocalHashEmbeddingFunction(dim=int(config.get("dim", 384)))
+
+    @staticmethod
+    def name() -> str:
+        return "local_hash"
+
+    def __call__(self, input):
+        docs = [input] if isinstance(input, str) else list(input)
+        return [self._embed(doc) for doc in docs]
+
+    def embed_documents(self, input):
+        return self(input)
+
+    def embed_query(self, input):
+        return self(input)
+
+    def _embed(self, text: str) -> list[float]:
+        tokens = [self._normalize_token(t) for t in re.findall(r"[a-z0-9_]+", str(text).lower())]
+        if not tokens:
+            tokens = [str(text).lower()]
+
+        vec = [0.0] * self.dim
+        for token in tokens:
+            digest = hashlib.md5(token.encode("utf-8")).digest()
+            idx = int.from_bytes(digest[:4], "little") % self.dim
+            vec[idx] += 1.0
+
+        norm = sum(v * v for v in vec) ** 0.5
+        if norm > 0:
+            vec = [v / norm for v in vec]
+        return vec
+
+    @staticmethod
+    def _normalize_token(token: str) -> str:
+        aliases = {
+            "class": "classify",
+            "classes": "classify",
+            "classification": "classify",
+            "classify": "classify",
+            "detect": "detect",
+            "detection": "detect",
+            "detector": "detect",
+            "detecting": "detect",
+            "extraction": "feature",
+            "extract": "feature",
+            "features": "feature",
+            "feature": "feature",
+            "image": "image",
+            "images": "image",
+            "segmentation": "segment",
+            "segment": "segment",
+            "segmenter": "segment",
+            "vehicles": "vehicle",
+        }
+        return aliases.get(token, token)
+
+
+def _make_embedding_function():
+    mode = os.getenv("CV_AUTODL_EMBEDDINGS", "local").strip().lower()
+    if mode == "hf":
+        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+
+        return "cv_backbones", SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+    return "cv_backbones_local", LocalHashEmbeddingFunction()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. 组件节点
@@ -1072,8 +1162,8 @@ def build_graph() -> nx.DiGraph:
 def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collection:
     """向量索引只对 backbone 建立；pretrained_model 通过图遍历关联。"""
     client = chromadb.PersistentClient(path=persist_path)
-    ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-    collection = client.get_or_create_collection("cv_backbones", embedding_function=ef)
+    collection_name, ef = _make_embedding_function()
+    collection = client.get_or_create_collection(collection_name, embedding_function=ef)
 
     backbones = [c for c in COMPONENTS if c["component_type"] == "backbone"]
 
@@ -1203,6 +1293,18 @@ def _score_backbone(backbone_id: str, input_json: dict, graph: nx.DiGraph) -> fl
     caps = node.get("capabilities", [])
     if input_json.get("constraints", {}).get("few_shot") and "few_shot" in caps:
         score += 1.5
+
+    task_type = input_json.get("task_type")
+    constraints = input_json.get("constraints", {})
+    if task_type == "image_segmentation" and constraints.get("medical") and backbone_id == "unet":
+        score += 1.0
+    if (
+        task_type == "object_detection"
+        and input_json.get("priority") == "accuracy"
+        and input_json.get("data_size") == "large"
+        and backbone_id == "detr"
+    ):
+        score += 1.0
 
     return score
 

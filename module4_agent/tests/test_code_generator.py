@@ -30,7 +30,7 @@ def _specs():
 
 
 def test_generate_files_contains_required_files_and_compiles():
-    generated = generate_files(_specs())
+    generated = generate_files(_specs(), llm_provider="none")
 
     assert set(REQUIRED_GENERATED_FILES).issubset(generated.files)
     assert "configs.json" in generated.files
@@ -42,9 +42,9 @@ def test_generate_files_contains_required_files_and_compiles():
 
 
 def test_generation_info_defaults_to_template(monkeypatch):
-    monkeypatch.delenv("M4_LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("M4_LLM_PROVIDER", "none")
 
-    generated = generate_files(_specs())
+    generated = generate_files(_specs(), llm_provider="none")
     info = json.loads(generated.files["generation_info.json"])
 
     assert info["llm_provider"] == "none"
@@ -54,7 +54,7 @@ def test_generation_info_defaults_to_template(monkeypatch):
 
 
 def test_run_experiments_embeds_and_sweeps_all_candidates():
-    generated = generate_files(_specs())
+    generated = generate_files(_specs(), llm_provider="none")
     content = generated.files["run_experiments.py"]
 
     assert "DEFAULT_CONFIGS" in content
@@ -66,7 +66,7 @@ def test_run_experiments_embeds_and_sweeps_all_candidates():
 
 
 def test_run_uses_trained_model_for_evaluation():
-    generated = generate_files(_specs())
+    generated = generate_files(_specs(), llm_provider="none")
 
     assert "model, train_result = train_model" in generated.files["run.py"]
     assert "eval_result = evaluate(model, config)" in generated.files["run.py"]
@@ -74,14 +74,14 @@ def test_run_uses_trained_model_for_evaluation():
 
 
 def test_feedback_is_embedded_into_generated_readme():
-    generated = generate_files(_specs(), feedback="Smoke test failed.")
+    generated = generate_files(_specs(), feedback="Smoke test failed.", llm_provider="none")
 
     assert "Previous Review Notes" in generated.files["README_generated.md"]
     assert "Smoke test failed." in generated.files["README_generated.md"]
 
 
 def test_generated_readme_documents_runtime_files():
-    generated = generate_files(_specs())
+    generated = generate_files(_specs(), llm_provider="none")
     readme = generated.files["README_generated.md"]
 
     assert "configs.json" in readme

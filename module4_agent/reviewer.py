@@ -127,7 +127,7 @@ def _check_configs_json(files: dict[str, str], specs: list[TrainingSpec], errors
     if len(configs) != len(specs):
         errors.append(f"configs.json contains {len(configs)} configs, expected {len(specs)}.")
         return
-    for config, spec in zip(configs, specs, strict=False):
+    for config, spec in zip(configs, specs):
         if not isinstance(config, dict):
             errors.append("configs.json contains a non-object config.")
             continue
@@ -238,7 +238,7 @@ def _check_smoke_metrics(smoke_result: SmokeResult, specs: list[TrainingSpec], e
     if len(rows) != len(specs):
         errors.append(f"run_experiments.py swept {len(rows)} candidates, expected {len(specs)}.")
         return
-    for row, spec in zip(rows, specs, strict=False):
+    for row, spec in zip(rows, specs):
         required_row_fields = {
             "rank",
             "backbone",

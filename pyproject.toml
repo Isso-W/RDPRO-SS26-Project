@@ -11,11 +11,23 @@ requires-python = ">=3.9"
 authors = [
   { name = "Jiaozi Project Team" }
 ]
-dependencies = []
+dependencies = [
+  "chromadb",
+  "datasets",
+  "networkx",
+  "numpy",
+  "openai>=2.0.0",
+  "pandas",
+  "pillow",
+  "sentence-transformers",
+  "torch",
+  "torchvision",
+  "transformers",
+]
 
 [project.optional-dependencies]
-llm = [
-  "openai>=2.0.0"
+dev = [
+  "pytest"
 ]
 
 [tool.setuptools.packages.find]
@@ -23,7 +35,6 @@ include = [
   "analyzer*",
   "features*",
   "ingestion*",
-  "models*",
   "module4_agent*",
   "processors*",
   "retrieval*",
