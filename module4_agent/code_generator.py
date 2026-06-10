@@ -151,7 +151,9 @@ def _utils_py() -> str:
             model_config = config.get("model_config")
             if isinstance(model_config, dict):
                 merged = dict(config)
-                merged.update(model_config)
+                for key, value in model_config.items():
+                    if value is not None or key not in merged:
+                        merged[key] = value
                 config = merged
             return config
 
@@ -323,7 +325,7 @@ def _model_utils_py() -> str:
                 return self.layers(x)
 
 
-        def _try_torchvision(name: str) -> nn.Module | None:
+        def _try_torchvision(name: str, pretrained: bool = False) -> nn.Module | None:
             try:
                 import torchvision.models as tv
             except ImportError:
@@ -334,6 +336,11 @@ def _model_utils_py() -> str:
             factory = getattr(tv, model_name, None)
             if factory is None:
                 return None
+            if pretrained:
+                try:
+                    return factory(weights="DEFAULT")
+                except Exception:
+                    pass
             try:
                 return factory(weights=None)
             except Exception:
@@ -375,12 +382,16 @@ def _model_utils_py() -> str:
             The backbone outputs spatial features [B, C, H', W'] for CNN models.
             Transformer models may return [B, D]. Falls back to TinyBackbone
             if the requested model is unavailable.
+
+            When ``use_pretrained`` is true in *config*, torchvision DEFAULT
+            weights are loaded automatically.
             """
             config = config or {}
             name = str(get_value(config, "backbone", "tiny_cnn")).lower()
             image_size = as_int(get_value(config, "image_size", 224), 224)
+            pretrained = as_bool(get_value(config, "use_pretrained", False), False)
 
-            model = _try_torchvision(name)
+            model = _try_torchvision(name, pretrained=pretrained)
             if model is None:
                 bb = TinyBackbone()
                 return bb, bb.out_channels
@@ -839,16 +850,17 @@ def _infer_py() -> str:
         from utils import task_type
 
 
-        def predict(weights_path: str | None = None, image: torch.Tensor | None = None, config: dict[str, Any] | None = None) -> dict[str, Any]:
+        def predict(weights_path: str | None = None, image: torch.Tensor | None = None, config: dict[str, Any] | None = None, model: torch.nn.Module | None = None) -> dict[str, Any]:
             """Run one forward pass and return a JSON-friendly prediction."""
 
             config = config or {}
             task = task_type(config)
-            model = build_model(config)
-            if weights_path and Path(weights_path).exists():
-                checkpoint = torch.load(weights_path, map_location="cpu")
-                state_dict = checkpoint.get("model_state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
-                model.load_state_dict(state_dict, strict=False)
+            if model is None:
+                model = build_model(config)
+                if weights_path and Path(weights_path).exists():
+                    checkpoint = torch.load(weights_path, map_location="cpu")
+                    state_dict = checkpoint.get("model_state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
+                    model.load_state_dict(state_dict, strict=False)
             model.eval()
             if image is None:
                 image = synthetic_image(config, batch_size=1)
@@ -925,7 +937,7 @@ def _run_py(first_config_json: str) -> str:
             config = load_config(args.config, DEFAULT_CONFIG)
             model, train_result = train_model(config, epochs=1, max_steps=1)
             eval_result = evaluate(model, config)
-            infer_result = predict(config=config)
+            infer_result = predict(config=config, model=model)
             summary = {
                 "status": "success",
                 "config": compact_config_summary(config),
@@ -999,7 +1011,7 @@ def _run_experiments_py(configs_json: str) -> str:
 
 
 def _requirements_txt() -> str:
-    return "torch\n"
+    return "torch\ntorchvision\n"
 
 
 def _readme_generated_md(

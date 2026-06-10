@@ -80,14 +80,22 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
         )
         defaults = TASK_DEFAULTS[task_type]
 
-        finetune_strategy = str(
+        raw_strategy = (
             merged.get("finetune_strategy")
             or merged.get("strategy")
             or candidate.get("finetune_strategy")
-            or "head_only"
-        ).lower()
+        )
+        has_pretrained = bool(
+            merged.get("pretrained_hf_id")
+            or merged.get("hf_id")
+            or candidate.get("pretrained_hf_id")
+        )
+        if raw_strategy is None or str(raw_strategy).lower() == "none":
+            finetune_strategy = "head_only" if has_pretrained else "full"
+        else:
+            finetune_strategy = str(raw_strategy).lower()
         if finetune_strategy not in {"head_only", "full", "either"}:
-            finetune_strategy = "head_only"
+            finetune_strategy = "head_only" if has_pretrained else "full"
 
         freeze_backbone = _safe_bool(
             merged.get("freeze_backbone"),
@@ -174,7 +182,14 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
                 default=224,
             ),
             offline_smoke=_safe_bool(merged.get("offline_smoke"), default=True),
-            use_pretrained=_safe_bool(merged.get("use_pretrained"), default=False),
+            use_pretrained=_safe_bool(
+                merged.get("use_pretrained"),
+                default=bool(
+                    merged.get("pretrained_hf_id")
+                    or merged.get("hf_id")
+                    or candidate.get("pretrained_hf_id")
+                ),
+            ),
             raw_model_config=model_config,
         )
         specs.append(spec)
