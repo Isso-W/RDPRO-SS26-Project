@@ -114,7 +114,9 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--dataset", required=True,
-                        help="HuggingFace 数据集 ID（如 uoft-cs/cifar10）或本地图片文件夹路径")
+                        help="HuggingFace 数据集 ID（如 uoft-cs/cifar10），支持 org/name:subset 格式")
+    parser.add_argument("--subset", default=None,
+                        help="数据集子配置名（合集类数据集必填，也可用 --dataset org/name:subset 简写）")
     parser.add_argument("--query", required=True, help="用户自然语言需求描述")
     parser.add_argument("--output", default=None,
                         help="结果输出目录（默认 test_runs/<时间戳>）")
@@ -142,7 +144,12 @@ def main() -> None:
             print(f"  - {p}")
         sys.exit(1)
 
-    dataset_id = resolve_dataset(args.dataset)
+    from pipeline import parse_dataset_id
+
+    raw_dataset = resolve_dataset(args.dataset)
+    dataset_id, parsed_subset = parse_dataset_id(raw_dataset)
+    subset = args.subset or parsed_subset
+
     output_dir = Path(args.output) if args.output else \
         REPO_ROOT / "test_runs" / datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -151,6 +158,7 @@ def main() -> None:
     save_json(output_dir / "run_info.json", {
         "query": args.query,
         "dataset": args.dataset,
+        "subset": subset,
         "resolved_dataset": dataset_id,
         "module4": args.module4,
         "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -163,6 +171,7 @@ def main() -> None:
             args.query,
             dataset_id,
             fmt=args.fmt,
+            subset=subset,
             module4_output=(output_dir / "module4_code") if args.module4 else None,
             module4_skip_smoke=args.no_smoke,
         )

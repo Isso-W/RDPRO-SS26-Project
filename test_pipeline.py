@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from pipeline import derive_data_size, derive_class_imbalance, merge_modules, run_module4_generation
+from pipeline import derive_data_size, derive_class_imbalance, merge_modules, run_module4_generation, parse_dataset_id
 from features_extraction_api import parse_module1_output
 from env_loader import load_env_file
 
@@ -327,6 +327,21 @@ class TestParseModule1Output(unittest.TestCase):
         self.assertTrue(result["constraints"]["medical"])
         self.assertFalse(result["constraints"]["real_time"])
         self.assertFalse(result["constraints"]["edge_deployment"])
+
+
+class TestParseDatasetId(unittest.TestCase):
+
+    def test_plain_id(self):
+        self.assertEqual(parse_dataset_id("uoft-cs/cifar10"), ("uoft-cs/cifar10", None))
+
+    def test_with_subset(self):
+        self.assertEqual(
+            parse_dataset_id("antofuller/mini-vtab:eurosat"),
+            ("antofuller/mini-vtab", "eurosat"),
+        )
+
+    def test_local_path_no_colon(self):
+        self.assertEqual(parse_dataset_id("./my_images"), ("./my_images", None))
 
 
 if __name__ == "__main__":

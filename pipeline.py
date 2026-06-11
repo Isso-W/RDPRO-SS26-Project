@@ -96,14 +96,22 @@ def _patch_torch_metadata():
     importlib.metadata.version = _patched
 
 
-def run_module2_analysis(dataset_id: str) -> dict:
+def parse_dataset_id(raw: str) -> tuple[str, str | None]:
+    """解析 'org/name:subset' 格式，返回 (dataset_id, subset)。"""
+    if ":" in raw:
+        dataset_id, subset = raw.rsplit(":", 1)
+        return dataset_id, subset
+    return raw, None
+
+
+def run_module2_analysis(dataset_id: str, subset: str | None = None) -> dict:
     """运行 Module 2 的轻量分析（只取统计信息，跳过标准化和特征提取）。"""
     _patch_torch_metadata()
     from ingestion.image_loader import ImageLoader
     from analyzer.image_statistics import ImageStatisticsAnalyzer
 
     loader = ImageLoader()
-    loaded = loader.load_dataset_by_name(dataset_id)
+    loaded = loader.load_dataset_by_name(dataset_id, subset=subset)
     dataset = loaded["dataset"]
 
     analyzer = ImageStatisticsAnalyzer()
@@ -196,6 +204,7 @@ def run_pipeline(
     user_message: str,
     dataset_id: str,
     fmt: str = "structured",
+    subset: str | None = None,
     module4_output: str | Path | None = None,
     module4_skip_smoke: bool = False,
     module4_run_refinement: bool = False,
@@ -223,8 +232,9 @@ def run_pipeline(
         return {"module3_input": None, "recommendations": [], "task_lists": [], "module4": None}
 
     # Step 2: Module 2 — 数据集分析 → data_size / class_imbalance
-    print(f"[Pipeline] Module 2: 分析数据集 {dataset_id}...")
-    m2_report = run_module2_analysis(dataset_id)
+    ds_label = f"{dataset_id}:{subset}" if subset else dataset_id
+    print(f"[Pipeline] Module 2: 分析数据集 {ds_label}...")
+    m2_report = run_module2_analysis(dataset_id, subset=subset)
 
     # Step 3: 合并
     m3_input = merge_modules(m1_output, m2_report)
@@ -279,7 +289,10 @@ def run_pipeline(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Jiaozi Pipeline: NL + Dataset → Model Recommendation")
     parser.add_argument("--query", required=True, help="用户自然语言需求描述")
-    parser.add_argument("--dataset", required=True, help="HuggingFace 数据集 ID")
+    parser.add_argument("--dataset", required=True,
+                        help="HuggingFace 数据集 ID，支持 org/name:subset 格式")
+    parser.add_argument("--subset", default=None,
+                        help="数据集子配置名（也可用 --dataset org/name:subset 简写）")
     parser.add_argument("--fmt", default="structured", choices=["structured", "nl"],
                         help="Module 4 任务清单格式")
     parser.add_argument("--module4-output", default=None,
@@ -295,10 +308,14 @@ if __name__ == "__main__":
                         help="Module 4 model.py 生成 provider；例如 qwen。默认使用环境变量或模板")
     args = parser.parse_args()
 
+    dataset_id, parsed_subset = parse_dataset_id(args.dataset)
+    subset = args.subset or parsed_subset
+
     result = run_pipeline(
         args.query,
-        args.dataset,
+        dataset_id,
         fmt=args.fmt,
+        subset=subset,
         module4_output=args.module4_output,
         module4_skip_smoke=args.module4_no_smoke,
         module4_run_refinement=args.module4_run_refinement,
