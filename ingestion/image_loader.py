@@ -15,8 +15,8 @@ class ImageLoader:
             msg = str(e)
             if "Config name is missing" in msg or "pick one among" in msg.lower():
                 raise ValueError(
-                    f"数据集 {dataset_id!r} 包含多个子配置，必须指定 --subset 参数。\n"
-                    f"原始错误: {msg}"
+                    f"Dataset {dataset_id!r} contains multiple configs; "
+                    f"please specify --subset.\nOriginal error: {msg}"
                 ) from e
             raise
 

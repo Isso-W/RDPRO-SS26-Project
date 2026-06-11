@@ -1741,23 +1741,23 @@ def print_results(input_json: dict, results: list[dict], graph: nx.DiGraph) -> N
         if pid:
             p = graph.nodes[pid]
             strategy_label = {
-                "full":      "全量 finetune",
-                "head_only": "冻结骨干，只训 head",
-                "either":    "全量 finetune 或冻结骨干均可",
+                "full":      "full finetune",
+                "head_only": "freeze backbone, train head only",
+                "either":    "full finetune or freeze backbone",
             }.get(r.get("finetune_strategy", ""), r.get("finetune_strategy", ""))
             print(f"  {'pretrained':10s}: {p['name']}")
             print(f"               {p['hf_id']}  ({p['pretrain_dataset']}, {p['params_M']}M)")
-            print(f"               策略: {strategy_label}")
+            print(f"               strategy: {strategy_label}")
         else:
-            print(f"  {'pretrained':10s}: 无（从头训练）")
+            print(f"  {'pretrained':10s}: None (train from scratch)")
 
         scratch = r.get("scratch_viable", False)
         if not pid:
-            print(f"  {'training':10s}: 从头训练")
+            print(f"  {'training':10s}: train from scratch")
         elif scratch:
-            print(f"  {'training':10s}: 建议 finetune，数据量足够时从头训练也可行")
+            print(f"  {'training':10s}: finetune recommended; train from scratch also viable with enough data")
         else:
-            print(f"  {'training':10s}: 必须使用预训练权重（数据量不足以从头训练）")
+            print(f"  {'training':10s}: pretrained weights required (insufficient data to train from scratch)")
 
         if r["alt_backbones"]:
             alts = [graph.nodes[a]["name"] for a in r["alt_backbones"]]

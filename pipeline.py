@@ -223,26 +223,26 @@ def run_pipeline(
       }
     """
     # Step 1: Module 1 — 用户自然语言 → 结构化字段
-    print("[Pipeline] Module 1: 解析用户需求...")
+    print("[Pipeline] Module 1: Parsing user requirements...")
     from features_extraction_api import module1_pipeline
 
     m1_output = module1_pipeline(user_message)
     if m1_output is None:
-        print("[Pipeline] Module 1 失败，无法继续。")
+        print("[Pipeline] Module 1 failed, cannot continue.")
         return {"module3_input": None, "recommendations": [], "task_lists": [], "module4": None}
 
     # Step 2: Module 2 — 数据集分析 → data_size / class_imbalance
     ds_label = f"{dataset_id}:{subset}" if subset else dataset_id
-    print(f"[Pipeline] Module 2: 分析数据集 {ds_label}...")
+    print(f"[Pipeline] Module 2: Analyzing dataset {ds_label}...")
     m2_report = run_module2_analysis(dataset_id, subset=subset)
 
     # Step 3: 合并
     m3_input = merge_modules(m1_output, m2_report)
-    print(f"[Pipeline] 合并结果: task={m3_input['task_type']}  "
+    print(f"[Pipeline] Merged: task={m3_input['task_type']}  "
           f"size={m3_input['data_size']}  priority={m3_input['priority']}")
 
     # Step 4: Module 3 — 模型推荐
-    print("[Pipeline] Module 3: 检索模型配置...")
+    print("[Pipeline] Module 3: Retrieving model configurations...")
     from retrieval.rag_retrieval import (
         build_graph, build_vector_index,
         retrieve_top3_hybrid, build_all_task_lists, print_results,
@@ -258,7 +258,7 @@ def run_pipeline(
     module4_result = None
 
     if module4_output:
-        print(f"[Pipeline] Module 4: 生成代码到 {module4_output}...")
+        print(f"[Pipeline] Module 4: Generating code to {module4_output}...")
         module4_task_lists = task_lists
         if fmt != "nl":
             module4_task_lists = build_all_task_lists(recommendations, G, fmt="nl")
@@ -288,24 +288,24 @@ def run_pipeline(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Jiaozi Pipeline: NL + Dataset → Model Recommendation")
-    parser.add_argument("--query", required=True, help="用户自然语言需求描述")
+    parser.add_argument("--query", required=True, help="Natural language task description")
     parser.add_argument("--dataset", required=True,
-                        help="HuggingFace 数据集 ID，支持 org/name:subset 格式")
+                        help="HuggingFace dataset ID; supports org/name:subset format")
     parser.add_argument("--subset", default=None,
-                        help="数据集子配置名（也可用 --dataset org/name:subset 简写）")
+                        help="Dataset config/subset name (or use --dataset org/name:subset)")
     parser.add_argument("--fmt", default="structured", choices=["structured", "nl"],
-                        help="Module 4 任务清单格式")
+                        help="Module 4 task list format")
     parser.add_argument("--module4-output", default=None,
-                        help="可选：继续运行 Module 4，并把生成代码写到该目录")
+                        help="Optional: run Module 4 and write generated code to this directory")
     parser.add_argument("--module4-no-smoke", action="store_true",
-                        help="Module 4 只生成和静态检查，不运行本地 smoke tests")
+                        help="Module 4: generate and lint only, skip local smoke tests")
     parser.add_argument("--module4-run-refinement", action="store_true",
-                        help="Module 4 通过后继续运行 refinement loop")
+                        help="Module 4: continue with refinement loop after approval")
     parser.add_argument("--module4-timeout", type=int, default=60,
-                        help="Module 4 每个 smoke command 的超时时间")
+                        help="Module 4: timeout per smoke command (seconds)")
     parser.add_argument("--module4-llm-provider", default=None,
                         choices=["none", "qwen", "openai", "vertex"],
-                        help="Module 4 model.py 生成 provider；例如 qwen。默认使用环境变量或模板")
+                        help="Module 4 model.py provider (e.g. qwen); defaults to env var or template")
     args = parser.parse_args()
 
     dataset_id, parsed_subset = parse_dataset_id(args.dataset)

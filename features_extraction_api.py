@@ -64,7 +64,7 @@ def extract_model_features_api(user_message: str):
         )
         return completion.choices[0].message.content
     except Exception as e:
-        print(f"错误信息：{e}")
+        print(f"[Error] {e}")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Module 3 对接：CV 任务特征提取 + 校验
@@ -140,7 +140,7 @@ def _extract_cv_features(user_message: str) -> str | None:
         )
         return completion.choices[0].message.content
     except Exception as e:
-        print(f"Module 1 LLM 调用失败：{e}")
+        print(f"[Module 1] LLM call failed: {e}")
         return None
 
 
@@ -162,9 +162,8 @@ def parse_module1_output(raw: str, user_message: str) -> dict:
     except json.JSONDecodeError:
         # LLM 返回了非法 JSON，用全默认值兜底——但要让用户知道结果已退化
         print(
-            "[Module 1] 警告：LLM 输出不是合法 JSON，已回退到默认值 "
-            "(task_type=classification, priority=balanced)。原始输出片段："
-            f"{cleaned[:200]!r}"
+            "[Module 1] Warning: LLM output is not valid JSON, falling back to defaults "
+            f"(task_type=classification, priority=balanced). Raw output snippet: {cleaned[:200]!r}"
         )
         parsed = {}
 
@@ -207,12 +206,12 @@ def module1_pipeline(user_message: str) -> dict | None:
 
 
 if __name__ == "__main__":
-    user_message = input("请输入您对于模型的要求：")
+    user_message = input("Enter your model requirements: ")
 
-    print("\n--- 原始 14 维提取 ---")
+    print("\n--- Raw 14-dimension extraction ---")
     result = extract_model_features_api(user_message)
     print(result)
 
-    print("\n--- Module 3 对接输出 ---")
+    print("\n--- Module 3 compatible output ---")
     m3_input = module1_pipeline(user_message)
     print(json.dumps(m3_input, indent=2, ensure_ascii=False))
