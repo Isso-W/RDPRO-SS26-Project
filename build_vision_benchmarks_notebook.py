@@ -71,11 +71,13 @@ from pathlib import Path
 # 只改这里即可切换任务。
 BENCHMARK_KEY = "cassava"
 
-# 快速模式仍使用真实数据，但只训练/评估一个子集。
-FAST_MODE = True
-EPOCHS = 2 if FAST_MODE else 10
-MAX_TRAIN_SAMPLES = 2000 if FAST_MODE else 0
-MAX_EVAL_SAMPLES = 500 if FAST_MODE else 0
+# 正式训练默认使用完整数据。临时调试时可改为 False。
+FORMAL_TRAINING = True
+EPOCHS = 15 if FORMAL_TRAINING else 2
+MAX_TRAIN_SAMPLES = 0 if FORMAL_TRAINING else 2000
+MAX_EVAL_SAMPLES = 0 if FORMAL_TRAINING else 500
+SAVE_TO_GOOGLE_DRIVE = True
+RESUME_TRAINING = True
 
 DEFAULT_REPO_URL = "https://github.com/Isso-W/Jiaozi.git"
 REPO_REF = "codex/integration-update-colab"
@@ -105,6 +107,7 @@ if os.getenv("JIAOZI_REPO_URL") or os.getenv("JIAOZI_REPO_REF"):
         "this notebook always pulls the tested branch."
     )
 
+os.chdir("/content")
 for path in (REPO_DIR, OUTPUT_DIR):
     if path.exists():
         shutil.rmtree(path)
@@ -329,31 +332,34 @@ def find_first(root: Path, patterns: list[str], expect_directory: bool) -> Path:
 runtime_data: dict[str, object] = {}
 if benchmark["source"] == "kaggle":
     competition_dir = DATA_ROOT / BENCHMARK_KEY
-    if competition_dir.exists():
-        shutil.rmtree(competition_dir)
     competition_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        run_visible(
-            [
-                "kaggle",
-                "competitions",
-                "download",
-                "-c",
-                benchmark["competition"],
-                "-p",
-                str(competition_dir),
-            ]
-        )
-    except subprocess.CalledProcessError as exc:
-        raise RuntimeError(
-            "Kaggle download failed. Confirm KAGGLE_API_TOKEN, accept the competition "
-            f"rules, and check free disk space. Competition: {benchmark['competition']}"
-        ) from exc
-
     extract_zip_archives(competition_dir)
-    train_csv = find_first(competition_dir, benchmark["csv_globs"], False)
-    image_dir = find_first(competition_dir, benchmark["image_dir_globs"], True)
+    try:
+        train_csv = find_first(competition_dir, benchmark["csv_globs"], False)
+        image_dir = find_first(competition_dir, benchmark["image_dir_globs"], True)
+        print("Reusing existing Kaggle data:", competition_dir)
+    except FileNotFoundError:
+        try:
+            run_visible(
+                [
+                    "kaggle",
+                    "competitions",
+                    "download",
+                    "-c",
+                    benchmark["competition"],
+                    "-p",
+                    str(competition_dir),
+                ]
+            )
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                "Kaggle download failed. Confirm KAGGLE_API_TOKEN, accept the competition "
+                f"rules, and check free disk space. Competition: {benchmark['competition']}"
+            ) from exc
+        extract_zip_archives(competition_dir)
+        train_csv = find_first(competition_dir, benchmark["csv_globs"], False)
+        image_dir = find_first(competition_dir, benchmark["image_dir_globs"], True)
     runtime_data.update(
         {
             "train_csv": str(train_csv),
@@ -445,6 +451,20 @@ if generation_info.get("llm_model") != "gpt-5.5":
 generated_configs = json.loads((OUTPUT_DIR / "configs.json").read_text(encoding="utf-8"))
 runtime_config = dict(generated_configs[0])
 runtime_config.update(runtime_config.pop("model_config", {}) or {})
+
+checkpoint_dir = OUTPUT_DIR / "checkpoints"
+if SAVE_TO_GOOGLE_DRIVE:
+    try:
+        from google.colab import drive
+        drive.mount("/content/drive")
+        checkpoint_dir = (
+            Path("/content/drive/MyDrive/Jiaozi/formal_training")
+            / BENCHMARK_KEY
+        )
+    except Exception as exc:
+        print("Google Drive mount failed; checkpoints will stay in /content:", exc)
+checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
 runtime_config.update(
     {
         "offline_smoke": False,
@@ -453,11 +473,27 @@ runtime_config.update(
         "freeze_backbone": False,
         "evaluation_metric": benchmark["metric"],
         "recommended_epochs": EPOCHS,
+        "image_size": 300 if benchmark["backbone"] == "efficientnet_b3" else 224,
         "batch_size": 16 if benchmark["backbone"] == "efficientnet_b3" else 32,
-        "num_workers": 2,
+        "eval_batch_size": 32 if benchmark["backbone"] == "efficientnet_b3" else 64,
+        "num_workers": 4,
         "validation_fraction": 0.2,
         "max_train_samples": MAX_TRAIN_SAMPLES,
         "max_eval_samples": MAX_EVAL_SAMPLES,
+        "augmentation": "strong" if FORMAL_TRAINING else "basic",
+        "use_class_weights": FORMAL_TRAINING,
+        "class_weight_power": 0.5,
+        "label_smoothing": 0.1 if FORMAL_TRAINING else 0.0,
+        "learning_rate": 0.0002 if FORMAL_TRAINING else 0.0003,
+        "scheduler": "cosine",
+        "min_learning_rate": 0.000001,
+        "mixed_precision": True,
+        "gradient_clip_norm": 1.0,
+        "early_stopping_patience": 4 if FORMAL_TRAINING else 0,
+        "save_every_epoch": False,
+        "checkpoint_dir": str(checkpoint_dir),
+        "resume_checkpoint": "auto" if RESUME_TRAINING else "",
+        "seed": 42,
         **runtime_data,
     }
 )
@@ -475,8 +511,8 @@ print(json.dumps(runtime_config, indent=2, ensure_ascii=False))
         """
 ## 开始真实训练
 
-快速模式默认训练最多 2,000 张、评估 500 张并运行 2 个 epoch。
-设置 `FAST_MODE = False` 后重新从第一格运行，即可使用完整训练集和 10 个 epoch。
+正式模式默认使用完整数据训练最多 15 个 epoch，并在验证指标连续 4 轮没有提升时提前停止。
+`best_model.pt` 与 `last_checkpoint.pt` 会保存到 Google Drive，可在 Colab 中断后自动续训。
 """
     ),
     code(
@@ -517,9 +553,21 @@ training_log.write_text("".join(training_lines), encoding="utf-8")
 if return_code != 0:
     raise subprocess.CalledProcessError(return_code, training_command)
 
+checkpoint_dir = Path(runtime_config["checkpoint_dir"])
+for artifact_name in (
+    "configs.json",
+    "generation_info.json",
+    "model.py",
+    "training_output.txt",
+):
+    source_path = OUTPUT_DIR / artifact_name
+    if source_path.exists():
+        shutil.copy2(source_path, checkpoint_dir / artifact_name)
+
 print("\nTraining log:", training_log)
+print("Persistent training directory:", checkpoint_dir)
 print("Checkpoints:")
-for path in sorted((OUTPUT_DIR / "checkpoints").glob("*.pt")):
+for path in sorted(checkpoint_dir.glob("*.pt")):
     print(" ", path, f"({path.stat().st_size / 1024 / 1024:.1f} MB)")
 """
     ),

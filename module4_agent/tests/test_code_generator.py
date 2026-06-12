@@ -101,6 +101,13 @@ def test_run_uses_trained_model_for_evaluation():
     assert "cohen_kappa_score" in generated.files["evaluate.py"]
     assert "roc_auc_score" in generated.files["evaluate.py"]
     assert "log_loss" in generated.files["evaluate.py"]
+    assert "RandomResizedCrop" in generated.files["train.py"]
+    assert "use_class_weights" in generated.files["train.py"]
+    assert "label_smoothing" in generated.files["train.py"]
+    assert "GradScaler" in generated.files["train.py"]
+    assert "CosineAnnealingLR" in generated.files["train.py"]
+    assert "last_checkpoint.pt" in generated.files["train.py"]
+    assert "early_stopping_patience" in generated.files["train.py"]
 
 
 def test_feedback_is_embedded_into_generated_readme():

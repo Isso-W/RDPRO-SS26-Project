@@ -15,6 +15,11 @@ image-classification datasets:
 
 [Open `vision_benchmarks_colab.ipynb` in Colab](https://colab.research.google.com/github/Isso-W/Jiaozi/blob/codex/integration-update-colab/vision_benchmarks_colab.ipynb)
 
+The benchmark notebook defaults to formal Cassava training: full data,
+EfficientNet-B3 at 300px, mixed precision, strong augmentation, class weights,
+cosine scheduling, per-epoch validation, early stopping, and resumable
+checkpoints in Google Drive.
+
 ## Pipeline
 
 The active integrated entry point is `pipeline.py`:
