@@ -10,6 +10,7 @@ LLM 代码生成层 — 通过环境变量切换 provider。
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from typing import Any
@@ -48,6 +49,86 @@ def get_provider() -> str:
     return os.environ.get("M4_LLM_PROVIDER", "none").strip().lower()
 
 
+def _response_text(response: Any) -> str | None:
+    """Extract text from OpenAI-compatible SDK, dict, or direct-string responses."""
+
+    if response is None:
+        return None
+    if isinstance(response, bytes):
+        response = response.decode("utf-8", errors="replace")
+    if isinstance(response, str):
+        text = response.strip()
+        if not text:
+            return None
+        try:
+            decoded = json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            return text
+        if decoded == response:
+            return text
+        return _response_text(decoded)
+    if isinstance(response, list):
+        parts = [_response_text(item) for item in response]
+        joined = "".join(part for part in parts if part)
+        return joined or None
+    if isinstance(response, dict):
+        for key in ("output_text", "text", "content"):
+            extracted = _response_text(response.get(key))
+            if extracted:
+                return extracted
+        choices = response.get("choices")
+        if isinstance(choices, list) and choices:
+            extracted = _response_text(choices[0])
+            if extracted:
+                return extracted
+        output = response.get("output")
+        extracted = _response_text(output)
+        if extracted:
+            return extracted
+        message = response.get("message")
+        extracted = _response_text(message)
+        if extracted:
+            return extracted
+        return None
+
+    output_text = getattr(response, "output_text", None)
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text.strip()
+
+    text = getattr(response, "text", None)
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+
+    choices = getattr(response, "choices", None)
+    if choices:
+        extracted = _response_text(choices[0])
+        if extracted:
+            return extracted
+
+    message = getattr(response, "message", None)
+    extracted = _response_text(message)
+    if extracted:
+        return extracted
+
+    content = getattr(response, "content", None)
+    extracted = _response_text(content)
+    if extracted:
+        return extracted
+
+    output = getattr(response, "output", None)
+    extracted = _response_text(output)
+    if extracted:
+        return extracted
+
+    model_dump = getattr(response, "model_dump", None)
+    if callable(model_dump):
+        try:
+            return _response_text(model_dump())
+        except Exception:
+            return None
+    return None
+
+
 def _call_qwen(system_prompt: str, user_prompt: str) -> str | None:
     try:
         load_env_file()
@@ -64,7 +145,7 @@ def _call_qwen(system_prompt: str, user_prompt: str) -> str | None:
                 {"role": "user", "content": user_prompt},
             ],
         )
-        return resp.choices[0].message.content
+        return _response_text(resp)
     except Exception as e:
         print(f"[LLM] Qwen call failed: {e}")
         return None
@@ -79,15 +160,27 @@ def _call_openai(system_prompt: str, user_prompt: str) -> str | None:
         if base_url:
             client_kwargs["base_url"] = base_url
         client = OpenAI(**client_kwargs)
-        resp = client.chat.completions.create(
-            model=os.environ.get("M4_OPENAI_MODEL", "gpt-4o"),
-            temperature=0,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        return resp.choices[0].message.content
+        model = os.environ.get("M4_OPENAI_MODEL", "gpt-4o")
+        wire_api = os.environ.get("M4_OPENAI_WIRE_API", "chat_completions").strip().lower()
+        if wire_api in {"responses", "response"}:
+            resp = client.responses.create(
+                model=model,
+                instructions=system_prompt,
+                input=user_prompt,
+            )
+        else:
+            resp = client.chat.completions.create(
+                model=model,
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+        text = _response_text(resp)
+        if not text:
+            raise ValueError(f"Unsupported empty response type: {type(resp).__name__}")
+        return text
     except Exception as e:
         print(f"[LLM] OpenAI call failed: {e}")
         return None
