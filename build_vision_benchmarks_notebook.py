@@ -29,8 +29,8 @@ cells = [
         """
 # Jiaozi: GPT-5.5 生成并训练 14 个视觉任务
 
-这个 notebook 会删除 Colab 中旧的 `/content/Jiaozi`，拉取最新的
-`codex/integration-update-colab` 分支，然后完成：
+这个 notebook 只会删除 Colab 中旧的 `/content/Jiaozi` 仓库副本，拉取最新的
+`codex/integration-update-colab` 分支；不会删除已有的生成目录或 checkpoint。然后完成：
 
 1. 选择一个比赛或公开数据集。
 2. 使用配置的 `gpt-5.5` 生成 `model.py`。
@@ -52,7 +52,7 @@ cells = [
 只需在下一格修改 `BENCHMARK_KEY`。Kaggle 比赛必须先在网页上接受比赛规则。
 State Farm、SIIM-ISIC 和 Diabetic Retinopathy 数据较大，免费 Colab 可能需要较长下载时间和更多磁盘空间。
 
-如果之前运行过旧版本，请先选择 **Runtime → Restart session**，再从第一格开始运行。
+生成代码和模型会持久化到 Google Drive。重复运行第一格不会再覆盖模型。
 """
     ),
     code(
@@ -108,9 +108,10 @@ if os.getenv("JIAOZI_REPO_URL") or os.getenv("JIAOZI_REPO_REF"):
     )
 
 os.chdir("/content")
-for path in (REPO_DIR, OUTPUT_DIR):
-    if path.exists():
-        shutil.rmtree(path)
+if REPO_DIR.exists():
+    shutil.rmtree(REPO_DIR)
+if OUTPUT_DIR.exists():
+    print("Preserving existing generated project and local checkpoints:", OUTPUT_DIR)
 
 
 def checkout_repository() -> None:
@@ -465,6 +466,23 @@ if SAVE_TO_GOOGLE_DRIVE:
         print("Google Drive mount failed; checkpoints will stay in /content:", exc)
 checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+PERSISTENT_ARTIFACTS = (
+    "README_generated.md",
+    "configs.json",
+    "evaluate.py",
+    "generation_info.json",
+    "infer.py",
+    "model.py",
+    "model_utils.py",
+    "module4_summary.json",
+    "requirements.txt",
+    "run.py",
+    "run_experiments.py",
+    "smoke_data.py",
+    "train.py",
+    "utils.py",
+)
+
 runtime_config.update(
     {
         "offline_smoke": False,
@@ -476,7 +494,7 @@ runtime_config.update(
         "image_size": 300 if benchmark["backbone"] == "efficientnet_b3" else 224,
         "batch_size": 16 if benchmark["backbone"] == "efficientnet_b3" else 32,
         "eval_batch_size": 32 if benchmark["backbone"] == "efficientnet_b3" else 64,
-        "num_workers": 4,
+        "num_workers": 2,
         "validation_fraction": 0.2,
         "max_train_samples": MAX_TRAIN_SAMPLES,
         "max_eval_samples": MAX_EVAL_SAMPLES,
@@ -502,7 +520,13 @@ runtime_config.update(
     encoding="utf-8",
 )
 
+for artifact_name in PERSISTENT_ARTIFACTS:
+    source_path = OUTPUT_DIR / artifact_name
+    if source_path.exists():
+        shutil.copy2(source_path, checkpoint_dir / artifact_name)
+
 print("Generated project:", OUTPUT_DIR)
+print("Generated project backup:", checkpoint_dir)
 print("Real-training config:")
 print(json.dumps(runtime_config, indent=2, ensure_ascii=False))
 """
@@ -554,21 +578,104 @@ if return_code != 0:
     raise subprocess.CalledProcessError(return_code, training_command)
 
 checkpoint_dir = Path(runtime_config["checkpoint_dir"])
-for artifact_name in (
-    "configs.json",
-    "generation_info.json",
-    "model.py",
-    "training_output.txt",
-):
-    source_path = OUTPUT_DIR / artifact_name
-    if source_path.exists():
-        shutil.copy2(source_path, checkpoint_dir / artifact_name)
+shutil.copy2(training_log, checkpoint_dir / training_log.name)
 
 print("\nTraining log:", training_log)
 print("Persistent training directory:", checkpoint_dir)
 print("Checkpoints:")
 for path in sorted(checkpoint_dir.glob("*.pt")):
     print(" ", path, f"({path.stat().st_size / 1024 / 1024:.1f} MB)")
+"""
+    ),
+    markdown(
+        """
+## 测试已保存模型
+
+这格会从 Google Drive 恢复生成代码，加载 `best_model.pt`（没有时使用
+`last_checkpoint.pt`），并在验证集上计算比赛指标、Accuracy 和 Macro-F1。
+如果 Colab 运行时刚刚重启，请先运行到“准备真实数据”一节，确保验证数据存在。
+"""
+    ),
+    code(
+        r"""
+import importlib
+
+import torch
+
+try:
+    from google.colab import drive
+    drive.mount("/content/drive")
+except Exception as exc:
+    print("Google Drive mount status:", exc)
+
+benchmark_key = globals().get("BENCHMARK_KEY", "cassava")
+persistent_dir = Path("/content/drive/MyDrive/Jiaozi/formal_training") / benchmark_key
+local_project = Path("/content/jiaozi_generated_training")
+local_project.mkdir(parents=True, exist_ok=True)
+
+required_project_files = (
+    "configs.json",
+    "evaluate.py",
+    "model.py",
+    "model_utils.py",
+    "smoke_data.py",
+    "train.py",
+    "utils.py",
+)
+for artifact_name in required_project_files:
+    source_path = persistent_dir / artifact_name
+    destination_path = local_project / artifact_name
+    if source_path.exists():
+        shutil.copy2(source_path, destination_path)
+
+missing_files = [
+    name for name in required_project_files
+    if not (local_project / name).exists()
+]
+if missing_files:
+    raise FileNotFoundError(
+        "Missing generated project files: "
+        + ", ".join(missing_files)
+        + ". Run the GPT generation cell once to recreate and back them up."
+    )
+
+checkpoint_candidates = (
+    persistent_dir / "best_model.pt",
+    persistent_dir / "last_checkpoint.pt",
+    local_project / "checkpoints" / "best_model.pt",
+    local_project / "checkpoints" / "last_checkpoint.pt",
+)
+checkpoint_path = next((path for path in checkpoint_candidates if path.exists()), None)
+if checkpoint_path is None:
+    raise FileNotFoundError(
+        "No saved model checkpoint was found. Start the training cell; "
+        "the repaired notebook saves checkpoints to Google Drive after every epoch."
+    )
+
+training_config = json.loads(
+    (local_project / "configs.json").read_text(encoding="utf-8")
+)
+training_config["checkpoint_dir"] = str(persistent_dir)
+training_config["offline_smoke"] = False
+
+if str(local_project) not in sys.path:
+    sys.path.insert(0, str(local_project))
+os.chdir(local_project)
+importlib.invalidate_caches()
+
+from evaluate import evaluate
+from model import build_model
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+checkpoint = torch.load(checkpoint_path, map_location=device)
+state_dict = checkpoint.get("model_state_dict", checkpoint)
+model = build_model(training_config).to(device)
+model.load_state_dict(state_dict)
+
+test_result = evaluate(model, training_config)
+print("Checkpoint:", checkpoint_path)
+print("Device:", device)
+print(json.dumps(test_result, indent=2, ensure_ascii=False))
 """
     ),
     markdown(
