@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -323,8 +324,7 @@ def run_pipeline(
         "module4":          module4_result,
     }
 
-
-if __name__ == "__main__":
+def main() -> int:
     parser = argparse.ArgumentParser(description="Jiaozi Pipeline: NL + Dataset → Model Recommendation")
     parser.add_argument("--query", required=True, help="Natural language task description")
     parser.add_argument("--dataset", required=True,
@@ -361,8 +361,24 @@ if __name__ == "__main__":
         module4_llm_provider=args.module4_llm_provider,
     )
 
+    if result["module3_input"] is None:
+        print("[Pipeline] Module 1 failed, so no Module 3 or Module 4 output was produced.", file=sys.stderr)
+        return 1
+
     print("\n═══ Module 4 Task Lists ═══")
     print(json.dumps(result["task_lists"], indent=2, ensure_ascii=False))
+    if args.module4_output and not result["module4"]:
+        print(
+            "[Pipeline] Module 4 output was requested, but no generated summary was produced.",
+            file=sys.stderr,
+        )
+        return 2
+
     if result["module4"]:
         print("\n═══ Module 4 Code Generation Summary ═══")
         print(json.dumps(result["module4"]["summary"], indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
