@@ -356,6 +356,22 @@ class TestTaskList(unittest.TestCase):
         tl = build_task_list(self.top, self.G, fmt="nl")
         self.assertIn("backbone", tl["model_config"])
 
+    def test_nl_freeze_matches_head_only_strategy(self):
+        tl = build_task_list(self.top, self.G, fmt="nl")
+        strategy = tl["model_config"]["finetune_strategy"]
+        self.assertEqual(
+            tl["model_config"]["freeze_backbone"],
+            strategy == "head_only",
+        )
+
+    def test_structured_freeze_matches_head_only_strategy(self):
+        tl = build_task_list(self.top, self.G, fmt="structured")
+        training = next(t for t in tl["tasks"] if t["id"] == "train_strategy")
+        self.assertEqual(
+            training["freeze_backbone"],
+            training["strategy"] == "head_only",
+        )
+
     def test_invalid_fmt_raises(self):
         with self.assertRaises(ValueError):
             build_task_list(self.top, self.G, fmt="xml")

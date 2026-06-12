@@ -1576,7 +1576,6 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
     loss_id       = result.get("loss")
     optimizer_id  = result.get("optimizer")
     strategy      = result.get("finetune_strategy")
-    freeze        = result.get("freeze_viable", False)
     scratch       = result.get("scratch_viable", False)
     alternatives  = result.get("alt_backbones", [])
 
@@ -1607,7 +1606,7 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "id":              "train_strategy",
             "action":          "set_finetune_strategy",
             "strategy":        strategy,
-            "freeze_backbone": not freeze or strategy == "full",
+            "freeze_backbone": strategy == "head_only",
             "scratch_viable":  scratch,
         })
 
@@ -1685,7 +1684,7 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "loss":              loss_id,
             "optimizer":         optimizer_id,
             "finetune_strategy": strategy,
-            "freeze_backbone":   not freeze or strategy == "full",
+            "freeze_backbone":   strategy == "head_only",
             "scratch_viable":    scratch,
         })
 

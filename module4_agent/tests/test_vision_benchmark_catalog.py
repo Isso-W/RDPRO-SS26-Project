@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from vision_benchmark_catalog import BENCHMARKS, get_benchmark
 
 
@@ -21,6 +23,7 @@ def test_catalog_entries_have_runnable_source_metadata():
         assert item["query"]
         assert item["metric"]
         assert item["num_classes"] >= 2
+        assert item["total_samples"] > 0
         assert item["backbone"]
         assert item["loss"]
         if item["source"] == "kaggle":
@@ -32,3 +35,15 @@ def test_catalog_entries_have_runnable_source_metadata():
         else:
             assert item["dataset_id"]
         assert get_benchmark(key) == item
+
+
+def test_colab_builder_uses_module3_candidates_and_requires_drive_persistence():
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "build_vision_benchmarks_notebook.py"
+    ).read_text(encoding="utf-8")
+
+    assert "retrieve_top3_hybrid(" in source
+    assert "build_all_task_lists(" in source
+    assert '"score": 1.0' not in source
+    assert "checkpoint loss. Reconnect Drive" in source

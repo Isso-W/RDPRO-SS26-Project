@@ -383,47 +383,136 @@ print(json.dumps(runtime_data, indent=2, ensure_ascii=False))
     ),
     markdown(
         """
-## 使用 GPT-5.5 生成训练项目
+## 知识图谱推荐并使用 GPT-5.5 生成训练项目
 
-这一步直接调用 Module 4，并使用代理配置要求的 Responses API。
+这一步先调用 Module 3 的知识图谱与向量索引，根据数据规模、任务描述、领域和类别
+不平衡情况生成 Top 3 候选，再把真实的候选排名和分数交给 Module 4。
+Module 4 使用代理配置要求的 Responses API。
 生成后会检查 `generation_info.json`。如果代理返回 HTML、登录页或无效 Python，
 系统会记录失败原因并自动使用经过 smoke test 的模板继续训练，不会把无效内容写进 `model.py`。
 """
     ),
     code(
         r"""
-from module4_agent.workflow import run_workflow
+import csv
+from collections import Counter
 
-candidate = {
-    "rank": 1,
-    "score": 1.0,
-    "model_config": {
-        "task_type": "classification",
-        "backbone": benchmark["backbone"],
-        "head": "classification_head",
-        "loss": benchmark["loss"],
-        "optimizer": "adamw",
-        "learning_rate": 0.0003,
-        "num_classes": benchmark["num_classes"],
-        "image_size": 224,
-        "offline_smoke": True,
-        "use_pretrained": True,
-        "finetune_strategy": "full",
-        "freeze_backbone": False,
-        "evaluation_metric": benchmark["metric"],
-        "benchmark_name": benchmark["name"],
-        **runtime_data,
+from module4_agent.workflow import run_workflow
+from pipeline import derive_class_imbalance, derive_data_size
+from retrieval.rag_retrieval import (
+    build_all_task_lists,
+    build_graph,
+    build_vector_index,
+    print_results,
+    retrieve_top3_hybrid,
+)
+
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+label_counts: Counter[str] = Counter()
+total_images = 0
+if benchmark["source"] == "kaggle":
+    with Path(runtime_data["train_csv"]).open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as handle:
+        rows = csv.DictReader(handle)
+        for row in rows:
+            total_images += 1
+            label_counts[str(row[benchmark["label_column"]])] += 1
+else:
+    total_images = int(benchmark["total_samples"])
+
+data_size = derive_data_size(
+    total_images,
+    num_classes=benchmark["num_classes"],
+    task_type="classification",
+)
+class_imbalance = (
+    derive_class_imbalance(dict(label_counts))
+    if label_counts
+    else bool(benchmark.get("class_imbalance", False))
+)
+
+module3_request = {
+    "task_type": "classification",
+    "data_size": data_size,
+    "priority": benchmark.get("priority", "accuracy"),
+    "num_classes": benchmark["num_classes"],
+    "constraints": {
+        "real_time": False,
+        "edge_deployment": False,
+        "class_imbalance": class_imbalance,
+        "cross_modal": False,
+        "medical": bool(benchmark.get("medical", False)),
+        "zero_shot": False,
+        "few_shot": False,
     },
+    "description": benchmark["query"],
 }
 
-module3_input = Path("/content/jiaozi_selected_candidate.json")
-module3_input.write_text(
-    json.dumps([candidate], indent=2, ensure_ascii=False),
+knowledge_graph = build_graph()
+vector_index = build_vector_index(
+    persist_path=str(DATA_ROOT / "module3_chroma_db")
+)
+recommendations = retrieve_top3_hybrid(
+    module3_request,
+    knowledge_graph,
+    vector_index,
+)
+if not recommendations:
+    raise RuntimeError(
+        "Module 3 knowledge graph returned no candidates for: "
+        + json.dumps(module3_request, ensure_ascii=False)
+    )
+
+print("=== Module 3 knowledge-graph input ===")
+print(json.dumps(module3_request, indent=2, ensure_ascii=False))
+print_results(module3_request, recommendations, knowledge_graph)
+
+candidates = build_all_task_lists(
+    recommendations,
+    knowledge_graph,
+    fmt="nl",
+)
+for candidate in candidates:
+    model_config = candidate.setdefault("model_config", {})
+    model_config.update(
+        {
+            "task_type": "classification",
+            "learning_rate": 0.0003,
+            "num_classes": benchmark["num_classes"],
+            "image_size": 224,
+            "offline_smoke": True,
+            "use_pretrained": bool(model_config.get("pretrained_hf_id")),
+            "evaluation_metric": benchmark["metric"],
+            "benchmark_name": benchmark["name"],
+            "data_size": data_size,
+            "class_imbalance": class_imbalance,
+            **runtime_data,
+        }
+    )
+    candidate["constraints"] = dict(module3_request["constraints"])
+
+module3_request_path = OUTPUT_DIR / "module3_input.json"
+module3_recommendations_path = OUTPUT_DIR / "module3_recommendations.json"
+module3_candidates_path = OUTPUT_DIR / "module3_candidates.json"
+module3_request_path.write_text(
+    json.dumps(module3_request, indent=2, ensure_ascii=False),
+    encoding="utf-8",
+)
+module3_recommendations_path.write_text(
+    json.dumps(recommendations, indent=2, ensure_ascii=False),
+    encoding="utf-8",
+)
+module3_candidates_path.write_text(
+    json.dumps(candidates, indent=2, ensure_ascii=False),
     encoding="utf-8",
 )
 
 result = run_workflow(
-    module3_input,
+    module3_candidates_path,
     OUTPUT_DIR,
     max_iter=2,
     timeout=180,
@@ -452,18 +541,39 @@ if generation_info.get("llm_model") != "gpt-5.5":
 generated_configs = json.loads((OUTPUT_DIR / "configs.json").read_text(encoding="utf-8"))
 runtime_config = dict(generated_configs[0])
 runtime_config.update(runtime_config.pop("model_config", {}) or {})
+selected_backbone = str(runtime_config.get("backbone", ""))
+selected_strategy = str(runtime_config.get("finetune_strategy", "full"))
+selected_pretrained = bool(runtime_config.get("pretrained_hf_id"))
+selected_params_m = float(runtime_config.get("params_M") or 0)
+if selected_params_m >= 250:
+    train_batch_size, eval_batch_size = 4, 8
+elif selected_params_m >= 150:
+    train_batch_size, eval_batch_size = 8, 16
+elif selected_params_m >= 75:
+    train_batch_size, eval_batch_size = 16, 32
+elif selected_backbone == "efficientnet_b3":
+    train_batch_size, eval_batch_size = 16, 32
+else:
+    train_batch_size, eval_batch_size = 32, 64
 
 checkpoint_dir = OUTPUT_DIR / "checkpoints"
 if SAVE_TO_GOOGLE_DRIVE:
     try:
         from google.colab import drive
-        drive.mount("/content/drive")
+        drive_root = Path("/content/drive/MyDrive")
+        if not drive_root.exists():
+            drive.mount("/content/drive", force_remount=False)
+        if not drive_root.exists():
+            raise RuntimeError("Google Drive mounted without a MyDrive directory.")
         checkpoint_dir = (
-            Path("/content/drive/MyDrive/Jiaozi/formal_training")
+            drive_root / "Jiaozi/formal_training"
             / BENCHMARK_KEY
         )
     except Exception as exc:
-        print("Google Drive mount failed; checkpoints will stay in /content:", exc)
+        raise RuntimeError(
+            "Google Drive mount failed. Training was stopped to prevent another "
+            "checkpoint loss. Reconnect Drive, then rerun this cell."
+        ) from exc
 checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
 PERSISTENT_ARTIFACTS = (
@@ -474,6 +584,9 @@ PERSISTENT_ARTIFACTS = (
     "infer.py",
     "model.py",
     "model_utils.py",
+    "module3_candidates.json",
+    "module3_input.json",
+    "module3_recommendations.json",
     "module4_summary.json",
     "requirements.txt",
     "run.py",
@@ -486,20 +599,20 @@ PERSISTENT_ARTIFACTS = (
 runtime_config.update(
     {
         "offline_smoke": False,
-        "use_pretrained": True,
-        "finetune_strategy": "full",
-        "freeze_backbone": False,
+        "use_pretrained": selected_pretrained,
+        "finetune_strategy": selected_strategy,
+        "freeze_backbone": selected_strategy == "head_only",
         "evaluation_metric": benchmark["metric"],
         "recommended_epochs": EPOCHS,
-        "image_size": 300 if benchmark["backbone"] == "efficientnet_b3" else 224,
-        "batch_size": 16 if benchmark["backbone"] == "efficientnet_b3" else 32,
-        "eval_batch_size": 32 if benchmark["backbone"] == "efficientnet_b3" else 64,
+        "image_size": 300 if selected_backbone == "efficientnet_b3" else 224,
+        "batch_size": train_batch_size,
+        "eval_batch_size": eval_batch_size,
         "num_workers": 2,
         "validation_fraction": 0.2,
         "max_train_samples": MAX_TRAIN_SAMPLES,
         "max_eval_samples": MAX_EVAL_SAMPLES,
         "augmentation": "strong" if FORMAL_TRAINING else "basic",
-        "use_class_weights": FORMAL_TRAINING,
+        "use_class_weights": bool(runtime_config.get("class_imbalance")),
         "class_weight_power": 0.5,
         "label_smoothing": 0.1 if FORMAL_TRAINING else 0.0,
         "learning_rate": 0.0002 if FORMAL_TRAINING else 0.0003,
