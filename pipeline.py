@@ -353,6 +353,8 @@ def main() -> int:
                         help="Optional: run Module 4 and write generated code to this directory")
     parser.add_argument("--module4-no-smoke", action="store_true",
                         help="Module 4: generate and lint only, skip local smoke tests")
+    parser.add_argument("--module4-real-training", action="store_true",
+                        help="Module 4: generate real training code (offline_smoke=false, auto skips smoke)")
     parser.add_argument("--module4-run-refinement", action="store_true",
                         help="Module 4: continue with refinement loop after approval")
     parser.add_argument("--module4-timeout", type=int, default=60,
@@ -365,16 +367,20 @@ def main() -> int:
     dataset_id, parsed_subset = parse_dataset_id(args.dataset)
     subset = args.subset or parsed_subset
 
+    # 真训练时本地 smoke 没意义（合成数据 1 步），自动跳过，和 run_for_testing.py 一致
+    skip_smoke = args.module4_no_smoke or args.module4_real_training
+
     result = run_pipeline(
         args.query,
         dataset_id,
         fmt=args.fmt,
         subset=subset,
         module4_output=args.module4_output,
-        module4_skip_smoke=args.module4_no_smoke,
+        module4_skip_smoke=skip_smoke,
         module4_run_refinement=args.module4_run_refinement,
         module4_timeout=args.module4_timeout,
         module4_llm_provider=args.module4_llm_provider,
+        module4_real_training=args.module4_real_training,
     )
 
     if result["module3_input"] is None:
