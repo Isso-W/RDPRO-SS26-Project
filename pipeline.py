@@ -324,6 +324,21 @@ def run_pipeline(
     }
 
 
+def get_skrub_dag(
+    user_message: str,
+    dataset_id: str,
+    subset: str | None = None,
+):
+    """Build the pipeline as a skrub DataOps DAG for graph visualisation.
+
+    Returns a skrub deferred object — call ``.skb.describe_steps()`` for text
+    or ``.skb.draw_graph()`` for SVG (needs graphviz binary).
+    """
+    from skrub_pipeline import build_pipeline
+
+    return build_pipeline(user_message, dataset_id, subset=subset)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Jiaozi Pipeline: NL + Dataset → Model Recommendation")
     parser.add_argument("--query", required=True, help="Natural language task description")
