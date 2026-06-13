@@ -861,7 +861,7 @@ def _train_py() -> str:
             return train_indices, validation_indices
 
 
-        def _build_local_dataloader(config: dict[str, Any], split: str, batch_size: int):
+        def _build_local_dataloader(config: dict[str, Any], split: str, batch_size: int, deterministic: bool = False):
             train_csv = str(get_value(config, "train_csv", "") or "").strip()
             image_dir = str(get_value(config, "image_dir", "") or "").strip()
             if not train_csv and not image_dir:
@@ -871,7 +871,9 @@ def _train_py() -> str:
             from PIL import Image
             from torchvision import datasets as tv_datasets
 
-            transform = _build_image_transform(config, split)
+            # deterministic=True forces the eval transform (no random augmentation) so
+            # features are stable across epochs — required for the frozen-backbone cache.
+            transform = _build_image_transform(config, "test" if deterministic else split)
             seed = as_int(get_value(config, "seed", 42), 42)
             validation_fraction = as_float(get_value(config, "validation_fraction", 0.2), 0.2)
             max_samples_key = "max_train_samples" if split == "train" else "max_eval_samples"
@@ -985,14 +987,17 @@ def _train_py() -> str:
             )
 
 
-        def _build_dataloader(config: dict[str, Any], split: str = "train", batch_size: int = 32):
+        def _build_dataloader(config: dict[str, Any], split: str = "train", batch_size: int = 32, deterministic: bool = False):
             """Build a DataLoader from local Kaggle files or a HuggingFace dataset.
 
             Returns None if the dataset cannot be loaded (caller falls back to
             synthetic data).  Currently supports classification and feature_extraction;
             detection / segmentation fall back to synthetic data.
+
+            deterministic=True forces the eval transform on the train split so cached
+            frozen-backbone features stay stable across epochs.
             """
-            local_loader = _build_local_dataloader(config, split, batch_size)
+            local_loader = _build_local_dataloader(config, split, batch_size, deterministic=deterministic)
             if local_loader is not None:
                 return local_loader
 
@@ -1044,7 +1049,7 @@ def _train_py() -> str:
                 print(f"[train] Failed to load dataset {dataset_id!r}: {exc}")
                 return None
 
-            transform = _build_image_transform(config, requested_split)
+            transform = _build_image_transform(config, "test" if deterministic else requested_split)
 
             cols = ds_split.column_names
             image_col = "image" if "image" in cols else ("img" if "img" in cols else None)
@@ -1102,28 +1107,13 @@ def _train_py() -> str:
             )
 
 
-        def _classification_validation(
-            model: torch.nn.Module,
-            dataloader,
+        def _classification_metrics(
+            pred_values: torch.Tensor,
+            label_values: torch.Tensor,
+            probability_values: torch.Tensor,
             config: dict[str, Any],
-            device: torch.device,
         ) -> dict[str, float]:
-            model.eval()
-            predictions: list[torch.Tensor] = []
-            labels: list[torch.Tensor] = []
-            probabilities: list[torch.Tensor] = []
-            with torch.no_grad():
-                for x, target in dataloader:
-                    x = x.to(device, non_blocking=True)
-                    target = target.to(device, non_blocking=True)
-                    logits = model(x)
-                    probs = torch.softmax(logits, dim=1)
-                    predictions.append(probs.argmax(dim=1).cpu())
-                    labels.append(target.cpu())
-                    probabilities.append(probs.cpu())
-            pred_values = torch.cat(predictions)
-            label_values = torch.cat(labels)
-            probability_values = torch.cat(probabilities)
+            """Compute the configured validation metric from predictions/probabilities."""
             accuracy = float((pred_values == label_values).float().mean().item())
             metric_name = str(
                 get_value(config, "evaluation_metric", "accuracy") or "accuracy"
@@ -1163,12 +1153,40 @@ def _train_py() -> str:
                 print(f"[train] Validation metric {metric_name} failed: {exc}; using accuracy.")
                 metric_name = "accuracy"
                 metric_value = accuracy
-            model.train()
             return {
                 "metric_name": metric_name,
                 "metric_value": metric_value,
                 "accuracy": accuracy,
             }
+
+
+        def _classification_validation(
+            model: torch.nn.Module,
+            dataloader,
+            config: dict[str, Any],
+            device: torch.device,
+        ) -> dict[str, float]:
+            model.eval()
+            predictions: list[torch.Tensor] = []
+            labels: list[torch.Tensor] = []
+            probabilities: list[torch.Tensor] = []
+            with torch.no_grad():
+                for x, target in dataloader:
+                    x = x.to(device, non_blocking=True)
+                    target = target.to(device, non_blocking=True)
+                    logits = model(x)
+                    probs = torch.softmax(logits, dim=1)
+                    predictions.append(probs.argmax(dim=1).cpu())
+                    labels.append(target.cpu())
+                    probabilities.append(probs.cpu())
+            result = _classification_metrics(
+                torch.cat(predictions),
+                torch.cat(labels),
+                torch.cat(probabilities),
+                config,
+            )
+            model.train()
+            return result
 
 
         def _build_scheduler(
@@ -1187,6 +1205,207 @@ def _train_py() -> str:
                 T_max=max(1, int(epochs)),
                 eta_min=min_lr,
             )
+
+
+        def _backbone_is_frozen(model: torch.nn.Module) -> bool:
+            """True only when the model exposes a backbone whose params are all frozen."""
+            backbone = getattr(model, "backbone", None)
+            if backbone is None or not hasattr(model, "head"):
+                return False
+            params = list(backbone.parameters())
+            return len(params) > 0 and all(not p.requires_grad for p in params)
+
+
+        def _backbone_features(model: torch.nn.Module, x: torch.Tensor) -> torch.Tensor:
+            """Replicate the head's input: backbone output, pooled+flattened if spatial."""
+            feats = model.backbone(x)
+            if feats.dim() == 4:
+                feats = F.adaptive_avg_pool2d(feats, 1).flatten(1)
+            return feats
+
+
+        def _extract_features(model: torch.nn.Module, loader, device: torch.device):
+            model.eval()
+            feats: list[torch.Tensor] = []
+            labels: list[torch.Tensor] = []
+            with torch.no_grad():
+                for x, target in loader:
+                    x = x.to(device, non_blocking=True)
+                    f = _backbone_features(model, x).detach().float().cpu()
+                    feats.append(f)
+                    if not isinstance(target, torch.Tensor):
+                        target = torch.as_tensor(target)
+                    labels.append(target.cpu())
+            return torch.cat(feats), torch.cat(labels)
+
+
+        def _get_or_extract_features(model, loader, device, config, tag, checkpoint_dir):
+            """Extract (or load from disk) the frozen-backbone features for one split."""
+            cache_dir = Path(
+                str(get_value(config, "feature_cache_dir", str(Path(checkpoint_dir) / "feature_cache")))
+            )
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            backbone_name = str(get_value(config, "backbone", "backbone"))
+            image_size = as_int(get_value(config, "image_size", 224), 224)
+            count = len(loader.dataset)
+            cache_path = cache_dir / f"feat_{tag}_{backbone_name}_{image_size}_{count}.pt"
+            if cache_path.exists():
+                blob = torch.load(cache_path, map_location="cpu")
+                print(f"[train] Loaded cached {tag} features {tuple(blob['X'].shape)} from {cache_path}")
+                return blob["X"], blob["y"]
+            print(f"[train] Extracting {tag} features (one pass over the data)...")
+            X, y = _extract_features(model, loader, device)
+            torch.save({"X": X, "y": y}, cache_path)
+            print(f"[train] Cached {tag} features {tuple(X.shape)} to {cache_path}")
+            return X, y
+
+
+        def _train_frozen_head(
+            model,
+            validation_loader,
+            config,
+            device,
+            optimizer,
+            scheduler,
+            epochs,
+            start_epoch,
+            checkpoint_dir,
+            class_weights,
+            metric_name,
+            minimize_metric,
+            early_stopping_patience,
+            gradient_clip_norm,
+            save_every_epoch,
+        ):
+            """Extract frozen-backbone features once, then train the head on the cache.
+
+            Returns (best_metric, best_epoch, epoch_losses, validation_history,
+            loss_value, total_steps).  Saves full-model checkpoints so evaluate/infer
+            stay unchanged.
+            """
+            batch_size = as_int(get_value(config, "batch_size", 32), 32)
+            extract_bs = as_int(get_value(config, "eval_batch_size", batch_size * 2), batch_size * 2)
+            # Deterministic train loader (eval transform) so cached features are stable.
+            det_train_loader = _build_dataloader(
+                config, split="train", batch_size=extract_bs, deterministic=True
+            )
+            if det_train_loader is None:
+                raise RuntimeError("Feature cache path could not build a deterministic train loader.")
+
+            train_X, train_y = _get_or_extract_features(
+                model, det_train_loader, device, config, "train", checkpoint_dir
+            )
+            val_X = val_y = None
+            if validation_loader is not None:
+                val_X, val_y = _get_or_extract_features(
+                    model, validation_loader, device, config, "val", checkpoint_dir
+                )
+
+            head_batch = as_int(get_value(config, "head_batch_size", 256), 256)
+            feat_loader = torch.utils.data.DataLoader(
+                torch.utils.data.TensorDataset(train_X, train_y),
+                batch_size=head_batch,
+                shuffle=True,
+            )
+
+            loss_value = 0.0
+            total_steps = 0
+            epoch_losses: list[float] = []
+            validation_history: list[dict[str, Any]] = []
+            best_metric: float | None = None
+            best_epoch = 0
+            epochs_without_improvement = 0
+
+            for epoch in range(start_epoch, max(1, int(epochs))):
+                model.train()
+                epoch_loss = 0.0
+                batch_count = 0
+                for feats, target in feat_loader:
+                    feats = feats.to(device, non_blocking=True)
+                    target = target.to(device, non_blocking=True)
+                    optimizer.zero_grad(set_to_none=True)
+                    logits = model.head(feats)
+                    loss = _loss_for_output(logits, target, config, class_weights=class_weights)
+                    loss.backward()
+                    if gradient_clip_norm > 0:
+                        torch.nn.utils.clip_grad_norm_(model.head.parameters(), gradient_clip_norm)
+                    optimizer.step()
+                    loss_value = float(loss.detach().cpu().item())
+                    epoch_loss += loss_value
+                    batch_count += 1
+                    total_steps += 1
+                avg_loss = epoch_loss / max(batch_count, 1)
+                epoch_losses.append(avg_loss)
+
+                validation_result = None
+                if val_X is not None:
+                    model.eval()
+                    with torch.no_grad():
+                        logits = model.head(val_X.to(device))
+                        probs = torch.softmax(logits, dim=1).cpu()
+                    validation_result = _classification_metrics(
+                        probs.argmax(dim=1), val_y, probs, config
+                    )
+                    validation_result["epoch"] = epoch + 1
+                    validation_history.append(validation_result)
+                if scheduler is not None:
+                    scheduler.step()
+
+                current_lr = float(optimizer.param_groups[0]["lr"])
+                metric_text = ""
+                improved = best_metric is None
+                if validation_result is not None:
+                    current_metric = float(validation_result["metric_value"])
+                    improved = (
+                        best_metric is None
+                        or (current_metric < best_metric if minimize_metric else current_metric > best_metric)
+                    )
+                    metric_text = (
+                        f"  val_{validation_result['metric_name']}={current_metric:.4f}"
+                        f"  val_acc={validation_result['accuracy']:.4f}"
+                    )
+                    if improved:
+                        best_metric = current_metric
+                        best_epoch = epoch + 1
+                        epochs_without_improvement = 0
+                    else:
+                        epochs_without_improvement += 1
+
+                print(
+                    f"[train] (cached) epoch {epoch + 1}/{epochs}  loss={avg_loss:.4f}"
+                    f"{metric_text}  lr={current_lr:.2e}  steps={total_steps}"
+                )
+
+                checkpoint_payload = {
+                    "epoch": epoch + 1,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scheduler_state_dict": scheduler.state_dict() if scheduler is not None else None,
+                    "loss": avg_loss,
+                    "best_metric": best_metric,
+                    "best_epoch": best_epoch,
+                    "validation": validation_result,
+                    "config": config,
+                    "feature_cached": True,
+                }
+                torch.save(checkpoint_payload, checkpoint_dir / "last_checkpoint.pt")
+                if save_every_epoch:
+                    torch.save(checkpoint_payload, checkpoint_dir / f"checkpoint_epoch{epoch + 1}.pt")
+                if improved:
+                    torch.save(checkpoint_payload, checkpoint_dir / "best_model.pt")
+                    print(f"[train] Saved new best checkpoint at epoch {epoch + 1}")
+
+                if (
+                    early_stopping_patience > 0
+                    and epochs_without_improvement >= early_stopping_patience
+                ):
+                    print(
+                        f"[train] Early stopping after {early_stopping_patience} "
+                        "epochs without validation improvement."
+                    )
+                    break
+
+            return best_metric, best_epoch, epoch_losses, validation_history, loss_value, total_steps
 
 
         def train_model(
@@ -1298,7 +1517,51 @@ def _train_py() -> str:
                     False,
                 )
 
-                for epoch in range(start_epoch, max(1, int(epochs))):
+                # Frozen backbone + classification/feature_extraction → extract features once
+                # and train only the head on the cached vectors (≈ one data pass instead of N).
+                ran_cached = False
+                use_feature_cache = (
+                    task in ("classification", "feature_extraction")
+                    and _backbone_is_frozen(model)
+                    and as_bool(get_value(config, "feature_cache", True), True)
+                )
+                if use_feature_cache:
+                    print(
+                        "[train] Frozen backbone detected — caching features and training the "
+                        "head only (deterministic preprocessing, no random augmentation)."
+                    )
+                    (
+                        best_metric,
+                        best_epoch,
+                        cached_losses,
+                        cached_history,
+                        loss_value,
+                        cached_steps,
+                    ) = _train_frozen_head(
+                        model,
+                        validation_loader,
+                        config,
+                        device,
+                        optimizer,
+                        scheduler,
+                        max(1, int(epochs)),
+                        start_epoch,
+                        checkpoint_dir,
+                        class_weights,
+                        metric_name,
+                        minimize_metric,
+                        early_stopping_patience,
+                        gradient_clip_norm,
+                        save_every_epoch,
+                    )
+                    epoch_losses.extend(cached_losses)
+                    validation_history.extend(cached_history)
+                    total_steps += cached_steps
+                    ran_cached = True
+
+                for epoch in (
+                    range(start_epoch, max(1, int(epochs))) if not ran_cached else range(0)
+                ):
                     epoch_loss = 0.0
                     batch_count = 0
                     for x, target in dataloader:

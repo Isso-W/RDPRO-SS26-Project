@@ -110,6 +110,81 @@ def test_run_uses_trained_model_for_evaluation():
     assert "early_stopping_patience" in generated.files["train.py"]
 
 
+def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):
+    """A frozen backbone should trigger extract-once + train-head-on-cache."""
+    torch = __import__("pytest").importorskip("torch")
+    import importlib
+    import os
+    import sys
+
+    import torch.nn as nn
+
+    # Importing torch's deps in-process can mutate os.environ (e.g. KMP_DUPLICATE_LIB_OK);
+    # snapshot and restore so we don't leak into later tests.
+    env_snapshot = dict(os.environ)
+
+    generated = generate_files(_specs(), llm_provider="none")
+    for name, content in generated.files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+
+    monkeypatch.syspath_prepend(str(tmp_path))
+    for mod in ("train", "model", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+    train = importlib.import_module("train")
+
+    class _FrozenBackbone(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv = nn.Conv2d(3, 8, 3, padding=1)
+            for parameter in self.parameters():
+                parameter.requires_grad = False
+
+        def forward(self, x):
+            return self.conv(x)
+
+    class _Model(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.backbone = _FrozenBackbone()
+            self.head = nn.Linear(8, 3)
+
+        def forward(self, x):
+            feats = torch.nn.functional.adaptive_avg_pool2d(self.backbone(x), 1).flatten(1)
+            return self.head(feats)
+
+    def _fake_dataloader(config, split="train", batch_size=32, deterministic=False):
+        count = 40 if split == "train" else 12
+        dataset = torch.utils.data.TensorDataset(
+            torch.randn(count, 3, 16, 16), torch.randint(0, 3, (count,))
+        )
+        return torch.utils.data.DataLoader(dataset, batch_size=batch_size)
+
+    monkeypatch.setattr(train, "build_model", lambda config: _Model())
+    monkeypatch.setattr(train, "_build_dataloader", _fake_dataloader)
+
+    ckpt = tmp_path / "ckpt"
+    config = {
+        "task_type": "classification", "offline_smoke": False, "num_classes": 3,
+        "backbone": "resnet18", "finetune_strategy": "head_only",
+        "learning_rate": 0.01, "batch_size": 8, "image_size": 16,
+        "checkpoint_dir": str(ckpt),
+    }
+    try:
+        _model, summary = train.train_model(config, epochs=3, max_steps=0, save_dir=str(ckpt))
+
+        assert (ckpt / "best_model.pt").exists()
+        assert list((ckpt / "feature_cache").glob("feat_train_*.pt"))
+        assert list((ckpt / "feature_cache").glob("feat_val_*.pt"))
+        blob = torch.load(ckpt / "best_model.pt", map_location="cpu", weights_only=False)
+        assert blob.get("feature_cached") is True
+        assert len(summary["validation_history"]) >= 1
+    finally:
+        for mod in ("train", "model", "smoke_data", "utils"):
+            sys.modules.pop(mod, None)
+        os.environ.clear()
+        os.environ.update(env_snapshot)
+
+
 def test_feedback_is_embedded_into_generated_readme():
     generated = generate_files(_specs(), feedback="Smoke test failed.", llm_provider="none")
 
