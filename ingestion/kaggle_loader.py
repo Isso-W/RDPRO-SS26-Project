@@ -137,6 +137,60 @@ def ingest_benchmark(
     return info
 
 
+def read_class_stats(train_csv: str | Path, label_column: str) -> tuple[int, dict, int]:
+    """Read labels from the competition CSV (no image decoding).
+
+    Returns (num_classes, class_distribution, total_rows).
+    """
+    import pandas as pd
+    from collections import Counter
+
+    frame = pd.read_csv(train_csv)
+    if label_column not in frame.columns:
+        raise ValueError(
+            f"label_column {label_column!r} not in {train_csv} columns: {list(frame.columns)}"
+        )
+    labels = frame[label_column].tolist()
+    distribution = dict(Counter(labels))
+    return len(distribution), distribution, len(labels)
+
+
+def build_module3_input(
+    info: dict,
+    priority: str = "balanced",
+    description: str | None = None,
+    constraints: dict | None = None,
+) -> dict:
+    """Turn an ``ingest_benchmark`` result into a Module 3 retrieval input.
+
+    `data_size` and `class_imbalance` are derived from the CSV labels (cheap), so the
+    Kaggle flow still goes through our own Module 3 selection rather than a hard-coded
+    backbone. `priority` defaults to "balanced" (favours a finetuneable CNN — a good fit
+    for fine-grained Kaggle classification).
+    """
+    from pipeline import derive_data_size, derive_class_imbalance
+
+    num_classes, class_distribution, total = read_class_stats(
+        info["train_csv"], info["label_column"]
+    )
+    data_size = derive_data_size(total, num_classes=num_classes, task_type="classification")
+
+    merged_constraints = dict(constraints or {})
+    merged_constraints["class_imbalance"] = (
+        merged_constraints.get("class_imbalance", False)
+        or derive_class_imbalance(class_distribution)
+    )
+
+    return {
+        "task_type": "classification",
+        "data_size": data_size,
+        "priority": priority,
+        "constraints": merged_constraints,
+        "description": description or f"{info.get('benchmark', 'kaggle')} image classification",
+        "num_classes": num_classes,
+    }
+
+
 if __name__ == "__main__":
     import argparse
     import json

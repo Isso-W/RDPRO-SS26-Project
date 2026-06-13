@@ -204,13 +204,40 @@ Available Kaggle keys in the catalog: `cassava`, `state_farm`, `siim_isic`,
 `diabetic_retinopathy`. (HuggingFace-sourced keys like `cifar10` use the
 `pipeline --dataset` path instead and raise here.)
 
-### Train on it
+### End to end: select → train → predict → submit
 
-Feed `train_csv` / `image_dir` / `image_column` / `label_column` into a generated
-project's `configs.json` (top-level), then run `run.py` — Module 4's
-`_build_local_dataloader` already reads these.
+`run_kaggle_benchmark.py` ingests the competition, reads the CSV labels to build a
+Module 3 input (so selection still goes through **our** Module 3, not a hard-coded
+backbone), retrieves a config, and generates a real-training project wired to the local
+Kaggle CSV:
 
-> The competition **test** set has hidden labels: you can't score it locally. Run
-> inference over `test_dir`, write predictions in the `sample_submission.csv` format, and
-> submit with `kaggle competitions submit -c <competition> -f submission.csv -m "..."`.
-> (A prediction/submission helper is not built yet.)
+```bash
+python run_kaggle_benchmark.py cassava \
+  --data-root ./kaggle_data --output ./kaggle_run --priority balanced
+```
+
+Then train the generated project (GPU recommended):
+
+```bash
+cd kaggle_run/module4_code && python -u run.py --epochs 15
+```
+
+Finally, predict the **hidden** test set and write / submit a `submission.csv`
+(`kaggle_submit.py` reconstructs the class-index→label map from the train CSV and fills
+the `sample_submission.csv` format, matching ids by filename):
+
+```bash
+# write submission.csv only
+python kaggle_submit.py cassava --project ./kaggle_run/module4_code --data-root ./kaggle_data
+# write and submit for a leaderboard score
+python kaggle_submit.py cassava --project ./kaggle_run/module4_code --data-root ./kaggle_data \
+    --submit --message "Jiaozi efficientnet baseline"
+```
+
+> The competition test labels are hidden — you can't score locally; submission is the
+> only way to get a number. `run.py`'s own `evaluate` runs on a held-out slice of the
+> **train** split (it has labels), which is your local proxy while iterating.
+
+Lower-level building blocks if you want to wire your own flow: `ingest_benchmark()` /
+`build_module3_input()` in `ingestion/kaggle_loader.py`, and `predict_directory()` /
+`write_submission()` / `submit()` in `kaggle_submit.py`.
