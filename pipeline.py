@@ -240,6 +240,8 @@ def run_pipeline(
     module4_timeout: int = 60,
     module4_llm_provider: str | None = None,
     module4_real_training: bool = False,
+    use_recommender: bool = False,
+    recommender_memory: str | None = None,
 ) -> dict:
     """
     完整流水线入口。
@@ -284,6 +286,17 @@ def run_pipeline(
 
     # 输出结果
     print_results(m3_input, recommendations, G)
+
+    # Step 4b（可选）：累积型推荐器 — 用历史结果记忆重排 + 给出解释
+    if use_recommender:
+        from recommender import recommend, OutcomeMemory
+
+        memory = OutcomeMemory(recommender_memory) if recommender_memory else OutcomeMemory()
+        recommendations = recommend(recommendations, m2_report, m3_input, memory=memory)
+        print("[Pipeline] Recommender re-ranked candidates:")
+        for r in recommendations:
+            print(f"    [{r.get('rank_basis')}] {r.get('backbone')} — {r.get('explanation')}")
+
     task_lists = build_all_task_lists(recommendations, G, fmt=fmt)
     module4_result = None
 
@@ -362,6 +375,10 @@ def main() -> int:
     parser.add_argument("--module4-llm-provider", default=None,
                         choices=["none", "qwen", "openai", "vertex"],
                         help="Module 4 model.py provider (e.g. qwen); defaults to env var or template")
+    parser.add_argument("--use-recommender", action="store_true",
+                        help="Re-rank Module 3 candidates with the accumulating recommender (+ explanations)")
+    parser.add_argument("--recommender-memory", default=None,
+                        help="Path to the outcome-memory JSONL (default: recommender/outcomes.jsonl)")
     args = parser.parse_args()
 
     dataset_id, parsed_subset = parse_dataset_id(args.dataset)
@@ -381,6 +398,8 @@ def main() -> int:
         module4_timeout=args.module4_timeout,
         module4_llm_provider=args.module4_llm_provider,
         module4_real_training=args.module4_real_training,
+        use_recommender=args.use_recommender,
+        recommender_memory=args.recommender_memory,
     )
 
     if result["module3_input"] is None:

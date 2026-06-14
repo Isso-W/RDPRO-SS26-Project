@@ -105,3 +105,25 @@ def recommend(
     metric = str((m3_input or {}).get("evaluation_metric", "accuracy")).lower()
     minimize = metric in {"log_loss", "multiclass_log_loss", "rmse"}
     return rank_candidates(candidates, fingerprint, mem, k=k, minimize=minimize)
+
+
+def log_run(
+    m2_report: dict,
+    m3_input: dict,
+    config: dict,
+    result: dict,
+    dataset_id: str | None = None,
+    memory=None,
+) -> dict:
+    """Close the loop: fingerprint the dataset and log one run's outcome to memory.
+
+    Call this after a real training run so the next recommendation is better informed.
+    Returns the fingerprint that was logged.
+    """
+    from .fingerprint import dataset_fingerprint
+    from .outcome_memory import OutcomeMemory
+
+    fingerprint = dataset_fingerprint(m2_report, m3_input)
+    mem = memory if memory is not None else OutcomeMemory()
+    mem.log(fingerprint, config, result, dataset_id=dataset_id)
+    return fingerprint

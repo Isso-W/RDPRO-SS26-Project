@@ -54,3 +54,12 @@ next recommendation is better informed — the system improves as it is used.
    (meta-features × config → metric) to replace the kNN.
 5. **Calibration** — the eval harness logs real outcomes that both grow the memory and check
    the predictions.
+
+## Companion pillar: automated KB updating (future)
+
+The recommender ranks *within* Module 3's candidate pool — so it's capped by what the KB
+covers, and the KB is hand-curated and narrow. The missing companion is an **auto-updating
+KB**: ingest new backbones / checkpoints from HuggingFace / papers-with-code into the
+*persistent structured graph* (not MLE-STAR's ephemeral per-task web search). This combines
+MLE-STAR's currency with our structure + explainability, and keeps the candidate pool fresh
+so the recommender isn't bottlenecked. Tracked as a separate workstream.

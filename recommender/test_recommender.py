@@ -95,5 +95,32 @@ class TestMemoryRanking(unittest.TestCase):
         self.assertTrue(all(c["rank_basis"] == "heuristic" for c in ranked))
 
 
+class TestPipelineGlue(unittest.TestCase):
+    """Re-ranked candidates must stay compatible with downstream task-list building."""
+
+    def test_preserves_retrieval_output_keys(self):
+        # shape mimics retrieve_top3_hybrid output
+        candidates = [
+            {"backbone": "efficientnet", "head": "classification_head", "loss": "cross_entropy_loss",
+             "optimizer": "adam", "pretrained": "efficientnet_b0_imagenet", "finetune_strategy": "either",
+             "freeze_viable": True, "scratch_viable": True, "alt_backbones": [], "score": 0.7,
+             "score_detail": {"structured": 0.7, "vector": 0.6}},
+            {"backbone": "resnet", "head": "classification_head", "loss": "cross_entropy_loss",
+             "optimizer": "adam", "pretrained": "resnet50_imagenet", "finetune_strategy": "either",
+             "freeze_viable": True, "scratch_viable": True, "alt_backbones": [], "score": 0.8,
+             "score_detail": {"structured": 0.8, "vector": 0.6}},
+        ]
+        fp = {"task_type": "classification", "num_classes": 5, "data_size": "medium",
+              "resolution_tier": "high", "class_imbalance": False, "color_mode": "rgb"}
+        empty = OutcomeMemory(Path(tempfile.mkdtemp()) / "m.jsonl")
+        ranked = rank_candidates(candidates, fp, empty, k=5)
+        required = {"backbone", "head", "loss", "optimizer", "pretrained",
+                    "finetune_strategy", "freeze_viable", "scratch_viable", "alt_backbones", "score"}
+        for r in ranked:
+            self.assertTrue(required.issubset(r.keys()))
+            self.assertIn("explanation", r)
+            self.assertIn("rank_basis", r)
+
+
 if __name__ == "__main__":
     unittest.main()
