@@ -202,8 +202,19 @@ def write_submission(predictions, index_to_label, sample_submission, out_path):
 
 
 def _submission_status(value) -> str:
+    name = getattr(value, "name", None)
+    if name:
+        return str(name).lower()
     raw = getattr(value, "value", value)
     return str(raw or "").rsplit(".", 1)[-1].lower()
+
+
+def _submission_value(item, *names):
+    for name in names:
+        value = getattr(item, name, None)
+        if value is not None:
+            return value
+    return None
 
 
 def submit_and_poll(
@@ -231,8 +242,12 @@ def submit_and_poll(
             status = _submission_status(getattr(latest, "status", ""))
             result = {
                 "status": status or "unknown",
-                "public_score": getattr(latest, "publicScore", None),
-                "private_score": getattr(latest, "privateScore", None),
+                "public_score": _submission_value(
+                    latest, "publicScore", "public_score", "_public_score"
+                ),
+                "private_score": _submission_value(
+                    latest, "privateScore", "private_score", "_private_score"
+                ),
                 "submitted_at": str(
                     getattr(latest, "date", "") or getattr(latest, "submittedAt", "")
                 ),

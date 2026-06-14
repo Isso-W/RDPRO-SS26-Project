@@ -1,7 +1,9 @@
+from types import SimpleNamespace
+
 import pandas as pd
 import pytest
 
-from kaggle_submit import _submission_status, write_submission
+from kaggle_submit import _submission_status, _submission_value, write_submission
 
 
 def test_dog_breed_probability_submission_has_exact_order_and_sums(tmp_path):
@@ -44,3 +46,17 @@ def test_submission_rejects_missing_ids(tmp_path):
 )
 def test_submission_status_normalizes_kaggle_enum_strings(value, expected):
     assert _submission_status(value) == expected
+
+
+def test_submission_status_prefers_enum_name_over_numeric_value():
+    status = SimpleNamespace(name="COMPLETE", value=1)
+
+    assert _submission_status(status) == "complete"
+
+
+def test_submission_value_supports_new_kaggle_private_fields():
+    submission = SimpleNamespace(_public_score="0.82967", _private_score="0.82967")
+
+    assert _submission_value(
+        submission, "publicScore", "public_score", "_public_score"
+    ) == "0.82967"
