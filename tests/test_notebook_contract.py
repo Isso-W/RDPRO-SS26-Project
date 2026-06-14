@@ -11,6 +11,7 @@ def test_integration_notebook_is_colab_entrypoint_without_hyperparameter_overrid
     assert "mcp_knowledge" in text
     assert "execute_dog_breed_workflow" in text
     assert "submit_to_kaggle=True" in text
+    assert "KAGGLE_API_TOKEN" in text
     for forbidden in (
         "EPOCHS =",
         "BATCH_SIZE =",

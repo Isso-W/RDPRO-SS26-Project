@@ -86,20 +86,30 @@ elif openai_key:
 else:
     raise RuntimeError("Add JIAOZI_DASHSCOPE_API_KEY or OPENAI_API_KEY to Colab Secrets.")
 
-kaggle_json = optional_secret("KAGGLE_JSON")
 kaggle_dir = Path.home() / ".kaggle"
 kaggle_dir.mkdir(parents=True, exist_ok=True)
-if kaggle_json:
+kaggle_api_token = optional_secret("KAGGLE_API_TOKEN")
+kaggle_json = optional_secret("KAGGLE_JSON")
+if kaggle_api_token:
+    os.environ["KAGGLE_API_TOKEN"] = kaggle_api_token
+    (kaggle_dir / "access_token").write_text(kaggle_api_token, encoding="utf-8")
+    (kaggle_dir / "access_token").chmod(0o600)
+elif kaggle_json:
     credentials = json.loads(kaggle_json)
+    (kaggle_dir / "kaggle.json").write_text(json.dumps(credentials), encoding="utf-8")
+    (kaggle_dir / "kaggle.json").chmod(0o600)
 else:
     credentials = {
         "username": optional_secret("KAGGLE_USERNAME"),
         "key": optional_secret("KAGGLE_KEY"),
     }
-if not credentials.get("username") or not credentials.get("key"):
-    raise RuntimeError("Add KAGGLE_JSON or KAGGLE_USERNAME + KAGGLE_KEY to Colab Secrets.")
-(kaggle_dir / "kaggle.json").write_text(json.dumps(credentials), encoding="utf-8")
-(kaggle_dir / "kaggle.json").chmod(0o600)
+    if not credentials.get("username") or not credentials.get("key"):
+        raise RuntimeError(
+            "Add KAGGLE_API_TOKEN, KAGGLE_JSON, or KAGGLE_USERNAME + KAGGLE_KEY "
+            "to Colab Secrets."
+        )
+    (kaggle_dir / "kaggle.json").write_text(json.dumps(credentials), encoding="utf-8")
+    (kaggle_dir / "kaggle.json").chmod(0o600)
 """
     ),
     code(
