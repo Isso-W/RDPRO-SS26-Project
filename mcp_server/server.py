@@ -41,7 +41,7 @@ def summarize_source(source_id: str) -> dict:
 def extract_strategy_cards(
     source_summary_id: str,
     domain: str = "fine_grained_classification",
-) -> list[dict]:
+) -> dict:
     return extract_strategy_cards_service(app_context, source_summary_id, domain=domain)
 
 

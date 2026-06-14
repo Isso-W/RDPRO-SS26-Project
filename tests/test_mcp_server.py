@@ -1,9 +1,11 @@
 import asyncio
 import io
 from types import SimpleNamespace
+from typing import get_type_hints
 
 from agents import mcp_client
 from agents.mcp_client import call_tool, mcp_session, result_value
+from mcp_server.server import extract_strategy_cards
 
 
 EXPECTED_TOOLS = {
@@ -64,6 +66,10 @@ def test_result_value_raises_for_tool_errors():
         assert str(exc) == "invalid arguments"
     else:
         raise AssertionError("Expected MCP tool error to be raised")
+
+
+def test_extract_strategy_cards_output_contract_is_object():
+    assert get_type_hints(extract_strategy_cards)["return"] is dict
 
 
 def test_stdio_server_exposes_all_tools_and_calls_compare(tmp_path, monkeypatch):
