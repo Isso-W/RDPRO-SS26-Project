@@ -47,6 +47,7 @@ import subprocess
 from pathlib import Path
 
 REPO_DIR = Path("/content/Jiaozi")
+os.chdir("/content")
 if REPO_DIR.exists():
     shutil.rmtree(REPO_DIR)
 subprocess.run(
