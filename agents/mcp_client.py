@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import sys
-from contextlib import asynccontextmanager
+import tempfile
+from contextlib import asynccontextmanager, contextmanager
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+
+@contextmanager
+def _stdio_error_stream():
+    """Provide a real file descriptor when running inside IPython/Colab."""
+    try:
+        sys.stderr.fileno()
+    except (AttributeError, io.UnsupportedOperation):
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stream:
+            yield stream
+    else:
+        yield sys.stderr
 
 
 def result_value(result):
@@ -33,10 +47,11 @@ async def mcp_session():
         args=["-m", "mcp_server.server"],
         env=dict(os.environ),
     )
-    async with stdio_client(params) as (read_stream, write_stream):
-        async with ClientSession(read_stream, write_stream) as session:
-            await session.initialize()
-            yield session
+    with _stdio_error_stream() as errlog:
+        async with stdio_client(params, errlog=errlog) as (read_stream, write_stream):
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                yield session
 
 
 async def call_tool(session: ClientSession, name: str, arguments: dict):

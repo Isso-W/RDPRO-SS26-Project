@@ -1,5 +1,7 @@
 import asyncio
+import io
 
+from agents import mcp_client
 from agents.mcp_client import call_tool, mcp_session
 
 
@@ -17,6 +19,17 @@ EXPECTED_TOOLS = {
     "write_experiment_result",
     "generate_experiment_report",
 }
+
+
+def test_stdio_error_stream_uses_real_file_descriptor_in_notebook(monkeypatch):
+    class NotebookStream:
+        def fileno(self):
+            raise io.UnsupportedOperation("fileno")
+
+    monkeypatch.setattr(mcp_client.sys, "stderr", NotebookStream())
+
+    with mcp_client._stdio_error_stream() as stream:
+        assert isinstance(stream.fileno(), int)
 
 
 def test_stdio_server_exposes_all_tools_and_calls_compare(tmp_path, monkeypatch):
