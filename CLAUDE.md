@@ -95,6 +95,9 @@ See `docs/MODULE3_API.md` for full field reference and Module 2→3 alignment qu
                           #   real_time, edge_deployment, class_imbalance,
                           #   cross_modal, medical,
                           #   zero_shot, few_shot   ← added 2026-05-28
+                          # numeric budget (cost-aware selection, 2026-06-14):
+                          #   max_params_m  (float, M params), max_flops_g (float, GFLOPs),
+                          #   image_size    (int, default 224; scales flops budget)
     "description": str,   # free text, used for vector search
     "num_classes": int,   # optional, from Module 2; ignored by retrieval,
                           # injected into Module 4 model_config by pipeline.py

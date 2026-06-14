@@ -367,6 +367,36 @@ COMPONENTS = [
         "description": "EfficientNet-B0 pretrained on ImageNet-1k. Compact baseline; full finetune or freeze+head.",
     },
     {
+        "id": "resnet18_imagenet",
+        "name": "ResNet-18 / ImageNet-1k",
+        "component_type": "pretrained_model",
+        "hf_id": "microsoft/resnet-18",
+        "finetune_base": "resnet",
+        "pretrain_dataset": "ImageNet-1k",
+        "params_M": 11.7,
+        "task_type": ["classification", "feature_extraction"],
+        "size_tier": "small",
+        "recommended_when": {},
+        "freeze_viable": True,
+        "finetune_strategy": "either",
+        "description": "ResNet-18 pretrained on ImageNet-1k. Lightweight ResNet for tight compute/latency budgets.",
+    },
+    {
+        "id": "efficientnet_lite0",
+        "name": "EfficientNet-Lite0 / ImageNet-1k",
+        "component_type": "pretrained_model",
+        "hf_id": "timm/efficientnet_lite0.ra_in1k",
+        "finetune_base": "efficientnet",
+        "pretrain_dataset": "ImageNet-1k",
+        "params_M": 4.7,
+        "task_type": ["classification", "feature_extraction"],
+        "size_tier": "small",
+        "recommended_when": {},
+        "freeze_viable": True,
+        "finetune_strategy": "either",
+        "description": "EfficientNet-Lite0: edge-optimized EfficientNet (no SE/swish, quantization-friendly) for mobile/edge budgets.",
+    },
+    {
         "id": "swin_base_in22k",
         "name": "Swin-Base / ImageNet-22k",
         "component_type": "pretrained_model",
@@ -810,6 +840,7 @@ COMPONENTS = [
 EDGES = [
     # resnet
     ("resnet", "resnet50_imagenet",           "has_pretrained"),
+    ("resnet", "resnet18_imagenet",           "has_pretrained"),
     ("resnet", "classification_head",         "compatible_with"),
     ("resnet", "detection_head_anchor_free",   "compatible_with"),
     ("resnet", "feature_pooling_head",         "compatible_with"),
@@ -820,6 +851,7 @@ EDGES = [
 
     # efficientnet
     ("efficientnet", "efficientnet_b0_imagenet", "has_pretrained"),
+    ("efficientnet", "efficientnet_lite0",       "has_pretrained"),
     ("efficientnet", "classification_head",    "compatible_with"),
     ("efficientnet", "feature_pooling_head",   "compatible_with"),
     ("efficientnet", "cross_entropy_loss",     "compatible_with"),
@@ -1062,6 +1094,10 @@ def build_graph() -> nx.DiGraph:
     G = nx.DiGraph()
     for c in COMPONENTS:
         G.add_node(c["id"], **c)
+    # 注入 GFLOPs@224（成本模型用），集中维护在 _CHECKPOINT_FLOPS_G
+    for cid, flops in _CHECKPOINT_FLOPS_G.items():
+        if cid in G:
+            G.nodes[cid]["flops_g"] = flops
     for src, dst, rel in EDGES:
         attrs = {"relation": rel}
         attrs.update(EDGE_CONDITIONS.get((src, dst), {}))
@@ -1276,6 +1312,79 @@ _SPECIAL_CASE_REQUIRES: dict[str, tuple[str, ...]] = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 成本模型 + 预算过滤（约束感知选型，Phase 1+2）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_REF_IMAGE_SIZE = 224  # flops_g 以 224×224 为基准，其它分辨率按面积平方缩放
+
+# 各分类 checkpoint 在 224×224 下的 GFLOPs（近似值，供预算过滤用）。
+# params_M 已在节点上；FLOPs 集中放这里，build_graph 时注入为节点的 flops_g。
+_CHECKPOINT_FLOPS_G = {
+    "resnet50_imagenet":         4.1,
+    "resnet18_imagenet":         1.8,
+    "efficientnet_b0_imagenet":  0.39,
+    "efficientnet_lite0":        0.41,
+    "mobilenet_v3_imagenet":     0.22,
+    "swin_base_in22k":           15.4,
+    "swin_large_in22k":          34.5,
+    "vit_base_in21k":            17.6,
+    "vit_large_in21k":           61.6,
+    "convnext_base_in22k":       15.4,
+    "convnext_large_in22k":      34.4,
+    "dinov2_base":               23.0,
+    "dinov2_large":              81.0,
+    "clip_vit_base_32":          4.4,
+    "clip_vit_large_14":         80.8,
+}
+
+
+def _input_image_size(input_json: dict) -> int:
+    c = input_json.get("constraints", {})
+    size = input_json.get("image_size") or c.get("image_size") or _REF_IMAGE_SIZE
+    try:
+        return int(size)
+    except (TypeError, ValueError):
+        return _REF_IMAGE_SIZE
+
+
+def estimate_cost(checkpoint_id: str | None, input_json: dict, graph: nx.DiGraph) -> dict:
+    """估算某 checkpoint 在输入分辨率下的成本。
+
+    返回 {'params_m': float|None, 'flops_g': float|None}。
+    params_M 来自节点；flops_g 以 224 为基准按 (image_size/224)^2 缩放。
+    缺字段则对应项为 None（成本未知，预算过滤时放行）。head 成本通常远小于
+    backbone，这里以 backbone/checkpoint 为主，暂不计入。
+    """
+    if checkpoint_id is None or checkpoint_id not in graph:
+        return {"params_m": None, "flops_g": None}
+    node = graph.nodes[checkpoint_id]
+    flops_ref = node.get("flops_g")
+    flops_g = None
+    if flops_ref is not None:
+        scale = (_input_image_size(input_json) / _REF_IMAGE_SIZE) ** 2
+        flops_g = round(flops_ref * scale, 3)
+    return {"params_m": node.get("params_M"), "flops_g": flops_g}
+
+
+def _within_budget(checkpoint_id: str | None, input_json: dict, graph: nx.DiGraph) -> bool:
+    """checkpoint 是否在 max_params_m / max_flops_g 预算内。
+
+    无预算 → True。成本未知（None）→ True（放行，宽松）。
+    """
+    c = input_json.get("constraints", {})
+    max_params = c.get("max_params_m")
+    max_flops = c.get("max_flops_g")
+    if max_params is None and max_flops is None:
+        return True
+    cost = estimate_cost(checkpoint_id, input_json, graph)
+    if max_params is not None and cost["params_m"] is not None and cost["params_m"] > max_params:
+        return False
+    if max_flops is not None and cost["flops_g"] is not None and cost["flops_g"] > max_flops:
+        return False
+    return True
+
+
 def _select_checkpoint(
     backbone_id: str,
     task_type: str,
@@ -1294,6 +1403,7 @@ def _select_checkpoint(
         if graph[backbone_id][n]["relation"] == "has_pretrained"
         and task_type in graph.nodes[n].get("task_type", [])
         and (scale_band is None or graph.nodes[n].get("size_tier") in scale_band)
+        and _within_budget(n, input_json, graph)
     ]
     if not candidates:
         return None
@@ -1373,6 +1483,7 @@ def _get_eligible_pairs(
             if graph[node_id][n]["relation"] == "has_pretrained"
             and task_type in graph.nodes[n].get("task_type", [])
             and graph.nodes[n].get("size_tier") in scale_band
+            and _within_budget(n, input_json, graph)
         ]
 
         if cps_in_band:

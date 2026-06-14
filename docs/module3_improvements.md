@@ -91,3 +91,14 @@ to selection or the recipe is judged by **real scores**, not hand-tuning. Do thi
 1. Wire unused signals (esp. Module 2 image stats → image_size) + cost-aware tiebreak.
 2. Recipe layer v0 (image_size + lr).
 3. Catalog eval harness (in parallel, so 1–2 are measurable).
+
+## Status
+
+- **2026-06-14 — constraint-aware selection Phase 1+2 (done).** Added a cost model
+  (`estimate_cost`, per-checkpoint `flops_g`@224 scaled by image_size; `params_M` already on
+  nodes) and a numeric budget filter (`max_params_m` / `max_flops_g` in `constraints`) wired
+  into checkpoint candidate selection — over-budget checkpoints are dropped and a backbone
+  auto-downgrades to its largest fitting variant. KB gained `resnet18_imagenet` and
+  `efficientnet_lite0` for tight-budget coverage. **Still open (Phase 3):** ranking the
+  in-budget candidates by *expected accuracy* (needs the catalog/outcome memory), and broader
+  efficient-backbone coverage / compression for very tight budgets.

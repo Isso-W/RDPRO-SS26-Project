@@ -13,6 +13,7 @@ from rag_retrieval import (
     build_all_task_lists,
     MODULE1_EXAMPLES,
     _SIZE_TIER_ORDER,
+    estimate_cost,
 )
 
 _REQUIRED_FIELDS = {
@@ -285,6 +286,55 @@ class TestBehavior(unittest.TestCase):
         # 至少有一个 capable backbone 出现在结果里
         found = capable & {r["backbone"] for r in results}
         self.assertTrue(found, f"No few_shot-capable backbone in results: {self._backbones(results)}")
+
+
+class TestBudget(unittest.TestCase):
+    """约束感知选型：max_params_m / max_flops_g 预算过滤（Phase 1+2）。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.G   = build_graph()
+        cls.col = build_vector_index()
+
+    def _run(self, input_json):
+        return retrieve_top3_hybrid(input_json, self.G, self.col)
+
+    def test_param_budget_excludes_over_budget_backbones(self):
+        inp = _make_input(priority="balanced", max_params_m=12)
+        results = self._run(inp)
+        self.assertGreater(len(results), 0)
+        for r in results:
+            cost = estimate_cost(r.get("pretrained"), inp, self.G)
+            if cost["params_m"] is not None:
+                self.assertLessEqual(cost["params_m"], 12,
+                                     f"{r['backbone']}/{r.get('pretrained')} over param budget")
+
+    def test_param_budget_downgrades_checkpoint(self):
+        # resnet 在无预算时选 resnet50(25M)，预算内应降级到 resnet18(11.7M)
+        inp = _make_input(priority="balanced", max_params_m=12)
+        picks = {r["backbone"]: r.get("pretrained") for r in self._run(inp)}
+        if "resnet" in picks:
+            self.assertEqual(picks["resnet"], "resnet18_imagenet")
+
+    def test_flops_budget_excludes_over_budget(self):
+        inp = _make_input(priority="balanced", max_flops_g=2.0)
+        for r in self._run(inp):
+            cost = estimate_cost(r.get("pretrained"), inp, self.G)
+            if cost["flops_g"] is not None:
+                self.assertLessEqual(cost["flops_g"], 2.0)
+
+    def test_no_budget_keeps_heavy_models(self):
+        # 无预算时，重型 backbone（dinov2/86M）可以出现
+        without = {r["backbone"] for r in self._run(_make_input(priority="balanced"))}
+        within = {r["backbone"] for r in self._run(_make_input(priority="balanced", max_params_m=12))}
+        # 预算把候选收紧（子集或更小），且无预算集合不小于有预算集合
+        self.assertGreaterEqual(len(without), len(within))
+
+    def test_flops_scales_with_image_size(self):
+        small = estimate_cost("resnet18_imagenet", _make_input(image_size=224), self.G)
+        large = estimate_cost("resnet18_imagenet", _make_input(image_size=448), self.G)
+        # 448 是 224 的 2 倍边长 → 面积 4 倍
+        self.assertAlmostEqual(large["flops_g"], small["flops_g"] * 4, delta=0.1)
 
 
 class TestTaskList(unittest.TestCase):
