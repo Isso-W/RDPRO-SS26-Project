@@ -66,7 +66,12 @@ print(subprocess.run(["git", "rev-parse", "HEAD"], text=True, capture_output=Tru
         """import json
 from google.colab import drive, userdata
 
-drive.mount("/content/drive")
+DRIVE_AVAILABLE = False
+try:
+    drive.mount("/content/drive")
+    DRIVE_AVAILABLE = Path("/content/drive/MyDrive").exists()
+except Exception as exc:
+    print(f"Drive mount unavailable; using local Colab storage: {exc}")
 
 def optional_secret(name):
     try:
@@ -114,7 +119,11 @@ else:
 """
     ),
     code(
-        """DRIVE_ROOT = Path("/content/drive/MyDrive/Jiaozi")
+        """DRIVE_ROOT = (
+    Path("/content/drive/MyDrive/Jiaozi")
+    if DRIVE_AVAILABLE
+    else Path("/content/Jiaozi_runtime")
+)
 KB_ROOT = DRIVE_ROOT / "knowledge_base"
 WORKSPACE_ROOT = DRIVE_ROOT / "workspace"
 DATA_ROOT = DRIVE_ROOT / "kaggle_data"
