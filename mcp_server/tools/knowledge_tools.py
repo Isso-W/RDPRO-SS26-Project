@@ -38,6 +38,40 @@ def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_") or "source"
 
 
+def _priority_value(value: Any) -> float:
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        named = {"low": 0.25, "medium": 0.5, "moderate": 0.5, "high": 0.8}
+        if normalized in named:
+            return named[normalized]
+        value = normalized
+    try:
+        return min(1.0, max(0.0, float(value)))
+    except (TypeError, ValueError):
+        return 0.5
+
+
+def _risk_level(value: Any) -> str:
+    normalized = str(value or "medium").strip().lower()
+    if normalized == "moderate":
+        return "medium"
+    return normalized if normalized in {"low", "medium", "high"} else "medium"
+
+
+def _component(value: Any) -> str:
+    normalized = _slug(str(value or "augmentation"))
+    aliases = {
+        "data_augmentation": "augmentation",
+        "loss_function": "loss",
+        "learning_rate_scheduler": "scheduler",
+        "fine_tuning": "finetune",
+        "finetuning": "finetune",
+        "transfer_learning": "finetune",
+        "model": "backbone",
+    }
+    return aliases.get(normalized, normalized)
+
+
 def _clean_text(raw: str, source_type: str) -> str:
     if source_type == "html" or "<html" in raw[:1000].lower():
         parser = _TextExtractor()
@@ -197,24 +231,27 @@ def extract_strategy_cards_service(
         name = str(raw.get("strategy_name", "")).strip()
         if not name:
             continue
-        card = StrategyCard(
-            id=f"strategy_{_slug(raw.get('component', 'general'))}_{_slug(name)}_001",
-            task_type="classification",
-            domain=domain,
-            strategy_name=name,
-            component=str(raw.get("component", "augmentation")).lower(),
-            summary=str(raw.get("summary", "")),
-            use_when=list(raw.get("use_when") or []),
-            avoid_when=list(raw.get("avoid_when") or []),
-            compatible_with=list(raw.get("compatible_with") or []),
-            target_metrics=list(raw.get("target_metrics") or ["log_loss"]),
-            experiment_template=dict(raw.get("experiment_template") or {}),
-            evidence=[Evidence(source_id=source.id, note=summary.summary[:400], url=source.url)],
-            risk=str(raw.get("risk", "")),
-            risk_level=str(raw.get("risk_level", "medium")).lower(),
-            priority=float(raw.get("priority", 0.5)),
-        )
         try:
+            component = _component(raw.get("component"))
+            card = StrategyCard(
+                id=f"strategy_{_slug(component)}_{_slug(name)}_001",
+                task_type="classification",
+                domain=domain,
+                strategy_name=name,
+                component=component,
+                summary=str(raw.get("summary", "")),
+                use_when=list(raw.get("use_when") or []),
+                avoid_when=list(raw.get("avoid_when") or []),
+                compatible_with=list(raw.get("compatible_with") or []),
+                target_metrics=list(raw.get("target_metrics") or ["log_loss"]),
+                experiment_template=dict(raw.get("experiment_template") or {}),
+                evidence=[
+                    Evidence(source_id=source.id, note=summary.summary[:400], url=source.url)
+                ],
+                risk=str(raw.get("risk", "")),
+                risk_level=_risk_level(raw.get("risk_level")),
+                priority=_priority_value(raw.get("priority", 0.5)),
+            )
             cards.append(card.to_dict())
         except (TypeError, ValueError):
             continue
