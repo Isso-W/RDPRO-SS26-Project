@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from kaggle_submit import write_submission
+from kaggle_submit import _submission_status, write_submission
 
 
 def test_dog_breed_probability_submission_has_exact_order_and_sums(tmp_path):
@@ -32,3 +32,15 @@ def test_submission_rejects_missing_ids(tmp_path):
     pd.DataFrame({"id": ["missing"], "akita": [0.0]}).to_csv(sample, index=False)
     with pytest.raises(ValueError, match="no prediction"):
         write_submission([], {0: "akita"}, sample, tmp_path / "out.csv")
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("complete", "complete"),
+        ("SubmissionStatus.COMPLETE", "complete"),
+        ("SubmissionStatus.ERROR", "error"),
+    ],
+)
+def test_submission_status_normalizes_kaggle_enum_strings(value, expected):
+    assert _submission_status(value) == expected

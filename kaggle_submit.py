@@ -201,6 +201,11 @@ def write_submission(predictions, index_to_label, sample_submission, out_path):
     return out_path
 
 
+def _submission_status(value) -> str:
+    raw = getattr(value, "value", value)
+    return str(raw or "").rsplit(".", 1)[-1].lower()
+
+
 def submit_and_poll(
     competition: str,
     submission_csv: str | Path,
@@ -223,7 +228,7 @@ def submit_and_poll(
                 submissions,
                 key=lambda item: str(getattr(item, "date", "") or getattr(item, "submittedAt", "")),
             )
-            status = str(getattr(latest, "status", "") or "").lower()
+            status = _submission_status(getattr(latest, "status", ""))
             result = {
                 "status": status or "unknown",
                 "public_score": getattr(latest, "publicScore", None),
