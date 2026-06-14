@@ -51,6 +51,21 @@ def test_result_value_unwraps_string_result_envelope():
     assert result_value(result) == {"status": "success"}
 
 
+def test_result_value_raises_for_tool_errors():
+    result = SimpleNamespace(
+        isError=True,
+        structuredContent=None,
+        content=[SimpleNamespace(text="invalid arguments")],
+    )
+
+    try:
+        result_value(result)
+    except RuntimeError as exc:
+        assert str(exc) == "invalid arguments"
+    else:
+        raise AssertionError("Expected MCP tool error to be raised")
+
+
 def test_stdio_server_exposes_all_tools_and_calls_compare(tmp_path, monkeypatch):
     monkeypatch.setenv("JIAOZI_KB_ROOT", str(tmp_path / "kb"))
     monkeypatch.setenv("JIAOZI_WORKSPACE_ROOT", str(tmp_path / "workspace"))

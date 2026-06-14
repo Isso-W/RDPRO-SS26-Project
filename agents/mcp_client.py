@@ -35,6 +35,13 @@ def _stdio_error_stream():
 
 
 def result_value(result):
+    if getattr(result, "isError", False):
+        messages = [
+            getattr(item, "text", "")
+            for item in getattr(result, "content", [])
+            if getattr(item, "text", "")
+        ]
+        raise RuntimeError("\n".join(messages) or "MCP tool call failed.")
     structured = getattr(result, "structuredContent", None)
     if structured is not None:
         decoded = _decode_value(structured)
