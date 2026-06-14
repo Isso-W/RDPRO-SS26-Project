@@ -114,6 +114,7 @@ def log_run(
     result: dict,
     dataset_id: str | None = None,
     memory=None,
+    cost: dict | None = None,
 ) -> dict:
     """Close the loop: fingerprint the dataset and log one run's outcome to memory.
 
@@ -125,7 +126,7 @@ def log_run(
 
     fingerprint = dataset_fingerprint(m2_report, m3_input)
     mem = memory if memory is not None else OutcomeMemory()
-    mem.log(fingerprint, config, result, dataset_id=dataset_id)
+    mem.log(fingerprint, config, result, dataset_id=dataset_id, cost=cost)
     return fingerprint
 
 
@@ -136,6 +137,7 @@ def log_from_summary(
     config: dict | None = None,
     dataset_id: str | None = None,
     memory=None,
+    cost: dict | None = None,
 ) -> dict | None:
     """Log an outcome from a generated run.py summary (the {train, evaluate, infer} dict).
 
@@ -154,4 +156,5 @@ def log_from_summary(
         "macro_f1": evaluate.get("macro_f1"),
         "status": evaluate.get("status", summary.get("status")),
     }
-    return log_run(m2_report, m3_input, logged_config, result, dataset_id=dataset_id, memory=memory)
+    return log_run(m2_report, m3_input, logged_config, result,
+                   dataset_id=dataset_id, memory=memory, cost=cost)

@@ -61,6 +61,7 @@ def main() -> int:
     parser.add_argument("--llm-provider", default=None, choices=["none", "qwen", "openai", "vertex"])
     args = parser.parse_args()
 
+    import cost_meter
     from pipeline import parse_dataset_id, run_pipeline
     from recommender import OutcomeMemory, log_from_summary
 
@@ -68,6 +69,7 @@ def main() -> int:
     subset = args.subset or parsed_subset
     out = Path(args.output).resolve()
 
+    cost_meter.reset()   # start timing + counting LLM calls/tokens for this run
     print("[run+log] Generating real-training project via the pipeline ...")
     result = run_pipeline(
         args.query, dataset_id, fmt="nl", subset=subset,
@@ -89,6 +91,8 @@ def main() -> int:
     if completed.stderr:
         print(completed.stderr, file=sys.stderr)
     completed.check_returncode()
+    cost_meter.record_training(epochs=args.epochs, runs=1)
+    cost = cost_meter.report()
 
     summary = extract_last_json(completed.stdout)
     if not summary or "evaluate" not in summary:
@@ -98,7 +102,7 @@ def main() -> int:
     memory = OutcomeMemory(args.memory) if args.memory else OutcomeMemory()
     fingerprint = log_from_summary(
         summary, result["m2_report"], result["module3_input"],
-        config=_project_config(project), dataset_id=dataset_id, memory=memory,
+        config=_project_config(project), dataset_id=dataset_id, memory=memory, cost=cost,
     )
     if fingerprint is None:
         print("[run+log] No usable metric in the summary; nothing logged.", file=sys.stderr)
@@ -108,6 +112,8 @@ def main() -> int:
     print(f"\n[run+log] Logged outcome: {result['module3_input'].get('task_type')} "
           f"{fingerprint.get('num_classes')} classes | "
           f"{metric.get('metric_name')}={metric.get('metric_value')} -> {memory.path}")
+    print(f"[run+log] Cost: {cost['llm_calls']} LLM calls, {cost['llm_tokens']} tokens, "
+          f"{cost['epochs']} epochs, {cost['wall_clock_sec']}s wall-clock.")
     print(f"[run+log] Memory now holds {len(memory.all())} outcome(s).")
     return 0
 

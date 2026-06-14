@@ -36,6 +36,15 @@ def get_last_generation_error() -> str:
     return _LAST_GENERATION_ERROR
 
 
+def _record_llm_cost(response) -> None:
+    """Best-effort: record this LLM call + its tokens in the process cost meter."""
+    try:
+        import cost_meter
+        cost_meter.record_llm_call(cost_meter.tokens_from_response(response))
+    except Exception:
+        pass
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Provider 抽象
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -161,6 +170,7 @@ def _call_qwen(system_prompt: str, user_prompt: str) -> str | None:
                 {"role": "user", "content": user_prompt},
             ],
         )
+        _record_llm_cost(resp)
         return _response_text(resp)
     except Exception as e:
         print(f"[LLM] Qwen call failed: {e}")
@@ -193,6 +203,7 @@ def _call_openai(system_prompt: str, user_prompt: str) -> str | None:
                     {"role": "user", "content": user_prompt},
                 ],
             )
+        _record_llm_cost(resp)
         text = _response_text(resp)
         if not text:
             raise ValueError(f"Unsupported empty response type: {type(resp).__name__}")

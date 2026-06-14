@@ -173,5 +173,42 @@ class TestSummaryParsing(unittest.TestCase):
         self.assertIsNone(extract_last_json("just logs, no json here"))
 
 
+class TestCostMeter(unittest.TestCase):
+    def test_accumulates_and_reports(self):
+        import cost_meter
+        cost_meter.reset()
+        cost_meter.record_llm_call(120)
+        cost_meter.record_llm_call(80)
+        cost_meter.record_training(epochs=10, runs=1)
+        r = cost_meter.report()
+        self.assertEqual(r["llm_calls"], 2)
+        self.assertEqual(r["llm_tokens"], 200)
+        self.assertEqual(r["epochs"], 10)
+        self.assertEqual(r["train_runs"], 1)
+        self.assertIn("wall_clock_sec", r)
+
+    def test_tokens_from_response_variants(self):
+        import cost_meter
+
+        class _Usage:
+            total_tokens = 321
+
+        class _Resp:
+            usage = _Usage()
+
+        self.assertEqual(cost_meter.tokens_from_response(_Resp()), 321)
+        self.assertEqual(cost_meter.tokens_from_response({"usage": {"total_tokens": 7}}), 7)
+        self.assertEqual(cost_meter.tokens_from_response(object()), 0)
+
+    def test_cost_stored_in_memory_record(self):
+        from recommender.ranker import log_from_summary
+
+        summary = {"evaluate": {"metric_name": "accuracy", "metric_value": 0.7}}
+        mem = OutcomeMemory(Path(tempfile.mkdtemp()) / "m.jsonl")
+        log_from_summary(summary, {}, {}, config={"backbone": "resnet"}, memory=mem,
+                         cost={"llm_calls": 1, "llm_tokens": 250, "epochs": 10, "wall_clock_sec": 42.0})
+        self.assertEqual(mem.all()[0]["cost"]["llm_tokens"], 250)
+
+
 if __name__ == "__main__":
     unittest.main()

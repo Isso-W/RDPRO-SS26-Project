@@ -62,6 +62,11 @@ def extract_model_features_api(user_message: str):
                 {"role": "user", "content": user_message}
             ]
         )
+        try:
+            import cost_meter
+            cost_meter.record_llm_call(cost_meter.tokens_from_response(completion))
+        except Exception:
+            pass
         return completion.choices[0].message.content
     except Exception as e:
         print(f"[Error] {e}")
@@ -138,6 +143,11 @@ def _extract_cv_features(user_message: str) -> str | None:
                 {"role": "user", "content": user_message},
             ],
         )
+        try:
+            import cost_meter
+            cost_meter.record_llm_call(cost_meter.tokens_from_response(completion))
+        except Exception:
+            pass
         return completion.choices[0].message.content
     except Exception as e:
         print(f"[Module 1] LLM call failed: {e}")

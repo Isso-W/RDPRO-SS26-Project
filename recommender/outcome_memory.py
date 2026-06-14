@@ -25,14 +25,20 @@ class OutcomeMemory:
         config: dict,
         result: dict,
         dataset_id: str | None = None,
+        cost: dict | None = None,
     ) -> None:
-        """Append one run outcome. `result` should hold at least metric_name/metric_value."""
+        """Append one run outcome. `result` should hold at least metric_name/metric_value.
+
+        `cost` (LLM calls/tokens, train runs/epochs, wall-clock) powers the
+        quality-vs-cost comparison.
+        """
         record = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "dataset_id": dataset_id,
             "fingerprint": fingerprint,
             "config": config,
             "result": result,
+            "cost": cost or {},
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
