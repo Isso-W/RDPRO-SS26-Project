@@ -1,5 +1,20 @@
 # Jiaozi
 
+## Dog Breed MCP Experiment Agent
+
+The `mcp_knowledge` workflow adds a two-stage, low-token experiment loop for Kaggle
+Dog Breed Identification:
+
+```text
+fixed sources -> Knowledge Learner -> strategy cards -> Module 1-4 AutoPipeline
+-> baseline -> MCP MLE Agent (max 3 experiments) -> Kaggle probability submission
+```
+
+Open `integration_update_colab.ipynb` in Colab and run all cells. Training choices
+come from Jiaozi and retrieved strategy cards; the notebook does not override model
+or training hyperparameters. See `docs/MCP_KNOWLEDGE_AGENT.md` for credentials,
+storage, MCP tools, and output details.
+
 Jiaozi is a CV Auto-DL prototype. Given a natural-language task request and a
 HuggingFace image dataset id, it recommends CV model configurations and can
 generate runnable local training/evaluation/inference code.

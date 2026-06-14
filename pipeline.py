@@ -339,6 +339,114 @@ def run_pipeline(
     }
 
 
+def run_kaggle_pipeline(
+    benchmark_key: str,
+    data_root: str | Path,
+    *,
+    module4_output: str | Path,
+    force_download: bool = False,
+    module4_llm_provider: str | None = None,
+    recommender_memory: str | None = None,
+) -> dict:
+    """Run a Kaggle benchmark through the complete Module 1 -> 2 -> 3 -> recommender -> 4 path."""
+    from analyzer.image_statistics import ImageStatisticsAnalyzer
+    from features_extraction_api import module1_pipeline
+    from ingestion.kaggle_loader import build_module2_dataset, ingest_benchmark
+    from vision_benchmark_catalog import get_benchmark
+
+    benchmark = get_benchmark(benchmark_key)
+    if benchmark.get("source") != "kaggle":
+        raise ValueError(f"{benchmark_key!r} is not a Kaggle benchmark.")
+    info = ingest_benchmark(benchmark_key, data_root, force=force_download)
+
+    print("[Pipeline] Module 1: Parsing Kaggle benchmark requirements...")
+    m1_output = module1_pipeline(benchmark["query"])
+    if m1_output is None:
+        return {"module3_input": None, "recommendations": [], "task_lists": [], "module4": None}
+
+    print(f"[Pipeline] Module 2: Analyzing {info['train_csv']} and sampled images...")
+    m2_report = ImageStatisticsAnalyzer().analyze(build_module2_dataset(info))
+    expected_classes = int(benchmark["num_classes"])
+    if int(m2_report.get("num_classes") or 0) != expected_classes:
+        raise ValueError(
+            f"{benchmark_key} expected {expected_classes} classes, "
+            f"but Module 2 found {m2_report.get('num_classes')}."
+        )
+
+    m3_input = merge_modules(m1_output, m2_report)
+    m3_input["evaluation_metric"] = benchmark["metric"]
+    print(
+        f"[Pipeline] Merged: task={m3_input['task_type']} size={m3_input['data_size']} "
+        f"classes={m3_input['num_classes']} metric={m3_input['evaluation_metric']}"
+    )
+
+    print("[Pipeline] Module 3: Retrieving model configurations...")
+    from retrieval.rag_retrieval import (
+        build_all_task_lists,
+        build_graph,
+        build_vector_index,
+        print_results,
+        retrieve_top3_hybrid,
+    )
+
+    graph = build_graph()
+    collection = build_vector_index()
+    recommendations = retrieve_top3_hybrid(m3_input, graph, collection)
+    print_results(m3_input, recommendations, graph)
+
+    from recommender import OutcomeMemory, recommend
+
+    memory = OutcomeMemory(recommender_memory) if recommender_memory else OutcomeMemory()
+    recommendations = recommend(recommendations, m2_report, m3_input, memory=memory)
+    print("[Pipeline] Recommender re-ranked candidates (lower log loss is better).")
+
+    task_lists = build_all_task_lists(recommendations, graph, fmt="nl")
+    for task_list in task_lists:
+        model_config = task_list.get("model_config")
+        if not isinstance(model_config, dict):
+            continue
+        model_config.update(
+            {
+                "num_classes": expected_classes,
+                "train_csv": info["train_csv"],
+                "image_dir": info["image_dir"],
+                "image_column": info["image_column"],
+                "label_column": info["label_column"],
+                "image_path_template": info["image_path_template"],
+                "image_extension": info["image_extension"],
+                "evaluation_metric": benchmark["metric"],
+                "offline_smoke": False,
+                "benchmark_key": benchmark_key,
+                "competition": benchmark["competition"],
+            }
+        )
+        model_config.setdefault(
+            "recommended_epochs",
+            derive_recommended_epochs(
+                m3_input["data_size"],
+                model_config.get("finetune_strategy"),
+                bool(model_config.get("pretrained_hf_id")),
+            ),
+        )
+
+    module4 = run_module4_generation(
+        task_lists,
+        module4_output,
+        skip_smoke=True,
+        llm_provider=module4_llm_provider,
+    )
+    return {
+        "benchmark": benchmark,
+        "benchmark_reference": benchmark.get("standard_reference"),
+        "info": info,
+        "module3_input": m3_input,
+        "m2_report": m2_report,
+        "recommendations": recommendations,
+        "task_lists": task_lists,
+        "module4": module4,
+    }
+
+
 def get_skrub_dag(
     user_message: str,
     dataset_id: str,

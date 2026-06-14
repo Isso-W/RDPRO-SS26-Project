@@ -1,0 +1,26 @@
+{
+  "avoid_when": ["Predictions are already under-confident."],
+  "compatible_with": ["cross_entropy_loss", "mixup"],
+  "component": "loss",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "Probability calibration is important because Dog Breed uses multiclass log loss.",
+      "source_id": "fixed_kaggle_dog_breed_overview",
+      "url": "https://www.kaggle.com/competitions/dog-breed-identification/overview"
+    }
+  ],
+  "experiment_template": {
+    "label_smoothing": 0.1
+  },
+  "id": "strategy_loss_label_smoothing_001",
+  "observed_results": [],
+  "priority": 0.82,
+  "risk": "Too much smoothing can reduce separation among visually similar classes.",
+  "risk_level": "low",
+  "strategy_name": "Label Smoothing",
+  "summary": "Reduce over-confident probabilities with modest label smoothing for log-loss optimization.",
+  "target_metrics": ["log_loss"],
+  "task_type": "classification",
+  "use_when": ["The baseline is over-confident or validation log loss lags accuracy."]
+}

@@ -1,0 +1,27 @@
+{
+  "avoid_when": ["The model is underfitting or the input images are already heavily distorted."],
+  "compatible_with": ["torchvision_backbones", "fine_grained_classification"],
+  "component": "augmentation",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "Torchvision exposes RandAugment as a standard image-classification transform.",
+      "source_id": "fixed_torchvision_transforms",
+      "url": "https://docs.pytorch.org/vision/main/transforms.html"
+    }
+  ],
+  "experiment_template": {
+    "augmentation": "randaugment",
+    "randaugment_magnitude": 9
+  },
+  "id": "strategy_augmentation_randaugment_001",
+  "observed_results": [],
+  "priority": 0.86,
+  "risk": "Excessive magnitude can erase subtle breed cues.",
+  "risk_level": "medium",
+  "strategy_name": "RandAugment",
+  "summary": "Apply a reproducible moderate RandAugment policy to reduce overfitting on scarce breed examples.",
+  "target_metrics": ["log_loss"],
+  "task_type": "classification",
+  "use_when": ["There are few labeled images per class and validation loss overfits."]
+}

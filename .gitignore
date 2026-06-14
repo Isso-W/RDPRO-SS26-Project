@@ -12,5 +12,13 @@ chroma_db_kb/
 test_runs/
 CLAUDE.local.md
 workspace/
+knowledge_base/raw_sources/*
+knowledge_base/source_summaries/*
+knowledge_base/experiments/*
+knowledge_base/index/*
+!knowledge_base/raw_sources/.gitkeep
+!knowledge_base/source_summaries/.gitkeep
+!knowledge_base/experiments/.gitkeep
+!knowledge_base/index/.gitkeep
 .DS_Store
 .pytest_cache/

@@ -1,0 +1,26 @@
+{
+  "avoid_when": ["CutMix is enabled in the same experiment."],
+  "compatible_with": ["cross_entropy_loss", "label_smoothing"],
+  "component": "augmentation",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "Torchvision documents batch-level MixUp for classification.",
+      "source_id": "fixed_torchvision_mixup_cutmix",
+      "url": "https://docs.pytorch.org/vision/main/auto_examples/transforms/plot_cutmix_mixup.html"
+    }
+  ],
+  "experiment_template": {
+    "mixup_alpha": 0.2
+  },
+  "id": "strategy_augmentation_mixup_001",
+  "observed_results": [],
+  "priority": 0.78,
+  "risk": "Large alpha values may blur fine-grained visual evidence.",
+  "risk_level": "medium",
+  "strategy_name": "MixUp",
+  "summary": "Use low-strength MixUp to improve probability calibration and multiclass log loss.",
+  "target_metrics": ["log_loss"],
+  "task_type": "classification",
+  "use_when": ["The target metric rewards calibrated class probabilities."]
+}

@@ -9,6 +9,7 @@ and doubles as training data for a learned predictor later.
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
@@ -26,19 +27,23 @@ class OutcomeMemory:
         result: dict,
         dataset_id: str | None = None,
         cost: dict | None = None,
+        metadata: dict | None = None,
     ) -> None:
         """Append one run outcome. `result` should hold at least metric_name/metric_value.
 
         `cost` (LLM calls/tokens, train runs/epochs, wall-clock) powers the
         quality-vs-cost comparison.
         """
+        payload = json.dumps(config, sort_keys=True, separators=(",", ":"), default=str)
         record = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "dataset_id": dataset_id,
             "fingerprint": fingerprint,
             "config": config,
+            "config_hash": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
             "result": result,
             "cost": cost or {},
+            **(metadata or {}),
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
@@ -53,6 +58,17 @@ class OutcomeMemory:
             if line:
                 records.append(json.loads(line))
         return records
+
+    def recent(
+        self,
+        *,
+        dataset_id: str | None = None,
+        k: int = 10,
+    ) -> list[dict]:
+        records = self.all()
+        if dataset_id is not None:
+            records = [item for item in records if item.get("dataset_id") == dataset_id]
+        return list(reversed(records))[: max(0, int(k))]
 
     def query_similar(
         self,

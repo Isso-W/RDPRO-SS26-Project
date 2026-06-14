@@ -108,6 +108,10 @@ def test_run_uses_trained_model_for_evaluation():
     assert "CosineAnnealingLR" in generated.files["train.py"]
     assert "last_checkpoint.pt" in generated.files["train.py"]
     assert "early_stopping_patience" in generated.files["train.py"]
+    assert "transforms.RandAugment" in generated.files["train.py"]
+    assert "_apply_batch_regularization" in generated.files["train.py"]
+    assert "MixUp and CutMix cannot be enabled" in generated.files["train.py"]
+    assert "tta_horizontal_flip" in generated.files["evaluate.py"]
 
 
 def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):

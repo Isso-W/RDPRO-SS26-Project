@@ -231,6 +231,13 @@ def _utils_py() -> str:
                 "loss": config.get("loss", ""),
                 "optimizer": config.get("optimizer", ""),
                 "finetune_strategy": config.get("finetune_strategy", ""),
+                "augmentation": config.get("augmentation", "basic"),
+                "scheduler": config.get("scheduler", "cosine"),
+                "learning_rate": config.get("learning_rate"),
+                "label_smoothing": config.get("label_smoothing", 0.0),
+                "mixup_alpha": config.get("mixup_alpha", 0.0),
+                "cutmix_alpha": config.get("cutmix_alpha", 0.0),
+                "tta_horizontal_flip": config.get("tta_horizontal_flip", False),
             }
         '''
     ).lstrip()
@@ -338,6 +345,8 @@ def _model_utils_py() -> str:
             "convnext": "convnext_tiny",
             "convnext_tiny": "convnext_tiny",
             "regnet": "regnet_y_400mf",
+            "inception": "inception_v3",
+            "inception_v3": "inception_v3",
             "vit": "vit_b_16",
             "vit_b_16": "vit_b_16",
             "swin": "swin_t",
@@ -743,6 +752,8 @@ def _train_py() -> str:
             loss_name = str(get_value(config, "loss", "")).lower()
             label_smoothing = as_float(get_value(config, "label_smoothing", 0.0), 0.0)
             if task == "classification":
+                if isinstance(target, torch.Tensor) and target.ndim == 2:
+                    return -(target * F.log_softmax(output, dim=1)).sum(dim=1).mean()
                 if "focal" in loss_name:
                     ce = F.cross_entropy(
                         output,
@@ -808,6 +819,20 @@ def _train_py() -> str:
                         scale=(0.02, 0.15),
                         ratio=(0.3, 3.3),
                     ),
+                ])
+            if split == "train" and augmentation in {"randaugment", "rand_aug"}:
+                num_ops = as_int(get_value(config, "randaugment_num_ops", 2), 2)
+                magnitude = as_int(get_value(config, "randaugment_magnitude", 9), 9)
+                return transforms.Compose([
+                    transforms.RandomResizedCrop(
+                        image_size,
+                        scale=(0.7, 1.0),
+                        ratio=(0.75, 1.3333333333),
+                    ),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandAugment(num_ops=num_ops, magnitude=magnitude),
+                    transforms.ToTensor(),
+                    normalize,
                 ])
             if split == "train":
                 return transforms.Compose([
@@ -1122,9 +1147,10 @@ def _train_py() -> str:
             ).lower()
             metric_value = accuracy
             try:
-                from sklearn.metrics import cohen_kappa_score, log_loss, roc_auc_score
+                from sklearn.metrics import cohen_kappa_score, f1_score, log_loss, roc_auc_score
                 labels_np = label_values.numpy()
                 probabilities_np = probability_values.numpy()
+                macro_f1 = float(f1_score(labels_np, pred_values.numpy(), average="macro"))
                 if metric_name in {"qwk", "quadratic_weighted_kappa"}:
                     metric_name = "qwk"
                     metric_value = float(
@@ -1155,11 +1181,25 @@ def _train_py() -> str:
                 print(f"[train] Validation metric {metric_name} failed: {exc}; using accuracy.")
                 metric_name = "accuracy"
                 metric_value = accuracy
+                macro_f1 = 0.0
             return {
                 "metric_name": metric_name,
                 "metric_value": metric_value,
                 "accuracy": accuracy,
+                "macro_f1": macro_f1,
             }
+
+
+        def _classification_probabilities(
+            model: torch.nn.Module,
+            x: torch.Tensor,
+            config: dict[str, Any],
+        ) -> torch.Tensor:
+            probabilities = torch.softmax(model(x), dim=1)
+            if as_bool(get_value(config, "tta_horizontal_flip", False), False):
+                flipped = torch.softmax(model(torch.flip(x, dims=[3])), dim=1)
+                probabilities = (probabilities + flipped) / 2.0
+            return probabilities
 
 
         def _classification_validation(
@@ -1176,8 +1216,7 @@ def _train_py() -> str:
                 for x, target in dataloader:
                     x = x.to(device, non_blocking=True)
                     target = target.to(device, non_blocking=True)
-                    logits = model(x)
-                    probs = torch.softmax(logits, dim=1)
+                    probs = _classification_probabilities(model, x, config)
                     predictions.append(probs.argmax(dim=1).cpu())
                     labels.append(target.cpu())
                     probabilities.append(probs.cpu())
@@ -1207,6 +1246,42 @@ def _train_py() -> str:
                 T_max=max(1, int(epochs)),
                 eta_min=min_lr,
             )
+
+
+        def _apply_batch_regularization(
+            x: torch.Tensor,
+            target: torch.Tensor,
+            config: dict[str, Any],
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+            """Apply exactly one of MixUp or CutMix and return soft targets."""
+            mixup_alpha = as_float(get_value(config, "mixup_alpha", 0.0), 0.0)
+            cutmix_alpha = as_float(get_value(config, "cutmix_alpha", 0.0), 0.0)
+            if mixup_alpha > 0 and cutmix_alpha > 0:
+                raise ValueError("MixUp and CutMix cannot be enabled in the same experiment.")
+            if mixup_alpha <= 0 and cutmix_alpha <= 0:
+                return x, target
+            num_classes = max(1, as_int(get_value(config, "num_classes", 3), 3))
+            permutation = torch.randperm(x.size(0), device=x.device)
+            alpha = mixup_alpha if mixup_alpha > 0 else cutmix_alpha
+            lam = float(torch.distributions.Beta(alpha, alpha).sample().item())
+            soft = F.one_hot(target, num_classes=num_classes).float()
+            permuted_soft = soft[permutation]
+            if mixup_alpha > 0:
+                return (
+                    (lam * x) + ((1.0 - lam) * x[permutation]),
+                    (lam * soft) + ((1.0 - lam) * permuted_soft),
+                )
+            height, width = x.shape[-2:]
+            ratio = (1.0 - lam) ** 0.5
+            cut_h, cut_w = int(height * ratio), int(width * ratio)
+            center_y = int(torch.randint(0, height, (1,), device=x.device).item())
+            center_x = int(torch.randint(0, width, (1,), device=x.device).item())
+            y1, y2 = max(0, center_y - cut_h // 2), min(height, center_y + cut_h // 2)
+            x1, x2 = max(0, center_x - cut_w // 2), min(width, center_x + cut_w // 2)
+            mixed = x.clone()
+            mixed[:, :, y1:y2, x1:x2] = x[permutation, :, y1:y2, x1:x2]
+            adjusted = 1.0 - ((y2 - y1) * (x2 - x1) / max(height * width, 1))
+            return mixed, (adjusted * soft) + ((1.0 - adjusted) * permuted_soft)
 
 
         def _backbone_is_frozen(model: torch.nn.Module) -> bool:
@@ -1526,6 +1601,9 @@ def _train_py() -> str:
                     task in ("classification", "feature_extraction")
                     and _backbone_is_frozen(model)
                     and as_bool(get_value(config, "feature_cache", True), True)
+                    and str(get_value(config, "augmentation", "basic")).lower() == "basic"
+                    and as_float(get_value(config, "mixup_alpha", 0.0), 0.0) <= 0
+                    and as_float(get_value(config, "cutmix_alpha", 0.0), 0.0) <= 0
                 )
                 if use_feature_cache:
                     print(
@@ -1570,6 +1648,8 @@ def _train_py() -> str:
                         x = x.to(device, non_blocking=True)
                         if isinstance(target, torch.Tensor):
                             target = target.to(device, non_blocking=True)
+                        if task == "classification":
+                            x, target = _apply_batch_regularization(x, target, config)
                         optimizer.zero_grad(set_to_none=True)
                         with torch.autocast(
                             device_type=device.type,
@@ -1722,6 +1802,13 @@ def _train_py() -> str:
                     "loss": get_value(config, "loss", "cross_entropy_loss"),
                     "optimizer": get_value(config, "optimizer", "adamw"),
                     "finetune_strategy": get_value(config, "finetune_strategy", "head_only"),
+                    "augmentation": get_value(config, "augmentation", "basic"),
+                    "mixup_alpha": get_value(config, "mixup_alpha", 0.0),
+                    "cutmix_alpha": get_value(config, "cutmix_alpha", 0.0),
+                    "label_smoothing": get_value(config, "label_smoothing", 0.0),
+                    "scheduler": get_value(config, "scheduler", "cosine"),
+                    "learning_rate": get_value(config, "learning_rate", 1.0e-3),
+                    "tta_horizontal_flip": get_value(config, "tta_horizontal_flip", False),
                     "frozen_backbone_params": int(getattr(model, "_frozen_backbone_params", 0)),
                 },
             }
@@ -1824,8 +1911,10 @@ def _evaluate_py() -> str:
                     if isinstance(target, torch.Tensor):
                         target = target.to(device, non_blocking=True)
                     if task == "classification":
-                        logits = model(x)
-                        probabilities = torch.softmax(logits, dim=1)
+                        probabilities = torch.softmax(model(x), dim=1)
+                        if as_bool(get_value(config, "tta_horizontal_flip", False), False):
+                            flipped = torch.softmax(model(torch.flip(x, dims=[3])), dim=1)
+                            probabilities = (probabilities + flipped) / 2.0
                         preds = probabilities.argmax(dim=1)
                         all_preds.append(preds)
                         all_labels.append(target)
@@ -1940,6 +2029,14 @@ def _evaluate_py() -> str:
             model.eval()
             with torch.no_grad():
                 output = model(x)
+                if (
+                    task == "classification"
+                    and as_bool(get_value(config, "tta_horizontal_flip", False), False)
+                ):
+                    output = (
+                        torch.softmax(output, dim=1)
+                        + torch.softmax(model(torch.flip(x, dims=[3])), dim=1)
+                    ) / 2.0
 
             result: dict[str, Any] = {"params": _count_params(model)}
 

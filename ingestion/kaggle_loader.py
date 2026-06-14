@@ -22,6 +22,9 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
+from typing import Any
+
+from PIL import Image
 
 
 def _authenticate():
@@ -153,6 +156,64 @@ def read_class_stats(train_csv: str | Path, label_column: str) -> tuple[int, dic
     labels = frame[label_column].tolist()
     distribution = dict(Counter(labels))
     return len(distribution), distribution, len(labels)
+
+
+class _LocalImageSplit:
+    """Minimal Dataset-like split used by the existing Module 2 analyzer."""
+
+    column_names = ["image", "label"]
+
+    def __init__(self, image_paths: list[Path], labels: list[Any]):
+        self.image_paths = image_paths
+        self.labels = labels
+
+    def __len__(self) -> int:
+        return len(self.labels)
+
+    def __getitem__(self, key):
+        if key == "label":
+            return self.labels
+        if key == "image":
+            return [Image.open(path).convert("RGB") for path in self.image_paths]
+        path = self.image_paths[int(key)]
+        with Image.open(path) as image:
+            loaded = image.convert("RGB")
+        return {"image": loaded, "label": self.labels[int(key)]}
+
+
+def build_module2_dataset(info: dict) -> dict[str, _LocalImageSplit]:
+    """Build a lazy local dataset so Dog Breed runs the real Module 2 analyzer."""
+    import pandas as pd
+
+    frame = pd.read_csv(info["train_csv"])
+    image_column = info["image_column"]
+    label_column = info["label_column"]
+    missing = {image_column, label_column} - set(frame.columns)
+    if missing:
+        raise ValueError(f"Missing required CSV columns: {sorted(missing)}")
+    root = Path(info["image_dir"])
+    template = info.get("image_path_template", "{image}")
+    extension = info.get("image_extension", "")
+    paths = []
+    for _, row in frame.iterrows():
+        relative = template.format(
+            image=row[image_column],
+            label=row[label_column],
+        )
+        path = root / relative
+        if extension and not str(path).lower().endswith(extension.lower()):
+            path = Path(f"{path}{extension}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Training image referenced by CSV is missing: {path}")
+        paths.append(path)
+    return {"train": _LocalImageSplit(paths, frame[label_column].tolist())}
+
+
+def analyze_benchmark(info: dict) -> dict:
+    """Run the standard ImageStatisticsAnalyzer on Kaggle CSV + real image samples."""
+    from analyzer.image_statistics import ImageStatisticsAnalyzer
+
+    return ImageStatisticsAnalyzer().analyze(build_module2_dataset(info))
 
 
 def build_module3_input(

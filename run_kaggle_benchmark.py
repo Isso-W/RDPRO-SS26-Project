@@ -1,4 +1,4 @@
-"""Run a Kaggle competition benchmark through Jiaozi's own Module 3 selection.
+"""Run a Kaggle competition through Jiaozi's complete Module 1-4 pipeline.
 
 Flow:
     ingest competition data (Kaggle API)
@@ -32,71 +32,16 @@ def prepare_project(
     llm_provider: str | None = None,
     force_download: bool = False,
 ) -> dict:
-    from ingestion.kaggle_loader import ingest_benchmark, build_module3_input
+    del priority
+    from pipeline import run_kaggle_pipeline
 
-    info = ingest_benchmark(benchmark_key, data_root, force=force_download)
-    m3_input = build_module3_input(info, priority=priority)
-    print(
-        f"[kaggle] Module 3 input: data_size={m3_input['data_size']} "
-        f"num_classes={m3_input['num_classes']} "
-        f"class_imbalance={m3_input['constraints'].get('class_imbalance')}"
+    return run_kaggle_pipeline(
+        benchmark_key,
+        data_root,
+        module4_output=Path(output_dir) / "module4_code",
+        force_download=force_download,
+        module4_llm_provider=llm_provider,
     )
-
-    from retrieval.rag_retrieval import (
-        build_graph,
-        build_vector_index,
-        retrieve_top3_hybrid,
-        build_all_task_lists,
-        print_results,
-    )
-
-    graph = build_graph()
-    col = build_vector_index()
-    recommendations = retrieve_top3_hybrid(m3_input, graph, col)
-    print_results(m3_input, recommendations, graph)
-
-    task_lists = build_all_task_lists(recommendations, graph, fmt="nl")
-
-    from pipeline import derive_recommended_epochs
-
-    # Inject the local Kaggle data + real-training settings into every candidate config.
-    for task_list in task_lists:
-        mc = task_list.get("model_config")
-        if not isinstance(mc, dict):
-            continue
-        mc.setdefault("num_classes", m3_input["num_classes"])
-        mc["train_csv"] = info["train_csv"]
-        mc["image_dir"] = info["image_dir"]
-        mc["image_column"] = info["image_column"]
-        mc["label_column"] = info["label_column"]
-        mc["image_path_template"] = info["image_path_template"]
-        mc["image_extension"] = info["image_extension"]
-        mc["evaluation_metric"] = info.get("metric") or "accuracy"
-        mc["offline_smoke"] = False
-        mc.setdefault(
-            "recommended_epochs",
-            derive_recommended_epochs(
-                m3_input["data_size"],
-                mc.get("finetune_strategy"),
-                bool(mc.get("pretrained_hf_id")),
-            ),
-        )
-
-    from pipeline import run_module4_generation
-
-    module4 = run_module4_generation(
-        task_lists,
-        Path(output_dir) / "module4_code",
-        skip_smoke=True,           # real-training project; local smoke is meaningless
-        llm_provider=llm_provider,
-    )
-
-    return {
-        "info": info,
-        "module3_input": m3_input,
-        "recommendations": recommendations,
-        "module4": module4,
-    }
 
 
 def main() -> int:

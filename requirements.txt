@@ -14,6 +14,8 @@ sentence-transformers
 torch
 torchvision
 transformers
+mcp[cli]>=1.2.0
+kaggle>=1.6.0
 
 # Test runner for the module4_agent pytest suite.
 pytest

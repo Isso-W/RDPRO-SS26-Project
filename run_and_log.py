@@ -11,32 +11,15 @@ outcome memory — so the recommender gets better the more this is used.
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
 
-
-def extract_last_json(text: str) -> dict | None:
-    """Return the last decodable top-level JSON object in `text` (run.py's summary)."""
-    decoder = json.JSONDecoder()
-    last = None
-    i = 0
-    n = len(text)
-    while i < n:
-        if text[i] == "{":
-            try:
-                obj, end = decoder.raw_decode(text[i:])
-                last = obj
-                i += end
-                continue
-            except json.JSONDecodeError:
-                pass
-        i += 1
-    return last
+from module4_agent.result_parser import extract_last_json
 
 
 def _project_config(project: Path) -> dict:
+    import json
     cfg = json.loads((project / "configs.json").read_text(encoding="utf-8"))[0]
     flat = dict(cfg)
     mc = cfg.get("model_config")
@@ -63,6 +46,7 @@ def main() -> int:
 
     import cost_meter
     from pipeline import parse_dataset_id, run_pipeline
+    from module4_agent.result_parser import extract_last_json
     from recommender import OutcomeMemory, log_from_summary
 
     dataset_id, parsed_subset = parse_dataset_id(args.dataset)
@@ -81,7 +65,7 @@ def main() -> int:
         print("[run+log] Module 1 failed; aborting.", file=sys.stderr)
         return 1
 
-    project = out / "module4_code"
+    project = out
     print(f"[run+log] Training (epochs={args.epochs}) ...")
     completed = subprocess.run(
         [sys.executable, "-u", "run.py", "--epochs", str(args.epochs)],

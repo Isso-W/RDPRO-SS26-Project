@@ -7,7 +7,7 @@ name = "jiaozi"
 version = "0.1.0"
 description = "Integrated CV Auto-DL pipeline with retrieval and Module 4 code generation."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "Jiaozi Project Team" }
 ]
@@ -23,7 +23,14 @@ dependencies = [
   "torch",
   "torchvision",
   "transformers",
+  "mcp[cli]>=1.2.0",
+  "kaggle>=1.6.0",
 ]
+
+[project.scripts]
+jiaozi-mcp = "mcp_server.server:main"
+jiaozi-knowledge-learn = "agents.knowledge_learner_agent:main"
+jiaozi-mle-agent = "agents.mle_experiment_agent:main"
 
 [project.optional-dependencies]
 dev = [
@@ -32,10 +39,14 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = [
+  "agents*",
   "analyzer*",
   "features*",
   "ingestion*",
+  "knowledge*",
+  "mcp_server*",
   "module4_agent*",
   "processors*",
+  "recommender*",
   "retrieval*",
 ]

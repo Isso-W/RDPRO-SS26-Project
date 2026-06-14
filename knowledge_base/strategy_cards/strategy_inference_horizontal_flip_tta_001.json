@@ -1,0 +1,26 @@
+{
+  "avoid_when": ["Horizontal orientation changes class semantics."],
+  "compatible_with": ["classification"],
+  "component": "inference",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "Dog photographs generally preserve breed identity under horizontal reflection.",
+      "source_id": "fixed_dog_breed_solutions",
+      "url": "https://github.com/xiyinzhi/cnn_dog_breed_identification"
+    }
+  ],
+  "experiment_template": {
+    "tta_horizontal_flip": true
+  },
+  "id": "strategy_inference_horizontal_flip_tta_001",
+  "observed_results": [],
+  "priority": 0.68,
+  "risk": "Inference cost approximately doubles.",
+  "risk_level": "low",
+  "strategy_name": "Horizontal Flip TTA",
+  "summary": "Average original and horizontally flipped probabilities at evaluation and submission time.",
+  "target_metrics": ["log_loss"],
+  "task_type": "classification",
+  "use_when": ["Small log-loss improvements justify extra inference cost."]
+}

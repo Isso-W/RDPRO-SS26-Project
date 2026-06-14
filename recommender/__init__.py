@@ -18,3 +18,4 @@ __all__ = [
     "log_run",
     "log_from_summary",
 ]
+from .experiment_planner import config_hash, generate_proposals

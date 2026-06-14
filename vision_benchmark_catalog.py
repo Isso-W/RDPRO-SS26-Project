@@ -6,6 +6,27 @@ from typing import Any
 
 
 BENCHMARKS: dict[str, dict[str, Any]] = {
+    "dog_breed": {
+        "name": "Dog Breed Identification",
+        "source": "kaggle",
+        "competition": "dog-breed-identification",
+        "query": (
+            "Perform high-quality fine-grained image classification of dog breeds. "
+            "Optimize calibrated multiclass probabilities for log loss."
+        ),
+        "metric": "log_loss",
+        "num_classes": 120,
+        "baseline": None,
+        "backbone": "inception_v3",
+        "loss": "cross_entropy_loss",
+        "standard_reference": "InceptionV3 + basic classification head",
+        "csv_globs": ["**/labels.csv"],
+        "image_dir_globs": ["**/train"],
+        "image_column": "id",
+        "label_column": "breed",
+        "image_path_template": "{image}",
+        "image_extension": ".jpg",
+    },
     "cassava": {
         "name": "Cassava Leaf Disease Classification",
         "source": "kaggle",

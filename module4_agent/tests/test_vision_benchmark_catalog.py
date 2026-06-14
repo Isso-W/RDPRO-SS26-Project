@@ -9,9 +9,9 @@ def test_catalog_contains_requested_competitions_and_ten_extra_datasets():
         "diabetic_retinopathy",
     }
 
-    assert len(BENCHMARKS) == 14
+    assert len(BENCHMARKS) == 15
     assert requested.issubset(BENCHMARKS)
-    assert sum(item["source"] == "kaggle" for item in BENCHMARKS.values()) == 4
+    assert sum(item["source"] == "kaggle" for item in BENCHMARKS.values()) == 5
     assert sum(item["source"] == "huggingface" for item in BENCHMARKS.values()) == 10
 
 

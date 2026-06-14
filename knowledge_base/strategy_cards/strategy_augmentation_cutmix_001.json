@@ -1,0 +1,26 @@
+{
+  "avoid_when": ["MixUp is enabled in the same experiment."],
+  "compatible_with": ["cross_entropy_loss", "torchvision_backbones"],
+  "component": "augmentation",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "Torchvision documents CutMix as a batch transform for classification.",
+      "source_id": "fixed_torchvision_mixup_cutmix",
+      "url": "https://docs.pytorch.org/vision/main/auto_examples/transforms/plot_cutmix_mixup.html"
+    }
+  ],
+  "experiment_template": {
+    "cutmix_alpha": 0.5
+  },
+  "id": "strategy_augmentation_cutmix_001",
+  "observed_results": [],
+  "priority": 0.72,
+  "risk": "Patches can remove the local morphology needed to distinguish similar breeds.",
+  "risk_level": "medium",
+  "strategy_name": "CutMix",
+  "summary": "Use moderate CutMix as an alternative regularizer for small fine-grained datasets.",
+  "target_metrics": ["log_loss"],
+  "task_type": "classification",
+  "use_when": ["The baseline memorizes backgrounds or poses."]
+}
