@@ -43,12 +43,19 @@ next recommendation is better informed — the system improves as it is used.
   "cold start, KB heuristic"). MLE-STAR is a black box.
 - **Cheap**: instance-based (kNN), no training, no agentic loop.
 
+## Ranking tiers (best → worst signal)
+
+1. **memory** — similarity-weighted metric from past runs of the same backbone on similar
+   datasets (accumulated, free).
+2. **logme** — `logme.py` LogME transferability measured on *this* dataset's frozen features;
+   the cold-start signal when memory has no track record. Higher = better. (Implemented;
+   feature extraction is the caller's job and feeds `logme_scores` into the ranker.)
+3. **heuristic** — KB structured + vector score; last resort when neither above is available.
+
 ## Roadmap
 
-1. **Now** — kNN over outcome memory + explanation (this module), cold-start = KB heuristic.
-2. **Signal upgrade** — replace/augment the memory prediction with a **LogME / linear-probe**
-   transferability score (dataset-specific, near-zero cost; see `module3_improvements.md` §7).
-3. **Cold-start seeding** — seed the memory from public transfer benchmarks (timm / VTAB) so
+1. **Now** — kNN memory + LogME cold-start + explanation (done).
+2. **Cold-start seeding** — seed the memory from public transfer benchmarks (timm / VTAB) so
    it is useful before we have our own runs.
 4. **Learned predictor** — once the log is large, fit a lightweight regressor
    (meta-features × config → metric) to replace the kNN.

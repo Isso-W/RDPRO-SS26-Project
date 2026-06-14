@@ -233,5 +233,37 @@ class TestReport(unittest.TestCase):
         self.assertEqual(format_table(summarize([])), "(no outcomes logged yet)")
 
 
+class TestLogME(unittest.TestCase):
+    def test_monotonic_in_separability(self):
+        import numpy as np
+        from recommender.logme import logme_score
+
+        rng = np.random.default_rng(1)
+        N, D, C = 240, 12, 3
+        y = rng.integers(0, C, N)
+        centers = rng.normal(0, 5, (C, D))
+        good = centers[y] + rng.normal(0, 0.5, (N, D))
+        rand = rng.normal(0, 1, (N, D))
+        self.assertGreater(logme_score(good, y), logme_score(rand, y))
+
+    def test_logme_is_coldstart_tier(self):
+        # no memory; LogME orders the cold-start candidates, beating heuristic-only ones
+        fp = {"task_type": "classification", "num_classes": 5, "data_size": "medium"}
+        empty = OutcomeMemory(Path(tempfile.mkdtemp()) / "m.jsonl")
+        candidates = [
+            {"backbone": "resnet", "score": 0.9},          # high heuristic, but no LogME
+            {"backbone": "efficientnet", "score": 0.5},    # low heuristic, strong LogME
+            {"backbone": "mobilenet_v3", "score": 0.4},    # low heuristic, weaker LogME
+        ]
+        logme = {"efficientnet": 2.1, "mobilenet_v3": 0.3}
+        ranked = rank_candidates(candidates, fp, empty, logme_scores=logme)
+        order = [c["backbone"] for c in ranked]
+        # LogME-scored candidates rank above the heuristic-only one, best LogME first
+        self.assertEqual(order, ["efficientnet", "mobilenet_v3", "resnet"])
+        self.assertEqual(ranked[0]["rank_basis"], "logme")
+        self.assertEqual(ranked[2]["rank_basis"], "heuristic")
+        self.assertIn("LogME", ranked[0]["explanation"])
+
+
 if __name__ == "__main__":
     unittest.main()

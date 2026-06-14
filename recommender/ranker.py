@@ -36,7 +36,8 @@ def _explain(candidate: dict, fingerprint: dict, hits: list[dict]) -> str:
     checkpoint = candidate.get("pretrained")
     parts = [f"{backbone}" + (f" / {checkpoint}" if checkpoint else " (train from scratch)")]
 
-    if candidate.get("rank_basis") == "memory" and hits:
+    basis = candidate.get("rank_basis")
+    if basis == "memory" and hits:
         closest = min(hits, key=lambda h: h["distance"])
         ds = closest.get("dataset_id") or "a similar dataset"
         cm = closest.get("result", {}).get("metric_value")
@@ -44,8 +45,13 @@ def _explain(candidate: dict, fingerprint: dict, hits: list[dict]) -> str:
             f"predicted {candidate['predicted_metric']} from {len(hits)} similar past run(s); "
             f"closest: {ds} scored {cm}"
         )
+    elif basis == "logme":
+        parts.append(
+            f"no track record — LogME transferability {candidate.get('logme_score')} measured on this "
+            "dataset's frozen features (cold start)"
+        )
     else:
-        parts.append("no prior outcomes for similar tasks — ranked by KB heuristic + vector match (cold start)")
+        parts.append("no track record or LogME — ranked by KB heuristic + vector match (cold start)")
 
     sig = f"task={fingerprint.get('task_type')}, classes={fingerprint.get('num_classes')}, data={fingerprint.get('data_size')}"
     if fingerprint.get("class_imbalance"):
@@ -60,29 +66,46 @@ def rank_candidates(
     memory: OutcomeMemory,
     k: int = 5,
     minimize: bool = False,
+    logme_scores: dict | None = None,
 ) -> list[dict]:
     """Re-rank Module 3 candidates using the outcome memory; annotate each with a rationale.
 
     `minimize=True` for metrics where lower is better (e.g. log_loss).
-    Returns a new list of candidate dicts (originals untouched), each with added
-    `predicted_metric`, `memory_support`, `rank_basis`, `explanation`.
+    `logme_scores` maps backbone -> LogME transferability; used as the cold-start signal
+    (better than the KB heuristic) when memory has no track record for a candidate.
+
+    Tiers, best first: memory-backed (by predicted metric) > LogME-scored (by LogME) >
+    heuristic-only (incoming order). Each candidate gains `predicted_metric`,
+    `memory_support`, `logme_score`, `rank_basis`, `explanation`.
     """
+    logme_scores = logme_scores or {}
     with_mem: list[dict] = []
-    without_mem: list[dict] = []
+    with_logme: list[dict] = []
+    heuristic: list[dict] = []
 
     for candidate in candidates:
         pred, hits = _predict_from_memory(candidate, fingerprint, memory, k)
         enriched = dict(candidate)
         enriched["predicted_metric"] = round(pred, 4) if pred is not None else None
         enriched["memory_support"] = len(hits)
-        enriched["rank_basis"] = "memory" if pred is not None else "heuristic"
-        enriched["explanation"] = _explain(enriched, fingerprint, hits)
-        (with_mem if pred is not None else without_mem).append(enriched)
+        logme = logme_scores.get(candidate.get("backbone"))
+        enriched["logme_score"] = round(logme, 4) if logme is not None else None
 
-    # Candidates with a track record first, ordered by predicted metric.
+        if pred is not None:
+            enriched["rank_basis"] = "memory"
+            with_mem.append(enriched)
+        elif logme is not None:
+            enriched["rank_basis"] = "logme"
+            with_logme.append(enriched)
+        else:
+            enriched["rank_basis"] = "heuristic"
+            heuristic.append(enriched)
+        enriched["explanation"] = _explain(enriched, fingerprint, hits)
+
     with_mem.sort(key=lambda c: c["predicted_metric"], reverse=not minimize)
-    # Cold-start candidates keep their incoming (heuristic) order.
-    return with_mem + without_mem
+    with_logme.sort(key=lambda c: c["logme_score"], reverse=True)  # higher LogME = better
+    # heuristic-only candidates keep their incoming (KB) order
+    return with_mem + with_logme + heuristic
 
 
 def recommend(
@@ -91,11 +114,13 @@ def recommend(
     m3_input: dict,
     memory=None,
     k: int = 5,
+    logme_scores: dict | None = None,
 ) -> list[dict]:
     """High-level entry point: fingerprint the dataset, then memory-rank + explain.
 
     `candidates` is Module 3's retrieval output; `m2_report` the Module 2 analysis;
-    `m3_input` the merged Module 1+2 input. Returns ranked, explained candidates.
+    `m3_input` the merged Module 1+2 input. `logme_scores` (backbone -> LogME) is an
+    optional cold-start signal. Returns ranked, explained candidates.
     """
     from .fingerprint import dataset_fingerprint
     from .outcome_memory import OutcomeMemory
@@ -104,7 +129,8 @@ def recommend(
     mem = memory if memory is not None else OutcomeMemory()
     metric = str((m3_input or {}).get("evaluation_metric", "accuracy")).lower()
     minimize = metric in {"log_loss", "multiclass_log_loss", "rmse"}
-    return rank_candidates(candidates, fingerprint, mem, k=k, minimize=minimize)
+    return rank_candidates(candidates, fingerprint, mem, k=k, minimize=minimize,
+                           logme_scores=logme_scores)
 
 
 def log_run(
