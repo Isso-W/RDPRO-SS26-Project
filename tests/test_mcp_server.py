@@ -1,8 +1,9 @@
 import asyncio
 import io
+from types import SimpleNamespace
 
 from agents import mcp_client
-from agents.mcp_client import call_tool, mcp_session
+from agents.mcp_client import call_tool, mcp_session, result_value
 
 
 EXPECTED_TOOLS = {
@@ -30,6 +31,24 @@ def test_stdio_error_stream_uses_real_file_descriptor_in_notebook(monkeypatch):
 
     with mcp_client._stdio_error_stream() as stream:
         assert isinstance(stream.fileno(), int)
+
+
+def test_result_value_decodes_string_structured_content():
+    result = SimpleNamespace(
+        structuredContent='{"status": "success"}',
+        content=[],
+    )
+
+    assert result_value(result) == {"status": "success"}
+
+
+def test_result_value_unwraps_string_result_envelope():
+    result = SimpleNamespace(
+        structuredContent={"result": '{"status": "success"}'},
+        content=[],
+    )
+
+    assert result_value(result) == {"status": "success"}
 
 
 def test_stdio_server_exposes_all_tools_and_calls_compare(tmp_path, monkeypatch):

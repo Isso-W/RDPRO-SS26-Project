@@ -13,6 +13,15 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
+def _decode_value(value):
+    if not isinstance(value, str):
+        return value
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
 @contextmanager
 def _stdio_error_stream():
     """Provide a real file descriptor when running inside IPython/Colab."""
@@ -28,15 +37,15 @@ def _stdio_error_stream():
 def result_value(result):
     structured = getattr(result, "structuredContent", None)
     if structured is not None:
-        return structured
+        decoded = _decode_value(structured)
+        if isinstance(decoded, dict) and set(decoded) == {"result"}:
+            return _decode_value(decoded["result"])
+        return decoded
     content = getattr(result, "content", [])
     for item in content:
         text = getattr(item, "text", None)
         if text:
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                return text
+            return _decode_value(text)
     return None
 
 
