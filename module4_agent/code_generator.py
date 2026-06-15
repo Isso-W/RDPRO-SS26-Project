@@ -184,7 +184,7 @@ def _utils_py() -> str:
             if isinstance(model_config, dict):
                 merged = dict(config)
                 for key, value in model_config.items():
-                    if value is not None or key not in merged:
+                    if key not in merged or merged[key] is None:
                         merged[key] = value
                 config = merged
             return config
@@ -247,6 +247,29 @@ def _utils_py() -> str:
                 start_method = multiprocessing.get_context().get_start_method()
             # Local dataset wrappers cannot be pickled by spawn or forkserver.
             return requested if start_method == "fork" else 0
+
+
+        def multiclass_log_loss(
+            labels: torch.Tensor,
+            probabilities: torch.Tensor,
+        ) -> float:
+            labels = labels.reshape(-1).long()
+            if probabilities.ndim != 2:
+                raise ValueError("probabilities must have shape [samples, classes].")
+            if probabilities.shape[0] != labels.shape[0]:
+                raise ValueError("labels and probabilities must have the same sample count.")
+            if labels.numel() == 0:
+                raise ValueError("labels must not be empty.")
+            if int(labels.min().item()) < 0 or int(labels.max().item()) >= probabilities.shape[1]:
+                raise ValueError("labels contain an index outside the probability columns.")
+            true_probabilities = probabilities.gather(1, labels[:, None]).squeeze(1)
+            return float(
+                -torch.log(true_probabilities.clamp(min=1.0e-15, max=1.0)).mean().item()
+            )
+
+
+        def to_device(value: Any, device: torch.device):
+            return value.to(device, non_blocking=device.type == "cuda")
 
 
         def compact_config_summary(config: dict[str, Any], rank_default: int | None = None) -> dict[str, Any]:
@@ -835,7 +858,9 @@ def _train_py() -> str:
             dataloader_workers,
             default_device,
             get_value,
+            multiclass_log_loss,
             task_type,
+            to_device,
         )
 
 
@@ -1314,42 +1339,59 @@ def _train_py() -> str:
                 get_value(config, "evaluation_metric", "accuracy") or "accuracy"
             ).lower()
             metric_value = accuracy
-            try:
-                from sklearn.metrics import cohen_kappa_score, f1_score, log_loss, roc_auc_score
-                labels_np = label_values.numpy()
-                probabilities_np = probability_values.numpy()
-                macro_f1 = float(f1_score(labels_np, pred_values.numpy(), average="macro"))
-                if metric_name in {"qwk", "quadratic_weighted_kappa"}:
-                    metric_name = "qwk"
-                    metric_value = float(
-                        cohen_kappa_score(
-                            labels_np,
-                            pred_values.numpy(),
-                            weights="quadratic",
-                        )
-                    )
-                elif metric_name in {"roc_auc", "auc"}:
-                    metric_name = "roc_auc"
-                    if probabilities_np.shape[1] == 2:
-                        metric_value = float(roc_auc_score(labels_np, probabilities_np[:, 1]))
-                    else:
+            num_classes = probability_values.shape[1]
+            macro_f1 = 0.0
+            scores = []
+            for cls in range(num_classes):
+                pred_pos = pred_values == cls
+                label_pos = label_values == cls
+                tp = torch.logical_and(pred_pos, label_pos).sum().item()
+                fp = torch.logical_and(pred_pos, torch.logical_not(label_pos)).sum().item()
+                fn = torch.logical_and(torch.logical_not(pred_pos), label_pos).sum().item()
+                denominator = (2 * tp) + fp + fn
+                if denominator > 0:
+                    scores.append((2 * tp) / denominator)
+            if scores:
+                macro_f1 = float(sum(scores) / len(scores))
+
+            if metric_name in {"log_loss", "multiclass_log_loss"}:
+                metric_name = "log_loss"
+                metric_value = multiclass_log_loss(label_values, probability_values)
+            elif metric_name in {"qwk", "quadratic_weighted_kappa", "roc_auc", "auc"}:
+                try:
+                    from sklearn.metrics import cohen_kappa_score, roc_auc_score
+                    labels_np = label_values.numpy()
+                    probabilities_np = probability_values.numpy()
+                    if metric_name in {"qwk", "quadratic_weighted_kappa"}:
+                        metric_name = "qwk"
                         metric_value = float(
-                            roc_auc_score(labels_np, probabilities_np, multi_class="ovr")
+                            cohen_kappa_score(
+                                labels_np,
+                                pred_values.numpy(),
+                                weights="quadratic",
+                            )
                         )
-                elif metric_name in {"log_loss", "multiclass_log_loss"}:
-                    metric_name = "log_loss"
-                    metric_value = float(
-                        log_loss(
-                            labels_np,
-                            probabilities_np,
-                            labels=list(range(probabilities_np.shape[1])),
-                        )
+                    else:
+                        metric_name = "roc_auc"
+                        if probabilities_np.shape[1] == 2:
+                            metric_value = float(
+                                roc_auc_score(labels_np, probabilities_np[:, 1])
+                            )
+                        else:
+                            metric_value = float(
+                                roc_auc_score(
+                                    labels_np,
+                                    probabilities_np,
+                                    multi_class="ovr",
+                                )
+                            )
+                except (ImportError, ValueError) as exc:
+                    print(
+                        f"[train] Validation metric {metric_name} failed: "
+                        f"{exc}; using accuracy."
                     )
-            except (ImportError, ValueError) as exc:
-                print(f"[train] Validation metric {metric_name} failed: {exc}; using accuracy.")
-                metric_name = "accuracy"
-                metric_value = accuracy
-                macro_f1 = 0.0
+                    metric_name = "accuracy"
+                    metric_value = accuracy
             return {
                 "metric_name": metric_name,
                 "metric_value": metric_value,
@@ -1382,11 +1424,12 @@ def _train_py() -> str:
             probabilities: list[torch.Tensor] = []
             with torch.no_grad():
                 for x, target in dataloader:
-                    x = x.to(device, non_blocking=True)
-                    target = target.to(device, non_blocking=True)
+                    target_cpu = target.detach().clone()
+                    x = to_device(x, device)
+                    target = to_device(target, device)
                     probs = _classification_probabilities(model, x, config)
                     predictions.append(probs.argmax(dim=1).cpu())
-                    labels.append(target.cpu())
+                    labels.append(target_cpu)
                     probabilities.append(probs.cpu())
             result = _classification_metrics(
                 torch.cat(predictions),
@@ -1499,7 +1542,7 @@ def _train_py() -> str:
             labels: list[torch.Tensor] = []
             with torch.no_grad():
                 for x, target in loader:
-                    x = x.to(device, non_blocking=True)
+                    x = to_device(x, device)
                     f = _backbone_features(model, x).detach().float().cpu()
                     feats.append(f)
                     if not isinstance(target, torch.Tensor):
@@ -1590,8 +1633,8 @@ def _train_py() -> str:
                 epoch_loss = 0.0
                 batch_count = 0
                 for feats, target in feat_loader:
-                    feats = feats.to(device, non_blocking=True)
-                    target = target.to(device, non_blocking=True)
+                    feats = to_device(feats, device)
+                    target = to_device(target, device)
                     optimizer.zero_grad(set_to_none=True)
                     logits = model.head(feats)
                     loss = _loss_for_output(logits, target, config, class_weights=class_weights)
@@ -1838,9 +1881,9 @@ def _train_py() -> str:
                     epoch_loss = 0.0
                     batch_count = 0
                     for x, target in dataloader:
-                        x = x.to(device, non_blocking=True)
+                        x = to_device(x, device)
                         if isinstance(target, torch.Tensor):
-                            target = target.to(device, non_blocking=True)
+                            target = to_device(target, device)
                         if task == "classification":
                             x, target = _apply_batch_regularization(x, target, config)
                         optimizer.zero_grad(set_to_none=True)
@@ -2037,7 +2080,14 @@ def _imagenet_prior_py() -> str:
         import numpy as np
         import torch
 
-        from utils import as_bool, as_int, dataloader_workers, default_device, get_value
+        from utils import (
+            as_bool,
+            as_int,
+            dataloader_workers,
+            default_device,
+            get_value,
+            to_device,
+        )
 
 
         def normalize_category_name(value: Any) -> str:
@@ -2401,7 +2451,7 @@ def _imagenet_prior_py() -> str:
                 label_batches = []
                 with torch.no_grad():
                     for images, labels in loader:
-                        images = images.to(device, non_blocking=True)
+                        images = to_device(images, device)
                         probabilities = _project_logits(model(images), projection)
                         if use_tta:
                             flipped = _project_logits(
@@ -2516,7 +2566,7 @@ def _imagenet_prior_py() -> str:
                 current_names = []
                 with torch.no_grad():
                     for images, names in loader:
-                        images = images.to(device, non_blocking=True)
+                        images = to_device(images, device)
                         probabilities = _project_logits(model(images), projection)
                         if use_tta:
                             flipped = _project_logits(
@@ -2639,7 +2689,14 @@ def _evaluate_py() -> str:
 
         from imagenet_prior import apply_validation_prior
         from smoke_data import synthetic_batch
-        from utils import as_bool, as_int, get_value, task_type
+        from utils import (
+            as_bool,
+            as_int,
+            get_value,
+            multiclass_log_loss,
+            task_type,
+            to_device,
+        )
 
 
         def _macro_f1(preds: torch.Tensor, labels: torch.Tensor, num_classes: int) -> float:
@@ -2711,18 +2768,20 @@ def _evaluate_py() -> str:
             all_probabilities: list[torch.Tensor] = []
             with torch.no_grad():
                 for x, target in dataloader:
-                    x = x.to(device, non_blocking=True)
+                    x = to_device(x, device)
+                    target_cpu = None
                     if isinstance(target, torch.Tensor):
-                        target = target.to(device, non_blocking=True)
+                        target_cpu = target.detach().clone()
+                        target = to_device(target, device)
                     if task == "classification":
                         probabilities = torch.softmax(model(x), dim=1)
                         if as_bool(get_value(config, "tta_horizontal_flip", False), False):
                             flipped = torch.softmax(model(torch.flip(x, dims=[3])), dim=1)
                             probabilities = (probabilities + flipped) / 2.0
                         preds = probabilities.argmax(dim=1)
-                        all_preds.append(preds)
-                        all_labels.append(target)
-                        all_probabilities.append(probabilities)
+                        all_preds.append(preds.cpu())
+                        all_labels.append(target_cpu)
+                        all_probabilities.append(probabilities.cpu())
                     elif task == "feature_extraction":
                         output = model(x)
                         all_preds.append(output)
@@ -2733,8 +2792,8 @@ def _evaluate_py() -> str:
                         all_labels.append(target)
 
             if task == "classification":
-                labels = torch.cat(all_labels).cpu()
-                probabilities = torch.cat(all_probabilities).cpu()
+                labels = torch.cat(all_labels)
+                probabilities = torch.cat(all_probabilities)
                 probability_values, prior_metadata = apply_validation_prior(
                     probabilities.numpy(),
                     labels.numpy(),
@@ -2791,34 +2850,42 @@ def _evaluate_py() -> str:
                 requested_metric = str(get_value(config, "evaluation_metric", "accuracy") or "accuracy").lower()
                 metric_name = "accuracy"
                 metric_value = accuracy
-                try:
-                    from sklearn.metrics import cohen_kappa_score, log_loss, roc_auc_score
-                    label_values = labels.numpy()
-                    probability_values = probabilities.numpy()
-                    if requested_metric in {"qwk", "quadratic_weighted_kappa"}:
-                        metric_name = "qwk"
-                        metric_value = float(
-                            cohen_kappa_score(label_values, preds.numpy(), weights="quadratic")
-                        )
-                    elif requested_metric in {"roc_auc", "auc"}:
-                        metric_name = "roc_auc"
-                        if probability_values.shape[1] == 2:
-                            metric_value = float(roc_auc_score(label_values, probability_values[:, 1]))
-                        else:
+                if requested_metric in {"log_loss", "multiclass_log_loss"}:
+                    metric_name = "log_loss"
+                    metric_value = multiclass_log_loss(labels, probabilities)
+                elif requested_metric in {"qwk", "quadratic_weighted_kappa", "roc_auc", "auc"}:
+                    try:
+                        from sklearn.metrics import cohen_kappa_score, roc_auc_score
+                        label_values = labels.numpy()
+                        probability_values = probabilities.numpy()
+                        if requested_metric in {"qwk", "quadratic_weighted_kappa"}:
+                            metric_name = "qwk"
                             metric_value = float(
-                                roc_auc_score(label_values, probability_values, multi_class="ovr")
+                                cohen_kappa_score(
+                                    label_values,
+                                    preds.numpy(),
+                                    weights="quadratic",
+                                )
                             )
-                    elif requested_metric in {"log_loss", "multiclass_log_loss"}:
-                        metric_name = "log_loss"
-                        metric_value = float(
-                            log_loss(
-                                label_values,
-                                probability_values,
-                                labels=list(range(num_classes)),
-                            )
+                        else:
+                            metric_name = "roc_auc"
+                            if probability_values.shape[1] == 2:
+                                metric_value = float(
+                                    roc_auc_score(label_values, probability_values[:, 1])
+                                )
+                            else:
+                                metric_value = float(
+                                    roc_auc_score(
+                                        label_values,
+                                        probability_values,
+                                        multi_class="ovr",
+                                    )
+                                )
+                    except (ImportError, ValueError) as exc:
+                        print(
+                            f"[evaluate] Could not compute {requested_metric}: "
+                            f"{exc}; using accuracy."
                         )
-                except (ImportError, ValueError) as exc:
-                    print(f"[evaluate] Could not compute {requested_metric}: {exc}; using accuracy.")
                 return {
                     "metric_name": metric_name,
                     "metric_value": metric_value,

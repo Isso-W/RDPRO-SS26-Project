@@ -62,7 +62,7 @@ def train_selected_folds(
     if isinstance(nested, dict):
         merged = dict(source)
         for key, value in nested.items():
-            if value is not None or key not in merged:
+            if key not in merged or merged[key] is None:
                 merged[key] = value
         source = merged
 

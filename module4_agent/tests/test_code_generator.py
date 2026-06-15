@@ -1,4 +1,6 @@
 import json
+import math
+from types import SimpleNamespace
 
 from module4_agent.code_generator import REQUIRED_GENERATED_FILES, generate_files
 from module4_agent.spec_builder import build_training_specs
@@ -125,6 +127,11 @@ def test_run_uses_trained_model_for_evaluation():
     assert "def dataloader_workers" in generated.files["utils.py"]
     assert "workers = dataloader_workers(config)" in generated.files["train.py"]
     assert "workers = dataloader_workers(config)" in generated.files["imagenet_prior.py"]
+    assert "multiclass_log_loss(label_values, probability_values)" in generated.files["train.py"]
+    assert "multiclass_log_loss(labels, probabilities)" in generated.files["evaluate.py"]
+    assert "target_cpu = target.detach().clone()" in generated.files["train.py"]
+    assert "all_labels.append(target_cpu)" in generated.files["evaluate.py"]
+    assert "target = to_device(target, device)" in generated.files["train.py"]
 
 
 def test_generated_dataloader_workers_respects_process_start_method(monkeypatch):
@@ -139,6 +146,64 @@ def test_generated_dataloader_workers_respects_process_start_method(monkeypatch)
 
     monkeypatch.setattr(multiprocessing, "get_start_method", lambda allow_none=True: "fork")
     assert namespace["dataloader_workers"]({"num_workers": 4}) == 4
+
+
+def test_generated_multiclass_log_loss_uses_true_class_probabilities():
+    torch = __import__("pytest").importorskip("torch")
+    generated = generate_files(_specs(), llm_provider="none")
+    namespace = {}
+    exec(generated.files["utils.py"], namespace)
+
+    labels = torch.tensor([0, 1])
+    probabilities = torch.tensor([[0.8, 0.2], [0.1, 0.9]])
+    value = namespace["multiclass_log_loss"](labels, probabilities)
+
+    assert value == __import__("pytest").approx(
+        -(math.log(0.8) + math.log(0.9)) / 2,
+        rel=1.0e-6,
+    )
+
+
+def test_generated_device_transfer_is_async_only_on_cuda():
+    generated = generate_files(_specs(), llm_provider="none")
+    namespace = {}
+    exec(generated.files["utils.py"], namespace)
+
+    class Value:
+        def __init__(self):
+            self.calls = []
+
+        def to(self, device, *, non_blocking):
+            self.calls.append((device.type, non_blocking))
+            return self
+
+    value = Value()
+    namespace["to_device"](value, SimpleNamespace(type="mps"))
+    namespace["to_device"](value, SimpleNamespace(type="cuda"))
+
+    assert value.calls == [("mps", False), ("cuda", True)]
+
+
+def test_generated_normalize_config_preserves_controlled_overrides():
+    generated = generate_files(_specs(), llm_provider="none")
+    namespace = {}
+    exec(generated.files["utils.py"], namespace)
+
+    normalized = namespace["normalize_config"](
+        {
+            "recommended_epochs": 2,
+            "image_size": 336,
+            "model_config": {
+                "recommended_epochs": 20,
+                "image_size": None,
+                "evaluation_metric": "log_loss",
+            },
+        }
+    )
+
+    assert normalized["recommended_epochs"] == 2
+    assert normalized["image_size"] == 336
+    assert normalized["evaluation_metric"] == "log_loss"
 
 
 def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):

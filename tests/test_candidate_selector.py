@@ -69,3 +69,33 @@ def test_selector_ignores_failed_probe_when_another_candidate_succeeds(
     assert result["selected_index"] == 1
     assert result["trials"][0]["status"] == "failed"
     assert result["trials"][1]["status"] == "success"
+
+
+def test_selector_rejects_metric_fallback_for_lower_is_better_target(
+    tmp_path, monkeypatch
+):
+    (tmp_path / "run.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
+
+    def fake_run(command, **kwargs):
+        index = int(command[-1].split("candidate_")[1].split(".")[0])
+        summary = json.loads(_summary(0.5))
+        if index == 0:
+            summary["evaluate"]["metric_name"] = "accuracy"
+            summary["evaluate"]["metric_value"] = 0.2
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(summary),
+            stderr="",
+        )
+
+    monkeypatch.setattr("autopipeline.candidate_selector.subprocess.run", fake_run)
+    result = select_candidate(
+        tmp_path,
+        [{"backbone": "wrong-metric"}, {"backbone": "valid-log-loss"}],
+        target_metric="log_loss",
+    )
+
+    assert result["selected_index"] == 1
+    assert result["trials"][0]["status"] == "failed"
+    assert result["trials"][0]["metric_matches"] is False
+    assert result["trials"][1]["metric_matches"] is True

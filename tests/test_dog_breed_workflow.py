@@ -12,11 +12,13 @@ from dog_breed_workflow import (
 def test_flatten_config_preserves_runtime_fields():
     config = {
         "backbone": "resnet50",
+        "recommended_epochs": 2,
         "model_config": {"recommended_epochs": 12, "evaluation_metric": "log_loss"},
     }
     result = flatten_config(config)
     assert result["backbone"] == "resnet50"
-    assert result["recommended_epochs"] == 12
+    assert result["recommended_epochs"] == 2
+    assert result["evaluation_metric"] == "log_loss"
 
 
 def test_selected_experiment_falls_back_to_baseline(tmp_path):

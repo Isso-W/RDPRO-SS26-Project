@@ -12,6 +12,15 @@ from typing import Any
 from module4_agent.result_parser import extract_last_json
 
 
+def _normalized_metric_name(value: Any) -> str:
+    name = str(value or "").strip().lower()
+    return {
+        "multiclass_log_loss": "log_loss",
+        "quadratic_weighted_kappa": "qwk",
+        "auc": "roc_auc",
+    }.get(name, name)
+
+
 def flatten_candidate_config(config: dict[str, Any]) -> dict[str, Any]:
     """Merge the generated portable config with its original Module 3 payload."""
 
@@ -19,7 +28,7 @@ def flatten_candidate_config(config: dict[str, Any]) -> dict[str, Any]:
     nested = config.get("model_config")
     if isinstance(nested, dict):
         for key, value in nested.items():
-            if value is not None or key not in flattened:
+            if key not in flattened or flattened[key] is None:
                 flattened[key] = value
     return flattened
 
@@ -72,9 +81,17 @@ def select_candidate(
         summary = extract_last_json(completed.stdout)
         evaluate = (summary or {}).get("evaluate") or {}
         metric_value = evaluate.get("metric_value")
+        reported_metric = _normalized_metric_name(evaluate.get("metric_name"))
+        expected_metric = _normalized_metric_name(target_metric)
+        metric_matches = reported_metric == expected_metric
         status = (
             "success"
-            if completed.returncode == 0 and summary and metric_value is not None
+            if (
+                completed.returncode == 0
+                and summary
+                and metric_value is not None
+                and metric_matches
+            )
             else "failed"
         )
         trials.append(
@@ -83,6 +100,8 @@ def select_candidate(
                 "status": status,
                 "metric_name": evaluate.get("metric_name"),
                 "metric_value": metric_value,
+                "expected_metric": expected_metric,
+                "metric_matches": metric_matches,
                 "accuracy": evaluate.get("accuracy"),
                 "macro_f1": evaluate.get("macro_f1"),
                 "runtime_sec": runtime,

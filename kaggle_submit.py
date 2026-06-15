@@ -30,7 +30,7 @@ def _flatten_config(config: dict) -> dict:
     model_config = config.get("model_config")
     if isinstance(model_config, dict):
         for key, value in model_config.items():
-            if value is not None or key not in merged:
+            if key not in merged or merged[key] is None:
                 merged[key] = value
     return merged
 
