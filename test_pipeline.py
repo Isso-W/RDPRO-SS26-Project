@@ -328,6 +328,21 @@ class TestParseModule1Output(unittest.TestCase):
         self.assertFalse(result["constraints"]["real_time"])
         self.assertFalse(result["constraints"]["edge_deployment"])
 
+    def test_evaluation_metric_extracted(self):
+        raw = '{"task_type": "classification", "priority": "accuracy", "evaluation_metric": "qwk"}'
+        self.assertEqual(parse_module1_output(raw, "grade severity")["evaluation_metric"], "qwk")
+
+    def test_evaluation_metric_alias_and_default(self):
+        # alias AUC -> roc_auc
+        raw = '{"task_type": "classification", "evaluation_metric": "AUC"}'
+        self.assertEqual(parse_module1_output(raw, "q")["evaluation_metric"], "roc_auc")
+        # unmentioned / invalid -> accuracy
+        self.assertEqual(parse_module1_output('{"task_type": "classification"}', "q")["evaluation_metric"], "accuracy")
+        self.assertEqual(
+            parse_module1_output('{"task_type": "classification", "evaluation_metric": "top5"}', "q")["evaluation_metric"],
+            "accuracy",
+        )
+
 
 class TestParseDatasetId(unittest.TestCase):
 

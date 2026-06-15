@@ -314,6 +314,9 @@ def run_pipeline(
                 mc.setdefault("dataset_id", dataset_id)
                 if subset:
                     mc.setdefault("dataset_subset", subset)
+                # Module 1 picked the metric from the query (default accuracy); generated
+                # train/evaluate already consume evaluation_metric.
+                mc.setdefault("evaluation_metric", m3_input.get("evaluation_metric", "accuracy"))
                 mc.setdefault("recommended_epochs", derive_recommended_epochs(
                     m3_input.get("data_size", "medium"),
                     mc.get("finetune_strategy"),

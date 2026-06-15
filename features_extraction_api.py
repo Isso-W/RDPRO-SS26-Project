@@ -102,10 +102,19 @@ _CV_SYSTEM_PROMPT = textwrap.dedent("""\
        "zero_shot": zero-shot capability needed (no labeled data, zero-shot classification)
        "few_shot": few-shot capability needed (very few labeled samples)
 
+    4. evaluation_metric — exactly one of (how the model will be scored). Set it only when
+       the user mentions or clearly implies a metric; otherwise use "accuracy":
+       "accuracy"  (plain correctness)
+       "macro_f1"  (macro / per-class F1; good for imbalanced classification)
+       "roc_auc"   (ROC AUC; binary scoring, "AUC")
+       "qwk"       (quadratic weighted kappa; ordinal grading / severity levels)
+       "log_loss"  (cross-entropy / log loss; probability-calibrated scoring)
+
     Rules:
     - Only extract what the user explicitly mentions or what can be reasonably inferred.
     - Set any unmentioned constraint to false.
     - If priority cannot be determined, set it to "balanced".
+    - If no metric is mentioned, set evaluation_metric to "accuracy".
     - Output pure JSON only — no greetings, no explanations, no markdown.
 """).strip()
 
@@ -113,6 +122,13 @@ _VALID_TASK_TYPES = {
     "classification", "object_detection", "image_segmentation", "feature_extraction",
 }
 _VALID_PRIORITIES = {"speed", "accuracy", "balanced"}
+_VALID_METRICS = {"accuracy", "macro_f1", "roc_auc", "qwk", "log_loss"}
+_METRIC_ALIASES = {
+    "auc": "roc_auc", "roc": "roc_auc", "auroc": "roc_auc",
+    "f1": "macro_f1", "macro-f1": "macro_f1", "macro f1": "macro_f1", "f1_score": "macro_f1",
+    "kappa": "qwk", "cohen_kappa": "qwk", "quadratic_weighted_kappa": "qwk",
+    "logloss": "log_loss", "cross_entropy": "log_loss", "multiclass_log_loss": "log_loss",
+}
 _CONSTRAINT_KEYS = [
     "real_time", "edge_deployment", "class_imbalance",
     "cross_modal", "medical", "zero_shot", "few_shot",
@@ -193,12 +209,19 @@ def parse_module1_output(raw: str, user_message: str) -> dict:
         raw_constraints = {}
     constraints = {k: bool(raw_constraints.get(k, False)) for k in _CONSTRAINT_KEYS}
 
+    # evaluation_metric 校验 + 别名映射（LLM 没说或非法 → accuracy）
+    metric = str(parsed.get("evaluation_metric") or "").lower().strip()
+    metric = _METRIC_ALIASES.get(metric, metric)
+    if metric not in _VALID_METRICS:
+        metric = "accuracy"
+
     return {
-        "task_type":   task_type,
-        "data_size":   "medium",
-        "priority":    priority,
-        "constraints": constraints,
-        "description": user_message,
+        "task_type":         task_type,
+        "data_size":         "medium",
+        "priority":          priority,
+        "constraints":       constraints,
+        "evaluation_metric": metric,
+        "description":       user_message,
     }
 
 
