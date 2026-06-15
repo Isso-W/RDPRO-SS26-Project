@@ -166,31 +166,78 @@ def apply_calibrated_imagenet_prior(
     alpha = float(np.asarray(artifact["prior_alpha"]).item())
     if not 0.0 <= alpha <= 1.0:
         raise ValueError(f"Invalid ImageNet-prior alpha: {alpha}")
-    if alpha <= 0.0:
-        return learned_predictions, {
-            "alpha": 0.0,
-            "validation_artifact": str(artifact_path),
-            "prior_model": str(config.get("imagenet_prior_model", "")),
-        }
-
     project = Path(project_dir).resolve()
     if str(project) not in sys.path:
         sys.path.insert(0, str(project))
     from ensemble import combine_prediction_sets
-    from imagenet_prior import predict_prior_directory
+    from imagenet_prior import (
+        predict_prior_directory,
+        temperature_scale_probabilities,
+    )
+
+    def scaled_prediction_set(predictions, temperature):
+        names = [name for name, _values in predictions]
+        matrix = temperature_scale_probabilities(
+            [values for _name, values in predictions],
+            temperature,
+        )
+        return [
+            (name, [float(value) for value in row])
+            for name, row in zip(names, matrix)
+        ]
+
+    learned_temperature = (
+        float(np.asarray(artifact["learned_temperature"]).item())
+        if "learned_temperature" in artifact
+        else 1.0
+    )
+    prior_temperature = (
+        float(np.asarray(artifact["prior_temperature"]).item())
+        if "prior_temperature" in artifact
+        else 1.0
+    )
+    component_temperatures = (
+        np.asarray(artifact["prior_component_temperatures"], dtype=float).tolist()
+        if "prior_component_temperatures" in artifact
+        else None
+    )
+    component_weights = (
+        np.asarray(artifact["prior_component_weights"], dtype=float).tolist()
+        if "prior_component_weights" in artifact
+        else None
+    )
+    calibrated_learned = scaled_prediction_set(
+        learned_predictions,
+        learned_temperature,
+    )
+    if alpha <= 0.0:
+        return calibrated_learned, {
+            "alpha": 0.0,
+            "learned_temperature": learned_temperature,
+            "validation_artifact": str(artifact_path),
+            "prior_model": str(config.get("imagenet_prior_model", "")),
+        }
 
     prior_predictions, metadata = predict_prior_directory(
         config,
         image_dir,
         batch_size=batch_size,
+        component_temperatures=component_temperatures,
+        component_weights=component_weights,
+    )
+    calibrated_prior = scaled_prediction_set(
+        prior_predictions,
+        prior_temperature,
     )
     combined = combine_prediction_sets(
-        [learned_predictions, prior_predictions],
+        [calibrated_learned, calibrated_prior],
         [1.0 - alpha, alpha],
     )
     return combined, {
         **metadata,
         "alpha": alpha,
+        "learned_temperature": learned_temperature,
+        "prior_temperature": prior_temperature,
         "validation_artifact": str(artifact_path),
     }
 

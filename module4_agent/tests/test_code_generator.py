@@ -391,6 +391,37 @@ def test_generated_imagenet_prior_maps_breeds_and_calibrates_blend(
     assert alpha == pytest.approx(1.0)
     assert loss < prior.multiclass_log_loss([0, 1], learned)
     assert combined.sum(axis=1).tolist() == pytest.approx([1.0, 1.0])
+    assert prior.prior_model_specs(
+        {
+            "imagenet_prior_model": (
+                "efficientnet_v2_s,"
+                "vit_b_16@IMAGENET1K_SWAG_E2E_V1"
+            )
+        }
+    ) == [
+        "efficientnet_v2_s",
+        "vit_b_16@IMAGENET1K_SWAG_E2E_V1",
+    ]
+
+    ensemble, temperatures, weights, ensemble_loss = (
+        prior.calibrate_probability_ensemble(
+            [
+                np.asarray(
+                    [[0.9, 0.1], [0.4, 0.6], [0.55, 0.45], [0.2, 0.8]],
+                    dtype=np.float32,
+                ),
+                np.asarray(
+                    [[0.6, 0.4], [0.1, 0.9], [0.8, 0.2], [0.45, 0.55]],
+                    dtype=np.float32,
+                ),
+            ],
+            np.asarray([0, 1, 0, 1]),
+        )
+    )
+    assert len(temperatures) == 2
+    assert sum(weights) == pytest.approx(1.0)
+    assert ensemble.sum(axis=1).tolist() == pytest.approx([1.0] * 4)
+    assert ensemble_loss < 0.5
 
     sys.modules.pop("imagenet_prior", None)
     train = importlib.import_module("train")

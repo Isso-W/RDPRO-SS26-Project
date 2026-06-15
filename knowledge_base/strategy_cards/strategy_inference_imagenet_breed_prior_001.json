@@ -20,11 +20,16 @@
       "note": "A public competition solution reports strong results by ensembling only ImageNet-pretrained classifiers.",
       "source_id": "fixed_dog_breed_pretrained_models",
       "url": "https://github.com/TreB1eN/Dog-breed-competition-with-only-the-pretrained-models-from-imagenet"
+    },
+    {
+      "note": "Torchvision publishes reproducible ImageNet weights and preprocessing metadata for EfficientNetV2 and SWAG ViT classifiers.",
+      "source_id": "fixed_torchvision_classification_models",
+      "url": "https://docs.pytorch.org/vision/main/models.html#classification"
     }
   ],
   "experiment_template": {
     "imagenet_prior_blend": "auto",
-    "imagenet_prior_model": "efficientnet_v2_s"
+    "imagenet_prior_model": "efficientnet_v2_s,vit_b_16@IMAGENET1K_SWAG_E2E_V1"
   },
   "id": "strategy_inference_imagenet_breed_prior_001",
   "observed_results": [],
@@ -32,7 +37,7 @@
   "risk": "The prior may be over-confident or reflect pretraining overlap; select its weight only on validation data and record the source.",
   "risk_level": "medium",
   "strategy_name": "ImageNet Breed Prior Calibration",
-  "summary": "Project the native ImageNet dog-category probabilities into the exact 120-breed order and validation-calibrate a convex blend with the Module 4 classifier.",
+  "summary": "Project complementary EfficientNetV2 and SWAG ViT native ImageNet dog probabilities into the exact 120-breed order, temperature-calibrate them, and validation-select their blend with the Module 4 classifier.",
   "target_metrics": [
     "log_loss"
   ],

@@ -2050,6 +2050,88 @@ def _imagenet_prior_py() -> str:
             return float(-np.log(matrix[np.arange(len(targets)), targets]).mean())
 
 
+        def temperature_scale_probabilities(
+            probabilities,
+            temperature: float,
+        ) -> np.ndarray:
+            matrix = np.clip(
+                np.asarray(probabilities, dtype=np.float64),
+                1.0e-15,
+                1.0,
+            )
+            scaled = matrix ** (1.0 / max(float(temperature), 1.0e-6))
+            scaled /= scaled.sum(axis=1, keepdims=True)
+            return scaled.astype("float32")
+
+
+        def calibrate_temperature(
+            probabilities,
+            labels,
+        ) -> tuple[float, np.ndarray, float]:
+            """Choose a compact validation temperature grid for log loss."""
+            candidates = np.concatenate(
+                [
+                    np.linspace(0.5, 1.5, 21),
+                    np.asarray([1.75, 2.0], dtype=float),
+                ]
+            )
+            best_temperature = 1.0
+            best_matrix = np.asarray(probabilities, dtype=np.float32)
+            best_loss = multiclass_log_loss(labels, best_matrix)
+            for temperature in candidates:
+                scaled = temperature_scale_probabilities(
+                    probabilities,
+                    float(temperature),
+                )
+                loss = multiclass_log_loss(labels, scaled)
+                if loss < best_loss - 1.0e-12:
+                    best_temperature = float(temperature)
+                    best_matrix = scaled
+                    best_loss = float(loss)
+            return best_temperature, best_matrix, best_loss
+
+
+        def calibrate_probability_ensemble(
+            probability_sets: list[np.ndarray],
+            labels,
+        ) -> tuple[np.ndarray, list[float], list[float], float]:
+            """Temperature-calibrate up to two prior models and select their blend."""
+            if not probability_sets:
+                raise ValueError("At least one prior probability set is required.")
+            if len(probability_sets) > 2:
+                raise ValueError("At most two ImageNet prior models are supported.")
+            calibrated = []
+            temperatures = []
+            for probabilities in probability_sets:
+                temperature, matrix, _loss = calibrate_temperature(
+                    probabilities,
+                    labels,
+                )
+                temperatures.append(temperature)
+                calibrated.append(matrix)
+            if len(calibrated) == 1:
+                loss = multiclass_log_loss(labels, calibrated[0])
+                return calibrated[0], temperatures, [1.0], loss
+
+            best_matrix = calibrated[0]
+            best_weights = [1.0, 0.0]
+            best_loss = multiclass_log_loss(labels, best_matrix)
+            for unit in range(21):
+                first_weight = unit / 20.0
+                combined = (
+                    first_weight * calibrated[0]
+                    + (1.0 - first_weight) * calibrated[1]
+                )
+                combined = np.clip(combined, 1.0e-15, 1.0)
+                combined /= combined.sum(axis=1, keepdims=True)
+                loss = multiclass_log_loss(labels, combined)
+                if loss < best_loss - 1.0e-12:
+                    best_matrix = combined.astype("float32")
+                    best_weights = [first_weight, 1.0 - first_weight]
+                    best_loss = float(loss)
+            return best_matrix, temperatures, best_weights, best_loss
+
+
         def calibrate_probability_blend(
             learned_probabilities,
             prior_probabilities,
@@ -2082,6 +2164,33 @@ def _imagenet_prior_py() -> str:
             return best_alpha, np.asarray(best_matrix, dtype=np.float32), best_loss
 
 
+        def calibrate_probability_fusion(
+            learned_probabilities,
+            prior_probabilities,
+            labels,
+        ) -> tuple[float, np.ndarray, float, float, float]:
+            learned_temperature, learned, _learned_loss = calibrate_temperature(
+                learned_probabilities,
+                labels,
+            )
+            prior_temperature, prior, _prior_loss = calibrate_temperature(
+                prior_probabilities,
+                labels,
+            )
+            alpha, combined, loss = calibrate_probability_blend(
+                learned,
+                prior,
+                labels,
+            )
+            return (
+                alpha,
+                combined,
+                loss,
+                learned_temperature,
+                prior_temperature,
+            )
+
+
         def _prior_enabled(config: dict[str, Any]) -> bool:
             value = get_value(config, "imagenet_prior_blend", False)
             if isinstance(value, str):
@@ -2089,24 +2198,50 @@ def _imagenet_prior_py() -> str:
             return bool(value)
 
 
-        def _load_prior_model(config: dict[str, Any], device: torch.device):
+        def prior_model_specs(config: dict[str, Any]) -> list[str]:
+            raw = str(
+                get_value(
+                    config,
+                    "imagenet_prior_model",
+                    "efficientnet_v2_s",
+                )
+                or "efficientnet_v2_s"
+            )
+            specs = [item.strip() for item in raw.split(",") if item.strip()]
+            if not specs:
+                return ["efficientnet_v2_s"]
+            if len(specs) > 2:
+                raise ValueError("At most two ImageNet prior models are supported.")
+            return specs
+
+
+        def _load_prior_model(model_spec: str, device: torch.device):
             import torchvision.models as models
 
-            model_name = str(
-                get_value(config, "imagenet_prior_model", "efficientnet_v2_s")
-                or "efficientnet_v2_s"
-            ).strip().lower()
+            model_name, separator, weight_name = model_spec.partition("@")
+            model_name = model_name.strip().lower()
             try:
-                weights = models.get_model_weights(model_name).DEFAULT
+                weight_enum = models.get_model_weights(model_name)
+                weights = (
+                    getattr(weight_enum, weight_name.strip())
+                    if separator and weight_name.strip()
+                    else weight_enum.DEFAULT
+                )
                 model = models.get_model(model_name, weights=weights)
-            except (AttributeError, ValueError) as exc:
+            except (AttributeError, KeyError, ValueError) as exc:
                 raise ValueError(
-                    f"Unsupported torchvision ImageNet prior model: {model_name}"
+                    f"Unsupported torchvision ImageNet prior model: {model_spec}"
                 ) from exc
             model.to(device).eval()
             for parameter in model.parameters():
                 parameter.requires_grad = False
-            return model, weights, model_name
+            return model, weights, model_spec
+
+
+        def _effective_prior_batch_size(model_spec: str, requested: int) -> int:
+            model_name = model_spec.partition("@")[0].strip().lower()
+            limit = 8 if model_name.startswith(("vit_", "swin")) else 16
+            return max(1, min(limit, int(requested)))
 
 
         def _csv_prior_loader(
@@ -2205,47 +2340,79 @@ def _imagenet_prior_py() -> str:
             device: torch.device,
             batch_size: int,
         ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
-            """Run the native ImageNet classifier on the configured validation fold."""
-            model, weights, model_name = _load_prior_model(config, device)
-            loader, label_names = _csv_prior_loader(
-                config,
-                weights.transforms(),
-                split="test",
-                batch_size=batch_size,
-            )
-            categories = list(weights.meta["categories"])
-            projection = build_label_projection(label_names, categories)
-            probability_batches = []
-            label_batches = []
+            """Run and validation-calibrate native ImageNet classifiers."""
+            model_specs = prior_model_specs(config)
+            probability_sets = []
+            labels_reference = None
+            label_names_reference = None
+            projections = []
             use_tta = as_bool(
                 get_value(config, "tta_horizontal_flip", False),
                 False,
             )
-            with torch.no_grad():
-                for images, labels in loader:
-                    images = images.to(device, non_blocking=True)
-                    probabilities = _project_logits(model(images), projection)
-                    if use_tta:
-                        flipped = _project_logits(
-                            model(torch.flip(images, dims=[3])),
-                            projection,
-                        )
-                        probabilities = (probabilities + flipped) / 2.0
-                    probability_batches.append(probabilities.cpu())
-                    label_batches.append(labels.cpu())
-            del model
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            metadata = {
-                "prior_model": model_name,
-                "imagenet_indices": projection,
-                "label_names": label_names,
-            }
-            return (
-                torch.cat(probability_batches).numpy().astype("float32"),
-                torch.cat(label_batches).numpy().astype("int64"),
-                metadata,
+            for model_spec in model_specs:
+                model, weights, _loaded_spec = _load_prior_model(model_spec, device)
+                loader, label_names = _csv_prior_loader(
+                    config,
+                    weights.transforms(),
+                    split="test",
+                    batch_size=_effective_prior_batch_size(
+                        model_spec,
+                        batch_size,
+                    ),
+                )
+                projection = build_label_projection(
+                    label_names,
+                    list(weights.meta["categories"]),
+                )
+                probability_batches = []
+                label_batches = []
+                with torch.no_grad():
+                    for images, labels in loader:
+                        images = images.to(device, non_blocking=True)
+                        probabilities = _project_logits(model(images), projection)
+                        if use_tta:
+                            flipped = _project_logits(
+                                model(torch.flip(images, dims=[3])),
+                                projection,
+                            )
+                            probabilities = (probabilities + flipped) / 2.0
+                        probability_batches.append(probabilities.cpu())
+                        label_batches.append(labels.cpu())
+                current_probabilities = (
+                    torch.cat(probability_batches).numpy().astype("float32")
+                )
+                current_labels = torch.cat(label_batches).numpy().astype("int64")
+                if labels_reference is None:
+                    labels_reference = current_labels
+                    label_names_reference = label_names
+                elif not np.array_equal(labels_reference, current_labels):
+                    raise ValueError("ImageNet prior validation models are not aligned.")
+                probability_sets.append(current_probabilities)
+                projections.append(projection)
+                del model
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            (
+                combined,
+                component_temperatures,
+                component_weights,
+                component_log_loss,
+            ) = calibrate_probability_ensemble(
+                probability_sets,
+                labels_reference,
             )
+            metadata = {
+                "prior_model": ",".join(model_specs),
+                "prior_models": model_specs,
+                "prior_component_temperatures": component_temperatures,
+                "prior_component_weights": component_weights,
+                "prior_component_log_loss": component_log_loss,
+                "imagenet_indices": projections[0],
+                "imagenet_indices_by_model": projections,
+                "label_names": label_names_reference,
+            }
+            return combined, labels_reference, metadata
 
 
         def predict_prior_directory(
@@ -2253,13 +2420,15 @@ def _imagenet_prior_py() -> str:
             image_dir: str | Path,
             *,
             batch_size: int = 16,
+            component_temperatures: list[float] | None = None,
+            component_weights: list[float] | None = None,
         ) -> tuple[list[tuple[str, list[float]]], dict[str, Any]]:
-            """Run projected native ImageNet probabilities on a test directory."""
+            """Run the validation-selected native ImageNet prior ensemble."""
             import pandas as pd
             from PIL import Image
 
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            model, weights, model_name = _load_prior_model(config, device)
+            model_specs = prior_model_specs(config)
             csv_path = Path(str(get_value(config, "train_csv", ""))).expanduser().resolve()
             frame = pd.read_csv(csv_path)
             label_column = str(get_value(config, "label_column", "label") or "label")
@@ -2267,11 +2436,6 @@ def _imagenet_prior_py() -> str:
                 {str(value) for value in frame[label_column].tolist()},
                 key=str,
             )
-            projection = build_label_projection(
-                label_names,
-                list(weights.meta["categories"]),
-            )
-            transform = weights.transforms()
             extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
             files = sorted(
                 path
@@ -2281,48 +2445,93 @@ def _imagenet_prior_py() -> str:
             if not files:
                 raise FileNotFoundError(f"No images found under {image_dir}")
 
-            class PriorTestDataset(torch.utils.data.Dataset):
-                def __len__(self):
-                    return len(files)
-
-                def __getitem__(self, index):
-                    path = files[index]
-                    with Image.open(path) as image:
-                        tensor = transform(image.convert("RGB"))
-                    return tensor, path.name
-
-            loader = torch.utils.data.DataLoader(
-                PriorTestDataset(),
-                batch_size=max(1, min(16, int(batch_size))),
-                shuffle=False,
-                num_workers=as_int(get_value(config, "num_workers", 2), 2),
-                pin_memory=torch.cuda.is_available(),
-            )
             use_tta = as_bool(
                 get_value(config, "tta_horizontal_flip", False),
                 False,
             )
-            results: list[tuple[str, list[float]]] = []
-            with torch.no_grad():
-                for images, names in loader:
-                    images = images.to(device, non_blocking=True)
-                    probabilities = _project_logits(model(images), projection)
-                    if use_tta:
-                        flipped = _project_logits(
-                            model(torch.flip(images, dims=[3])),
-                            projection,
-                        )
-                        probabilities = (probabilities + flipped) / 2.0
-                    for name, values in zip(names, probabilities.cpu().tolist()):
-                        results.append(
-                            (str(name), [float(value) for value in values])
-                        )
-            del model
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            prediction_matrices = []
+            names_reference = None
+            projections = []
+            for model_spec in model_specs:
+                model, weights, _loaded_spec = _load_prior_model(model_spec, device)
+                projection = build_label_projection(
+                    label_names,
+                    list(weights.meta["categories"]),
+                )
+                transform = weights.transforms()
+
+                class PriorTestDataset(torch.utils.data.Dataset):
+                    def __len__(self):
+                        return len(files)
+
+                    def __getitem__(self, index):
+                        path = files[index]
+                        with Image.open(path) as image:
+                            tensor = transform(image.convert("RGB"))
+                        return tensor, path.name
+
+                loader = torch.utils.data.DataLoader(
+                    PriorTestDataset(),
+                    batch_size=_effective_prior_batch_size(
+                        model_spec,
+                        batch_size,
+                    ),
+                    shuffle=False,
+                    num_workers=as_int(get_value(config, "num_workers", 2), 2),
+                    pin_memory=torch.cuda.is_available(),
+                )
+                probability_batches = []
+                current_names = []
+                with torch.no_grad():
+                    for images, names in loader:
+                        images = images.to(device, non_blocking=True)
+                        probabilities = _project_logits(model(images), projection)
+                        if use_tta:
+                            flipped = _project_logits(
+                                model(torch.flip(images, dims=[3])),
+                                projection,
+                            )
+                            probabilities = (probabilities + flipped) / 2.0
+                        probability_batches.append(probabilities.cpu())
+                        current_names.extend(str(name) for name in names)
+                matrix = torch.cat(probability_batches).numpy().astype("float32")
+                if names_reference is None:
+                    names_reference = current_names
+                elif names_reference != current_names:
+                    raise ValueError("ImageNet prior test models are not aligned.")
+                prediction_matrices.append(matrix)
+                projections.append(projection)
+                del model
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+            temperatures = list(component_temperatures or [1.0] * len(model_specs))
+            weights = list(component_weights or [1.0 / len(model_specs)] * len(model_specs))
+            if len(temperatures) != len(model_specs) or len(weights) != len(model_specs):
+                raise ValueError("ImageNet prior calibration metadata is not aligned.")
+            calibrated = [
+                temperature_scale_probabilities(matrix, temperature)
+                for matrix, temperature in zip(prediction_matrices, temperatures)
+            ]
+            normalized_weights = np.asarray(weights, dtype=float)
+            normalized_weights /= normalized_weights.sum()
+            combined = sum(
+                weight * matrix
+                for weight, matrix in zip(normalized_weights, calibrated)
+            )
+            combined = np.clip(combined, 1.0e-15, 1.0)
+            combined /= combined.sum(axis=1, keepdims=True)
+            results = [
+                (name, [float(value) for value in row])
+                for name, row in zip(names_reference, combined)
+            ]
             return results, {
-                "prior_model": model_name,
-                "imagenet_indices": projection,
+                "prior_model": ",".join(model_specs),
+                "prior_models": model_specs,
+                "prior_component_temperatures": temperatures,
+                "prior_component_weights": [float(value) for value in normalized_weights],
+                "imagenet_indices": projections[0],
+                "imagenet_indices_by_model": projections,
                 "label_names": label_names,
             }
 
@@ -2341,6 +2550,11 @@ def _imagenet_prior_py() -> str:
                 return learned, {
                     "prior_alpha": 0.0,
                     "prior_model": "",
+                    "prior_models": [],
+                    "prior_component_temperatures": [],
+                    "prior_component_weights": [],
+                    "learned_temperature": 1.0,
+                    "prior_temperature": 1.0,
                     "imagenet_indices": [],
                     "label_names": [],
                 }
@@ -2352,7 +2566,13 @@ def _imagenet_prior_py() -> str:
             targets = np.asarray(labels, dtype=np.int64)
             if not np.array_equal(targets, prior_labels):
                 raise ValueError("ImageNet-prior validation labels are not aligned.")
-            alpha, combined, loss = calibrate_probability_blend(
+            (
+                alpha,
+                combined,
+                loss,
+                learned_temperature,
+                prior_temperature,
+            ) = calibrate_probability_fusion(
                 learned,
                 prior,
                 targets,
@@ -2362,6 +2582,8 @@ def _imagenet_prior_py() -> str:
                     "prior_alpha": alpha,
                     "prior_log_loss": multiclass_log_loss(targets, prior),
                     "learned_log_loss": multiclass_log_loss(targets, learned),
+                    "learned_temperature": learned_temperature,
+                    "prior_temperature": prior_temperature,
                     "combined_log_loss": loss,
                 }
             )
@@ -2509,6 +2731,25 @@ def _evaluate_py() -> str:
                     prior_model=np.asarray(
                         prior_metadata.get("prior_model", ""),
                     ),
+                    prior_models=np.asarray(
+                        prior_metadata.get("prior_models", []),
+                    ),
+                    prior_component_temperatures=np.asarray(
+                        prior_metadata.get("prior_component_temperatures", []),
+                        dtype="float32",
+                    ),
+                    prior_component_weights=np.asarray(
+                        prior_metadata.get("prior_component_weights", []),
+                        dtype="float32",
+                    ),
+                    learned_temperature=np.asarray(
+                        prior_metadata.get("learned_temperature", 1.0),
+                        dtype="float32",
+                    ),
+                    prior_temperature=np.asarray(
+                        prior_metadata.get("prior_temperature", 1.0),
+                        dtype="float32",
+                    ),
                     imagenet_indices=np.asarray(
                         prior_metadata.get("imagenet_indices", []),
                         dtype="int64",
@@ -2556,6 +2797,21 @@ def _evaluate_py() -> str:
                     "validation_artifact": str(validation_artifact),
                     "prior_alpha": float(prior_metadata.get("prior_alpha", 0.0)),
                     "prior_model": prior_metadata.get("prior_model", ""),
+                    "prior_models": prior_metadata.get("prior_models", []),
+                    "prior_component_temperatures": prior_metadata.get(
+                        "prior_component_temperatures",
+                        [],
+                    ),
+                    "prior_component_weights": prior_metadata.get(
+                        "prior_component_weights",
+                        [],
+                    ),
+                    "learned_temperature": float(
+                        prior_metadata.get("learned_temperature", 1.0)
+                    ),
+                    "prior_temperature": float(
+                        prior_metadata.get("prior_temperature", 1.0)
+                    ),
                     "prior_log_loss": prior_metadata.get("prior_log_loss"),
                     "learned_log_loss": prior_metadata.get("learned_log_loss"),
                     "status": "success",

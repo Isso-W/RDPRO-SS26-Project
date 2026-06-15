@@ -86,6 +86,12 @@ def test_apply_calibrated_imagenet_prior_uses_saved_validation_alpha(
         [("a.jpg", [0.8, 0.2]), ("b.jpg", [0.2, 0.8])],
         {"prior_model": "efficientnet_v2_s"},
     )
+    module.temperature_scale_probabilities = (
+        lambda probabilities, _temperature: np.asarray(
+            probabilities,
+            dtype=np.float32,
+        )
+    )
     monkeypatch.setitem(sys.modules, "imagenet_prior", module)
 
     combined, metadata = apply_calibrated_imagenet_prior(
