@@ -120,6 +120,25 @@ def test_run_uses_trained_model_for_evaluation():
     assert "tta_horizontal_flip" in generated.files["evaluate.py"]
     assert "validation_probabilities.npz" in generated.files["evaluate.py"]
     assert 'augmentation in {"none", "off", "deterministic"}' in generated.files["train.py"]
+    assert "torch.backends.mps.is_available()" in generated.files["utils.py"]
+    assert "device = default_device()" in generated.files["train.py"]
+    assert "def dataloader_workers" in generated.files["utils.py"]
+    assert "workers = dataloader_workers(config)" in generated.files["train.py"]
+    assert "workers = dataloader_workers(config)" in generated.files["imagenet_prior.py"]
+
+
+def test_generated_dataloader_workers_respects_process_start_method(monkeypatch):
+    import multiprocessing
+
+    generated = generate_files(_specs(), llm_provider="none")
+    namespace = {}
+    exec(generated.files["utils.py"], namespace)
+
+    monkeypatch.setattr(multiprocessing, "get_start_method", lambda allow_none=True: "spawn")
+    assert namespace["dataloader_workers"]({"num_workers": 4}) == 0
+
+    monkeypatch.setattr(multiprocessing, "get_start_method", lambda allow_none=True: "fork")
+    assert namespace["dataloader_workers"]({"num_workers": 4}) == 4
 
 
 def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):

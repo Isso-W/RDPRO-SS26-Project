@@ -49,11 +49,12 @@ def load_model(project_dir: str | Path, config_path: str | Path | None = None):
     try:
         from model import build_model
         from train import _build_image_transform
+        from utils import default_device
 
         source = Path(config_path).resolve() if config_path else Path("configs.json")
         raw = json.loads(source.read_text(encoding="utf-8"))
         config = _flatten_config(raw[0] if isinstance(raw, list) else raw)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = default_device()
         model = build_model(config)
 
         ckpt_path = Path(str(config.get("checkpoint_dir", "checkpoints"))) / "best_model.pt"

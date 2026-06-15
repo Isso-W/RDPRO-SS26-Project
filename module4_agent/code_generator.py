@@ -225,6 +225,30 @@ def _utils_py() -> str:
             torch.manual_seed(seed)
 
 
+        def default_device() -> torch.device:
+            if torch.cuda.is_available():
+                return torch.device("cuda")
+            if (
+                hasattr(torch.backends, "mps")
+                and torch.backends.mps.is_available()
+            ):
+                return torch.device("mps")
+            return torch.device("cpu")
+
+
+        def dataloader_workers(config: dict[str, Any] | None, default: int = 2) -> int:
+            requested = max(0, as_int(get_value(config, "num_workers", default), default))
+            if requested == 0:
+                return 0
+            import multiprocessing
+
+            start_method = multiprocessing.get_start_method(allow_none=True)
+            if start_method is None:
+                start_method = multiprocessing.get_context().get_start_method()
+            # Local dataset wrappers cannot be pickled by spawn or forkserver.
+            return requested if start_method == "fork" else 0
+
+
         def compact_config_summary(config: dict[str, Any], rank_default: int | None = None) -> dict[str, Any]:
             return {
                 "rank": config.get("rank", rank_default),
@@ -804,7 +828,15 @@ def _train_py() -> str:
 
         from model import build_model
         from smoke_data import synthetic_batch
-        from utils import as_bool, as_float, as_int, get_value, task_type
+        from utils import (
+            as_bool,
+            as_float,
+            as_int,
+            dataloader_workers,
+            default_device,
+            get_value,
+            task_type,
+        )
 
 
         def _build_optimizer(model: torch.nn.Module, config: dict[str, Any] | None) -> torch.optim.Optimizer:
@@ -1105,7 +1137,7 @@ def _train_py() -> str:
                         return tensor, torch.tensor(selected_labels[index], dtype=torch.long)
 
                 dataset = CSVImageDataset()
-                workers = as_int(get_value(config, "num_workers", 2), 2)
+                workers = dataloader_workers(config)
                 return torch.utils.data.DataLoader(
                     dataset,
                     batch_size=batch_size,
@@ -1139,7 +1171,7 @@ def _train_py() -> str:
                     len(dataset.classes),
                     power,
                 )
-            workers = as_int(get_value(config, "num_workers", 2), 2)
+            workers = dataloader_workers(config)
             return torch.utils.data.DataLoader(
                 subset,
                 batch_size=batch_size,
@@ -1258,7 +1290,7 @@ def _train_py() -> str:
                     return img, torch.tensor(lbl, dtype=torch.long)
 
             wrapped = _HFDataset(ds_split, image_col, label_col, transform)
-            workers = as_int(get_value(config, "num_workers", 2), 2)
+            workers = dataloader_workers(config)
             return torch.utils.data.DataLoader(
                 wrapped,
                 batch_size=batch_size,
@@ -1663,7 +1695,7 @@ def _train_py() -> str:
             task = task_type(config)
             offline_smoke = as_bool(get_value(config, "offline_smoke", True), True)
             model = build_model(config)
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = default_device()
             if device.type == "cuda":
                 torch.backends.cudnn.benchmark = True
             model.to(device)
@@ -2005,7 +2037,7 @@ def _imagenet_prior_py() -> str:
         import numpy as np
         import torch
 
-        from utils import as_bool, as_int, get_value
+        from utils import as_bool, as_int, dataloader_workers, default_device, get_value
 
 
         def normalize_category_name(value: Any) -> str:
@@ -2314,7 +2346,7 @@ def _imagenet_prior_py() -> str:
                         dtype=torch.long,
                     )
 
-            workers = as_int(get_value(config, "num_workers", 2), 2)
+            workers = dataloader_workers(config)
             loader = torch.utils.data.DataLoader(
                 PriorDataset(),
                 batch_size=max(1, int(batch_size)),
@@ -2427,7 +2459,7 @@ def _imagenet_prior_py() -> str:
             import pandas as pd
             from PIL import Image
 
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = default_device()
             model_specs = prior_model_specs(config)
             csv_path = Path(str(get_value(config, "train_csv", ""))).expanduser().resolve()
             frame = pd.read_csv(csv_path)
@@ -2477,7 +2509,7 @@ def _imagenet_prior_py() -> str:
                         batch_size,
                     ),
                     shuffle=False,
-                    num_workers=as_int(get_value(config, "num_workers", 2), 2),
+                    num_workers=dataloader_workers(config),
                     pin_memory=torch.cuda.is_available(),
                 )
                 probability_batches = []
