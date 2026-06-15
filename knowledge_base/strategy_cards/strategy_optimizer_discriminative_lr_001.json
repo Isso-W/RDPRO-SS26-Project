@@ -1,0 +1,37 @@
+{
+  "avoid_when": [
+    "The backbone is fully frozen."
+  ],
+  "compatible_with": [
+    "partial_finetune",
+    "adamw",
+    "dinov2"
+  ],
+  "component": "optimizer",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "Transfer learning requires smaller updates to pretrained features than to a newly initialized classification head.",
+      "source_id": "fixed_pytorch_transfer_learning",
+      "url": "https://docs.pytorch.org/tutorials/beginner/transfer_learning_tutorial.html"
+    }
+  ],
+  "experiment_template": {
+    "backbone_learning_rate": 1e-05,
+    "head_learning_rate": 0.0003
+  },
+  "id": "strategy_optimizer_discriminative_lr_001",
+  "observed_results": [],
+  "priority": 0.91,
+  "risk": "An excessively small backbone rate may behave like a frozen model.",
+  "risk_level": "low",
+  "strategy_name": "Discriminative Learning Rates",
+  "summary": "Use a low DINOv2 backbone learning rate and a higher classification-head rate during partial fine-tuning.",
+  "target_metrics": [
+    "log_loss"
+  ],
+  "task_type": "classification",
+  "use_when": [
+    "The final encoder blocks and a new classification head are trained together."
+  ]
+}

@@ -221,7 +221,9 @@ def extract_strategy_cards_service(
             "risk_level, priority. Allowed executable template fields: augmentation, "
             "randaugment_num_ops, randaugment_magnitude, mixup_alpha, cutmix_alpha, "
             "label_smoothing, optimizer, scheduler, learning_rate, finetune_strategy, "
-            "freeze_backbone, backbone, pretrained_hf_id, use_pretrained, tta_horizontal_flip. "
+            "freeze_backbone, unfreeze_last_n_blocks, backbone_learning_rate, "
+            "head_learning_rate, backbone, pretrained_hf_id, use_pretrained, image_size, "
+            "batch_size, tta_horizontal_flip. "
             "Use at most two fields per card and never enable MixUp and CutMix together."
         ),
         json.dumps(summary.to_dict(), ensure_ascii=False),

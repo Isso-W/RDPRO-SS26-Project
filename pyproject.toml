@@ -41,6 +41,7 @@ dev = [
 include = [
   "agents*",
   "analyzer*",
+  "autopipeline*",
   "features*",
   "ingestion*",
   "knowledge*",

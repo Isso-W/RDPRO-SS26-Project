@@ -141,3 +141,27 @@ def test_missing_model_config_and_non_dict_candidate_are_safe():
 def test_empty_candidate_list_raises():
     with pytest.raises(ValueError):
         build_training_specs([])
+
+
+def test_build_training_specs_preserves_partial_finetune_fields():
+    spec = build_training_specs(
+        [
+            {
+                "model_config": {
+                    "task_type": "classification",
+                    "backbone": "dinov2",
+                    "pretrained_hf_id": "facebook/dinov2-base",
+                    "finetune_strategy": "partial",
+                    "unfreeze_last_n_blocks": 2,
+                    "backbone_learning_rate": 1.0e-5,
+                    "head_learning_rate": 3.0e-4,
+                }
+            }
+        ]
+    )[0]
+
+    assert spec.finetune_strategy == "partial"
+    assert spec.freeze_backbone is False
+    assert spec.unfreeze_last_n_blocks == 2
+    assert spec.backbone_learning_rate == pytest.approx(1.0e-5)
+    assert spec.head_learning_rate == pytest.approx(3.0e-4)

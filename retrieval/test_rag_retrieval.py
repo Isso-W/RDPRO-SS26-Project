@@ -233,6 +233,23 @@ class TestBehavior(unittest.TestCase):
                     f"DINOv2 finetune_strategy should be head_only, got {r['finetune_strategy']}"
                 )
 
+    def test_fine_grained_accuracy_uses_partial_dinov2_finetune(self):
+        inp = _make_input(
+            task_type="classification",
+            data_size="small",
+            priority="accuracy",
+            description="fine-grained dog breed classification with calibrated log loss",
+        )
+        inp["domain"] = "fine_grained_classification"
+        inp["evaluation_metric"] = "log_loss"
+        results = self._run(inp)
+        dinov2 = next(result for result in results if result["backbone"] == "dinov2")
+
+        self.assertEqual(dinov2["finetune_strategy"], "partial")
+        self.assertEqual(dinov2["unfreeze_last_n_blocks"], 2)
+        self.assertEqual(dinov2["backbone_learning_rate"], 1.0e-5)
+        self.assertEqual(dinov2["head_learning_rate"], 3.0e-4)
+
     # ── Test 10: class_imbalance → focal_loss selected ────────────────────────
 
     def test_class_imbalance_uses_focal_loss(self):

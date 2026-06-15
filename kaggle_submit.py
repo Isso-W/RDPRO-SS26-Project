@@ -277,6 +277,7 @@ def predict_and_submit(
     score_timeout_sec: int = 1800,
     metadata_path: str | Path | None = None,
     selected_experiment: str = "baseline",
+    ensemble_members: list[dict] | None = None,
 ) -> dict:
     from ingestion.kaggle_loader import ingest_benchmark
 
@@ -287,15 +288,62 @@ def predict_and_submit(
             f"No test image directory found for {benchmark_key!r}; cannot predict the test set."
         )
 
-    model, transform, config, device = load_model(project_dir, config_path=config_path)
-    predictions = predict_directory(
-        model,
-        transform,
-        device,
-        info["test_dir"],
-        batch_size=batch_size,
-        tta_horizontal_flip=bool(config.get("tta_horizontal_flip", False)),
-    )
+    ensemble_metadata = None
+    if ensemble_members:
+        import torch
+
+        from ensemble import combine_prediction_sets, save_probability_artifact
+
+        prediction_sets = []
+        weights = []
+        artifact_dir = Path(project_dir) / ".jiaozi_ensemble"
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        saved_members = []
+        for index, member in enumerate(ensemble_members):
+            member_config_path = member["config_path"]
+            model, transform, config, device = load_model(
+                project_dir,
+                config_path=member_config_path,
+            )
+            member_predictions = predict_directory(
+                model,
+                transform,
+                device,
+                info["test_dir"],
+                batch_size=batch_size,
+                tta_horizontal_flip=bool(config.get("tta_horizontal_flip", False)),
+            )
+            prediction_sets.append(member_predictions)
+            weights.append(float(member["weight"]))
+            artifact_path = save_probability_artifact(
+                artifact_dir / f"member_{index}.npz",
+                ids=[name for name, _ in member_predictions],
+                probabilities=[values for _, values in member_predictions],
+            )
+            saved_members.append(
+                {
+                    **member,
+                    "test_artifact": str(artifact_path),
+                }
+            )
+            del model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        predictions = combine_prediction_sets(prediction_sets, weights)
+        ensemble_metadata = {
+            "members": saved_members,
+            "weights": weights,
+        }
+    else:
+        model, transform, config, device = load_model(project_dir, config_path=config_path)
+        predictions = predict_directory(
+            model,
+            transform,
+            device,
+            info["test_dir"],
+            batch_size=batch_size,
+            tta_horizontal_flip=bool(config.get("tta_horizontal_flip", False)),
+        )
     idx_to_label = index_to_label_map(info["train_csv"], info["label_column"])
 
     out_path = Path(out_path) if out_path else Path(project_dir) / "submission.csv"
@@ -332,6 +380,7 @@ def predict_and_submit(
         "score": score,
         "git_commit": commit,
         "selected_experiment": selected_experiment,
+        "ensemble": ensemble_metadata,
         "config_path": str(config_path) if config_path else str(Path(project_dir) / "configs.json"),
     }
     destination = Path(metadata_path) if metadata_path else Path(project_dir) / "submission_result.json"

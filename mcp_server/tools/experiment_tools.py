@@ -108,6 +108,7 @@ def read_metrics_service(run_result: dict) -> dict:
         "metric_value": evaluate.get("metric_value"),
         "accuracy": evaluate.get("accuracy"),
         "macro_f1": evaluate.get("macro_f1"),
+        "validation_artifact": evaluate.get("validation_artifact"),
         "best_epoch": train.get("best_epoch"),
         "runtime_sec": run_result.get("runtime_sec"),
     }

@@ -31,4 +31,9 @@ DOG_BREED_SOURCES = [
         "url": "https://github.com/xiyinzhi/cnn_dog_breed_identification",
         "source_type": "markdown",
     },
+    {
+        "source_name": "dinov2_model_card",
+        "url": "https://github.com/facebookresearch/dinov2/blob/main/MODEL_CARD.md",
+        "source_type": "markdown",
+    },
 ]

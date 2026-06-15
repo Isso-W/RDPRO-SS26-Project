@@ -159,6 +159,12 @@ from IPython.display import JSON, display
 cards = report["experiment_loop"]["strategy_cards"]
 display(pd.DataFrame(cards)[["id", "strategy_name", "component", "priority", "summary"]])
 
+probe_rows = report["candidate_calibration"]["trials"]
+display(pd.DataFrame(probe_rows)[[
+    "candidate_index", "status", "metric_name", "metric_value",
+    "accuracy", "macro_f1", "runtime_sec", "probe_epochs",
+]])
+
 baseline = report["baseline_config"]
 diff_rows = []
 for proposal in report["experiment_loop"]["proposals"]:
@@ -175,7 +181,11 @@ display(pd.DataFrame(diff_rows))
 
 metric_rows = [report["baseline_metrics"], *report["experiment_loop"]["metrics"]]
 display(pd.DataFrame(metric_rows))
-display(JSON({"mcp_calls": report["mcp_calls"], "comparison": report["experiment_loop"]["comparison"]}))
+display(JSON({
+    "mcp_calls": report["mcp_calls"],
+    "comparison": report["experiment_loop"]["comparison"],
+    "validation_ensemble": report["ensemble"],
+}))
 """
     ),
     code(
@@ -183,6 +193,9 @@ display(JSON({"mcp_calls": report["mcp_calls"], "comparison": report["experiment
     "autopipeline_selected": report["autopipeline_selected"],
     "standard_reference_only": report["standard_reference_only"],
     "selected_experiment": report["selected_experiment"],
+    "submission_selection": report["submission_selection"],
+    "candidate_calibration": report["candidate_calibration"],
+    "validation_ensemble": report["ensemble"],
     "kaggle_submission": report["submission"],
     "token_and_training_cost": report["cost"],
     "report_path": str(REPORT_PATH),

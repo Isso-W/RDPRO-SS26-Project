@@ -10,6 +10,12 @@ fixed sources -> Knowledge Learner -> strategy cards -> Module 1-4 AutoPipeline
 -> baseline -> MCP MLE Agent (max 3 experiments) -> Kaggle probability submission
 ```
 
+Fine-grained runs probe all three Module 3 candidates before selecting the
+baseline. DINOv2 recipes support official class-token plus pooled-patch
+features, partial last-block fine-tuning, discriminative learning rates,
+warmup, higher-resolution strategy cards, TTA, and validation-selected
+probability ensembles.
+
 Open `integration_update_colab.ipynb` in Colab and run all cells. Training choices
 come from Jiaozi and retrieved strategy cards; the notebook does not override model
 or training hyperparameters. See `docs/MCP_KNOWLEDGE_AGENT.md` for credentials,
@@ -23,7 +29,7 @@ generate runnable local training/evaluation/inference code.
 
 Open the Colab notebook for the `integration-update` branch:
 
-[Open `integration_update_colab.ipynb` in Colab](https://colab.research.google.com/github/Isso-W/Jiaozi/blob/codex/integration-update-colab/integration_update_colab.ipynb)
+[Open `integration_update_colab.ipynb` in Colab](https://colab.research.google.com/github/Isso-W/Jiaozi/blob/mcp_knowledge/integration_update_colab.ipynb)
 
 For direct GPT-generated training on four Kaggle competitions and ten public
 image-classification datasets:

@@ -234,6 +234,9 @@ def _utils_py() -> str:
                 "augmentation": config.get("augmentation", "basic"),
                 "scheduler": config.get("scheduler", "cosine"),
                 "learning_rate": config.get("learning_rate"),
+                "backbone_learning_rate": config.get("backbone_learning_rate"),
+                "head_learning_rate": config.get("head_learning_rate"),
+                "unfreeze_last_n_blocks": config.get("unfreeze_last_n_blocks", 0),
                 "label_smoothing": config.get("label_smoothing", 0.0),
                 "mixup_alpha": config.get("mixup_alpha", 0.0),
                 "cutmix_alpha": config.get("cutmix_alpha", 0.0),
@@ -376,6 +379,9 @@ def _model_utils_py() -> str:
             def __init__(self, model: nn.Module) -> None:
                 super().__init__()
                 self.model = model
+                self.model_type = str(
+                    getattr(getattr(model, "config", None), "model_type", "")
+                ).lower()
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 out = self.model(pixel_values=x)
@@ -383,6 +389,21 @@ def _model_utils_py() -> str:
                 if hidden is None:
                     hidden = out[0] if isinstance(out, (tuple, list)) else out
                 if hidden.dim() == 3:
+                    if self.model_type in {"dinov2", "dinov2_with_registers"}:
+                        register_tokens = int(
+                            getattr(getattr(self.model, "config", None), "num_register_tokens", 0)
+                            or 0
+                        )
+                        patch_tokens = hidden[:, 1 + register_tokens :]
+                        return torch.cat(
+                            [hidden[:, 0], patch_tokens.mean(dim=1)],
+                            dim=1,
+                        )
+                    if self.model_type in {"beit", "deit", "vit"}:
+                        return hidden[:, 0]
+                    pooled = getattr(out, "pooler_output", None)
+                    if pooled is not None and pooled.dim() == 2:
+                        return pooled
                     return hidden.mean(dim=1)
                 return hidden
 
@@ -493,23 +514,76 @@ def _model_utils_py() -> str:
             return extractor, channels
 
 
+        def _resolve_module(root: nn.Module, path: str):
+            current = root
+            for part in path.split("."):
+                current = getattr(current, part, None)
+                if current is None:
+                    return None
+            return current
+
+
+        def _encoder_blocks(backbone: nn.Module) -> list[nn.Module]:
+            for path in (
+                "model.encoder.layer",
+                "model.encoder.layers",
+                "model.blocks",
+                "encoder.layer",
+                "encoder.layers",
+                "blocks",
+                "features",
+                "layers",
+            ):
+                value = _resolve_module(backbone, path)
+                if isinstance(value, (nn.ModuleList, nn.Sequential, list, tuple)):
+                    return list(value)
+            return []
+
+
         def apply_freeze(model: nn.Module, config: dict[str, Any] | None) -> None:
-            """Freeze backbone parameters based on finetune_strategy config."""
+            """Apply head-only, partial, or full backbone fine-tuning."""
             config = config or {}
             strategy = str(get_value(config, "finetune_strategy", "head_only")).lower()
-            # head_only means "freeze backbone, train head" by definition — it must not be
-            # overridden by a stray freeze_backbone=false in the config.
-            if strategy == "head_only":
-                freeze = True
-            elif strategy in ("full", "either"):
-                freeze = False
-            else:
-                freeze = as_bool(get_value(config, "freeze_backbone", False), False)
+            backbone = getattr(model, "backbone", None)
+            if backbone is None:
+                return
 
-            if freeze:
-                for param_name, param in model.named_parameters():
-                    if "backbone" in param_name or "features" in param_name or "layers" in param_name:
-                        param.requires_grad = False
+            if strategy == "head_only":
+                for parameter in backbone.parameters():
+                    parameter.requires_grad = False
+            elif strategy == "partial":
+                for parameter in backbone.parameters():
+                    parameter.requires_grad = False
+                count = max(1, as_int(get_value(config, "unfreeze_last_n_blocks", 2), 2))
+                blocks = _encoder_blocks(backbone)
+                if not blocks:
+                    raise ValueError(
+                        "partial finetuning requires a backbone with identifiable encoder blocks."
+                    )
+                for block in blocks[-count:]:
+                    for parameter in block.parameters():
+                        parameter.requires_grad = True
+                for path in (
+                    "model.layernorm",
+                    "model.norm",
+                    "model.post_layernorm",
+                    "layernorm",
+                    "norm",
+                ):
+                    norm = _resolve_module(backbone, path)
+                    if isinstance(norm, nn.Module):
+                        for parameter in norm.parameters():
+                            parameter.requires_grad = True
+            elif strategy in {"full", "either"}:
+                for parameter in backbone.parameters():
+                    parameter.requires_grad = True
+            elif as_bool(get_value(config, "freeze_backbone", False), False):
+                for parameter in backbone.parameters():
+                    parameter.requires_grad = False
+
+            model._frozen_backbone_params = sum(
+                1 for parameter in backbone.parameters() if not parameter.requires_grad
+            )
         '''
     ).lstrip()
 
@@ -730,16 +804,34 @@ def _train_py() -> str:
         def _build_optimizer(model: torch.nn.Module, config: dict[str, Any] | None) -> torch.optim.Optimizer:
             optimizer_name = str(get_value(config, "optimizer", "adamw")).lower()
             lr = as_float(get_value(config, "learning_rate", 1.0e-3), 1.0e-3)
-            trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
-            if not trainable:
-                trainable = list(model.parameters())
+            backbone_lr = as_float(
+                get_value(config, "backbone_learning_rate", lr),
+                lr,
+            )
+            head_lr = as_float(get_value(config, "head_learning_rate", lr), lr)
+            backbone_parameters = []
+            head_parameters = []
+            for name, parameter in model.named_parameters():
+                if not parameter.requires_grad:
+                    continue
+                if name.startswith("backbone."):
+                    backbone_parameters.append(parameter)
+                else:
+                    head_parameters.append(parameter)
+            parameter_groups = []
+            if backbone_parameters:
+                parameter_groups.append({"params": backbone_parameters, "lr": backbone_lr})
+            if head_parameters:
+                parameter_groups.append({"params": head_parameters, "lr": head_lr})
+            if not parameter_groups:
+                parameter_groups = [{"params": list(model.parameters()), "lr": lr}]
             if "sgd" in optimizer_name:
-                return torch.optim.SGD(trainable, lr=lr, momentum=0.9)
+                return torch.optim.SGD(parameter_groups, lr=lr, momentum=0.9)
             if "rmsprop" in optimizer_name:
-                return torch.optim.RMSprop(trainable, lr=lr)
+                return torch.optim.RMSprop(parameter_groups, lr=lr)
             if optimizer_name == "adam":
-                return torch.optim.Adam(trainable, lr=lr)
-            return torch.optim.AdamW(trainable, lr=lr)
+                return torch.optim.Adam(parameter_groups, lr=lr)
+            return torch.optim.AdamW(parameter_groups, lr=lr)
 
 
         def _loss_for_output(
@@ -804,7 +896,6 @@ def _train_py() -> str:
                         ratio=(0.75, 1.3333333333),
                     ),
                     transforms.RandomHorizontalFlip(),
-                    transforms.RandomVerticalFlip(),
                     transforms.RandomRotation(20),
                     transforms.ColorJitter(
                         brightness=0.2,
@@ -834,16 +925,28 @@ def _train_py() -> str:
                     transforms.ToTensor(),
                     normalize,
                 ])
+            if split == "train" and augmentation in {"none", "off", "deterministic"}:
+                resize_size = max(image_size, round(image_size * 1.1))
+                return transforms.Compose([
+                    transforms.Resize(resize_size),
+                    transforms.CenterCrop(image_size),
+                    transforms.ToTensor(),
+                    normalize,
+                ])
             if split == "train":
                 return transforms.Compose([
-                    transforms.Resize((image_size, image_size)),
+                    transforms.RandomResizedCrop(
+                        image_size,
+                        scale=(0.8, 1.0),
+                        ratio=(0.75, 1.3333333333),
+                    ),
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
                     normalize,
                 ])
             resize_size = max(image_size, round(image_size * 1.1))
             return transforms.Compose([
-                transforms.Resize((resize_size, resize_size)),
+                transforms.Resize(resize_size),
                 transforms.CenterCrop(image_size),
                 transforms.ToTensor(),
                 normalize,
@@ -1241,6 +1344,30 @@ def _train_py() -> str:
             if scheduler_name in {"none", "off", ""}:
                 return None
             min_lr = as_float(get_value(config, "min_learning_rate", 1.0e-6), 1.0e-6)
+            warmup_epochs = max(
+                0,
+                min(
+                    as_int(get_value(config, "warmup_epochs", 0), 0),
+                    max(0, int(epochs) - 1),
+                ),
+            )
+            if warmup_epochs:
+                warmup = torch.optim.lr_scheduler.LinearLR(
+                    optimizer,
+                    start_factor=1.0 / max(2, warmup_epochs),
+                    end_factor=1.0,
+                    total_iters=warmup_epochs,
+                )
+                cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    optimizer,
+                    T_max=max(1, int(epochs) - warmup_epochs),
+                    eta_min=min_lr,
+                )
+                return torch.optim.lr_scheduler.SequentialLR(
+                    optimizer,
+                    schedulers=[warmup, cosine],
+                    milestones=[warmup_epochs],
+                )
             return torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
                 T_max=max(1, int(epochs)),
@@ -1601,7 +1728,8 @@ def _train_py() -> str:
                     task in ("classification", "feature_extraction")
                     and _backbone_is_frozen(model)
                     and as_bool(get_value(config, "feature_cache", True), True)
-                    and str(get_value(config, "augmentation", "basic")).lower() == "basic"
+                    and str(get_value(config, "augmentation", "basic")).lower()
+                    in {"none", "off", "deterministic"}
                     and as_float(get_value(config, "mixup_alpha", 0.0), 0.0) <= 0
                     and as_float(get_value(config, "cutmix_alpha", 0.0), 0.0) <= 0
                 )
@@ -1802,12 +1930,17 @@ def _train_py() -> str:
                     "loss": get_value(config, "loss", "cross_entropy_loss"),
                     "optimizer": get_value(config, "optimizer", "adamw"),
                     "finetune_strategy": get_value(config, "finetune_strategy", "head_only"),
+                    "unfreeze_last_n_blocks": get_value(config, "unfreeze_last_n_blocks", 0),
                     "augmentation": get_value(config, "augmentation", "basic"),
                     "mixup_alpha": get_value(config, "mixup_alpha", 0.0),
                     "cutmix_alpha": get_value(config, "cutmix_alpha", 0.0),
                     "label_smoothing": get_value(config, "label_smoothing", 0.0),
                     "scheduler": get_value(config, "scheduler", "cosine"),
                     "learning_rate": get_value(config, "learning_rate", 1.0e-3),
+                    "backbone_learning_rate": get_value(
+                        config, "backbone_learning_rate", None
+                    ),
+                    "head_learning_rate": get_value(config, "head_learning_rate", None),
                     "tta_horizontal_flip": get_value(config, "tta_horizontal_flip", False),
                     "frozen_backbone_params": int(getattr(model, "_frozen_backbone_params", 0)),
                 },
@@ -1830,8 +1963,10 @@ def _evaluate_py() -> str:
 
         from __future__ import annotations
 
+        from pathlib import Path
         from typing import Any
 
+        import numpy as np
         import torch
 
         from smoke_data import synthetic_batch
@@ -1932,6 +2067,16 @@ def _evaluate_py() -> str:
                 preds = torch.cat(all_preds).cpu()
                 labels = torch.cat(all_labels).cpu()
                 probabilities = torch.cat(all_probabilities).cpu()
+                artifact_dir = Path(
+                    str(get_value(config, "checkpoint_dir", "checkpoints"))
+                )
+                artifact_dir.mkdir(parents=True, exist_ok=True)
+                validation_artifact = artifact_dir / "validation_probabilities.npz"
+                np.savez_compressed(
+                    validation_artifact,
+                    probabilities=probabilities.numpy().astype("float32"),
+                    labels=labels.numpy().astype("int64"),
+                )
                 accuracy = float((preds == labels).float().mean().item())
                 requested_metric = str(get_value(config, "evaluation_metric", "accuracy") or "accuracy").lower()
                 metric_name = "accuracy"
@@ -1971,6 +2116,7 @@ def _evaluate_py() -> str:
                     "macro_f1": _macro_f1(preds, labels, num_classes),
                     "num_samples": len(labels),
                     "params": _count_params(model),
+                    "validation_artifact": str(validation_artifact),
                     "status": "success",
                 }
             if task == "feature_extraction":

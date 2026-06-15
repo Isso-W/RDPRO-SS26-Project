@@ -19,21 +19,27 @@ SUPPORTED_EXPERIMENT_FIELDS = {
     "optimizer",
     "scheduler",
     "learning_rate",
+    "backbone_learning_rate",
+    "head_learning_rate",
     "finetune_strategy",
     "freeze_backbone",
+    "unfreeze_last_n_blocks",
     "backbone",
     "pretrained_hf_id",
     "use_pretrained",
+    "image_size",
+    "batch_size",
     "tta_horizontal_flip",
 }
 PREFERRED_COMPONENTS = {
-    "augmentation": 0,
-    "loss": 1,
-    "scheduler": 2,
-    "optimizer": 3,
-    "finetune": 4,
+    "finetune": 0,
+    "resolution": 1,
+    "optimizer": 2,
+    "loss": 3,
+    "scheduler": 4,
     "inference": 5,
-    "backbone": 6,
+    "augmentation": 6,
+    "backbone": 7,
 }
 
 

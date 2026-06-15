@@ -1,4 +1,7 @@
-from dog_breed_workflow import _selected_experiment, flatten_config
+import json
+from types import SimpleNamespace
+
+from dog_breed_workflow import _selected_experiment, flatten_config, train_baseline
 
 
 def test_flatten_config_preserves_runtime_fields():
@@ -19,3 +22,37 @@ def test_selected_experiment_falls_back_to_baseline(tmp_path):
     )
     assert selected == "baseline"
     assert path == baseline
+
+
+def test_train_baseline_uses_calibrated_candidate_config(tmp_path, monkeypatch):
+    (tmp_path / "run.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
+    summary = {
+        "status": "success",
+        "train": {"best_epoch": 3, "runtime_sec": 4.5},
+        "evaluate": {
+            "metric_name": "log_loss",
+            "metric_value": 0.42,
+            "accuracy": 0.9,
+            "macro_f1": 0.88,
+        },
+    }
+
+    def fake_run(command, **kwargs):
+        config = json.loads(open(command[-1], encoding="utf-8").read())
+        assert config["backbone"] == "selected"
+        assert config["recommended_epochs"] == 30
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(summary),
+            stderr="",
+        )
+
+    monkeypatch.setattr("dog_breed_workflow.subprocess.run", fake_run)
+    config, metrics, path = train_baseline(
+        tmp_path,
+        {"backbone": "selected", "recommended_epochs": 30},
+    )
+
+    assert config["backbone"] == "selected"
+    assert metrics["metric_value"] == 0.42
+    assert path.name == "baseline.json"

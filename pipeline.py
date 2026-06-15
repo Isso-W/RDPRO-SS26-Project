@@ -70,12 +70,15 @@ def derive_data_size(
 
 _RECOMMENDED_EPOCHS = {
     ("small",  "head_only"): 25,
+    ("small",  "partial"):   20,
     ("small",  "finetune"):  40,
     ("small",  "scratch"):   50,
     ("medium", "head_only"): 12,
+    ("medium", "partial"):   12,
     ("medium", "finetune"):  20,
     ("medium", "scratch"):   30,
     ("large",  "head_only"):  8,
+    ("large",  "partial"):   10,
     ("large",  "finetune"):  15,
     ("large",  "scratch"):   20,
 }
@@ -91,6 +94,8 @@ def derive_recommended_epochs(
         mode = "scratch"
     elif finetune_strategy == "head_only":
         mode = "head_only"
+    elif finetune_strategy == "partial":
+        mode = "partial"
     else:
         mode = "finetune"
     return _RECOMMENDED_EPOCHS.get((data_size, mode), 15)

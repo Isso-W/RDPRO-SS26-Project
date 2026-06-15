@@ -8,10 +8,16 @@ def test_integration_notebook_is_colab_entrypoint_without_hyperparameter_overrid
     notebook = json.loads(path.read_text(encoding="utf-8"))
     assert notebook["metadata"]["accelerator"] == "GPU"
     text = path.read_text(encoding="utf-8")
+    source_text = "\n".join(
+        "".join(cell["source"]) for cell in notebook["cells"]
+    )
     assert "mcp_knowledge" in text
     assert "execute_dog_breed_workflow" in text
     assert "submit_to_kaggle=True" in text
     assert "KAGGLE_API_TOKEN" in text
+    assert 'report["candidate_calibration"]' in source_text
+    assert 'report["ensemble"]' in source_text
+    assert 'report["submission_selection"]' in source_text
     for forbidden in (
         "EPOCHS =",
         "BATCH_SIZE =",

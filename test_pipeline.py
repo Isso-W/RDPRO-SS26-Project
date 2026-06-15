@@ -13,7 +13,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from pipeline import derive_data_size, derive_class_imbalance, merge_modules, run_module4_generation, parse_dataset_id
+from pipeline import (
+    derive_class_imbalance,
+    derive_data_size,
+    derive_recommended_epochs,
+    merge_modules,
+    parse_dataset_id,
+    run_module4_generation,
+)
 from features_extraction_api import parse_module1_output
 from env_loader import load_env_file
 
@@ -132,6 +139,15 @@ class TestDeriveClassImbalance(unittest.TestCase):
         self.assertFalse(derive_class_imbalance({}))
 
 
+class TestRecommendedEpochs(unittest.TestCase):
+
+    def test_partial_finetune_uses_a_bounded_small_data_budget(self):
+        self.assertEqual(
+            derive_recommended_epochs("small", "partial", use_pretrained=True),
+            20,
+        )
+
+
 class TestMergeModules(unittest.TestCase):
 
     def _make_m1(self, **overrides):
@@ -226,6 +242,18 @@ class TestMergeModules(unittest.TestCase):
         m2 = self._make_m2(class_dist={"a": 5000, "b": 10})
         merge_modules(m1, m2)
         self.assertFalse(m1["constraints"]["class_imbalance"])
+
+    def test_fine_grained_domain_and_metric_are_preserved(self):
+        m1 = self._make_m1(
+            domain="fine_grained_classification",
+            evaluation_metric="log_loss",
+            priority="accuracy",
+        )
+        merged = merge_modules(m1, self._make_m2())
+
+        self.assertEqual(merged["domain"], "fine_grained_classification")
+        self.assertEqual(merged["evaluation_metric"], "log_loss")
+        self.assertEqual(merged["priority"], "accuracy")
 
 
 class TestModule4Handoff(unittest.TestCase):
@@ -327,6 +355,18 @@ class TestParseModule1Output(unittest.TestCase):
         self.assertTrue(result["constraints"]["medical"])
         self.assertFalse(result["constraints"]["real_time"])
         self.assertFalse(result["constraints"]["edge_deployment"])
+
+    def test_dog_breed_intent_is_inferred_deterministically(self):
+        raw = '{"task_type": "classification", "priority": "balanced", "constraints": {}}'
+        result = parse_module1_output(
+            raw,
+            "Perform high-quality fine-grained image classification of dog breeds. "
+            "Optimize calibrated multiclass probabilities for log loss.",
+        )
+
+        self.assertEqual(result["domain"], "fine_grained_classification")
+        self.assertEqual(result["priority"], "accuracy")
+        self.assertEqual(result["evaluation_metric"], "log_loss")
 
 
 class TestParseDatasetId(unittest.TestCase):

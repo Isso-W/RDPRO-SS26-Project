@@ -51,11 +51,14 @@ class TrainingSpec:
     optimizer: str = "adamw"
     finetune_strategy: str = "head_only"
     freeze_backbone: bool = True
+    unfreeze_last_n_blocks: int = 0
     scratch_viable: bool = True
     params_M: float | None = None
     tasks: list[Any] = field(default_factory=list)
     alternatives: list[Any] = field(default_factory=list)
     learning_rate: float = 1.0e-3
+    backbone_learning_rate: float | None = None
+    head_learning_rate: float | None = None
     augmentation: str = "basic"
     data_size: str = "medium"
     class_imbalance: bool = False

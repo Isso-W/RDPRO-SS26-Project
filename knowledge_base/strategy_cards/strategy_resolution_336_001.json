@@ -1,0 +1,37 @@
+{
+  "avoid_when": [
+    "GPU memory cannot sustain the generated batch size or the images contain little fine detail."
+  ],
+  "compatible_with": [
+    "dinov2",
+    "vision_transformer",
+    "horizontal_flip_tta"
+  ],
+  "component": "resolution",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "DINOv2 uses a patch size of 14; 336 pixels preserves an integer 24 by 24 patch grid and more breed morphology than 224.",
+      "source_id": "fixed_dinov2_model_card",
+      "url": "https://github.com/facebookresearch/dinov2"
+    }
+  ],
+  "experiment_template": {
+    "batch_size": 16,
+    "image_size": 336
+  },
+  "id": "strategy_resolution_336_001",
+  "observed_results": [],
+  "priority": 0.94,
+  "risk": "Training and inference cost grow quadratically with image resolution.",
+  "risk_level": "medium",
+  "strategy_name": "DINOv2 336 Resolution",
+  "summary": "Train fine-grained dog breed classification at 336 resolution to preserve subtle face, coat, ear, and body-shape evidence for lower log loss.",
+  "target_metrics": [
+    "log_loss"
+  ],
+  "task_type": "classification",
+  "use_when": [
+    "The 224-pixel model confuses visually similar breeds."
+  ]
+}

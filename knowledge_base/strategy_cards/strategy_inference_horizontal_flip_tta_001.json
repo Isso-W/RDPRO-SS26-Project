@@ -15,11 +15,11 @@
   },
   "id": "strategy_inference_horizontal_flip_tta_001",
   "observed_results": [],
-  "priority": 0.68,
+  "priority": 0.88,
   "risk": "Inference cost approximately doubles.",
   "risk_level": "low",
   "strategy_name": "Horizontal Flip TTA",
-  "summary": "Average original and horizontally flipped probabilities at evaluation and submission time.",
+  "summary": "Average original and horizontally flipped probabilities for fine-grained dog breed validation and submission log loss.",
   "target_metrics": ["log_loss"],
   "task_type": "classification",
   "use_when": ["Small log-loss improvements justify extra inference cost."]

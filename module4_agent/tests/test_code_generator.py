@@ -91,6 +91,8 @@ def test_run_experiments_embeds_and_sweeps_all_candidates():
 def test_run_uses_trained_model_for_evaluation():
     generated = generate_files(_specs(), llm_provider="none")
 
+    assert "hidden[:, 0]" in generated.files["model_utils.py"]
+    assert "patch_tokens.mean(dim=1)" in generated.files["model_utils.py"]
     assert "model, train_result = train_model" in generated.files["run.py"]
     assert "eval_result = evaluate(model, config)" in generated.files["run.py"]
     assert "def _build_dataloader" in generated.files["train.py"]
@@ -106,12 +108,17 @@ def test_run_uses_trained_model_for_evaluation():
     assert "label_smoothing" in generated.files["train.py"]
     assert "GradScaler" in generated.files["train.py"]
     assert "CosineAnnealingLR" in generated.files["train.py"]
+    assert "SequentialLR" in generated.files["train.py"]
+    assert "RandomVerticalFlip" not in generated.files["train.py"]
+    assert "transforms.Resize(resize_size)" in generated.files["train.py"]
     assert "last_checkpoint.pt" in generated.files["train.py"]
     assert "early_stopping_patience" in generated.files["train.py"]
     assert "transforms.RandAugment" in generated.files["train.py"]
     assert "_apply_batch_regularization" in generated.files["train.py"]
     assert "MixUp and CutMix cannot be enabled" in generated.files["train.py"]
     assert "tta_horizontal_flip" in generated.files["evaluate.py"]
+    assert "validation_probabilities.npz" in generated.files["evaluate.py"]
+    assert 'augmentation in {"none", "off", "deterministic"}' in generated.files["train.py"]
 
 
 def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):
@@ -170,6 +177,7 @@ def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):
     config = {
         "task_type": "classification", "offline_smoke": False, "num_classes": 3,
         "backbone": "resnet18", "finetune_strategy": "head_only",
+        "augmentation": "none",
         "learning_rate": 0.01, "batch_size": 8, "image_size": 16,
         "checkpoint_dir": str(ckpt),
     }
@@ -209,3 +217,111 @@ def test_generated_readme_documents_runtime_files():
     assert "Smoke vs Real Training" in readme
     assert "Current Limitations" in readme
     assert "checkpoint" in readme.lower()
+
+
+def test_generated_partial_finetune_unfreezes_last_blocks_and_uses_two_lrs(
+    tmp_path, monkeypatch
+):
+    torch = __import__("pytest").importorskip("torch")
+    import importlib
+    import sys
+
+    import torch.nn as nn
+
+    generated = generate_files(_specs(), llm_provider="none")
+    for name, content in generated.files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+
+    monkeypatch.syspath_prepend(str(tmp_path))
+    for mod in ("model_utils", "train", "model", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+
+
+def test_generated_evaluate_saves_validation_probability_artifact(tmp_path, monkeypatch):
+    torch = __import__("pytest").importorskip("torch")
+    import importlib
+    import sys
+
+    import torch.nn as nn
+
+    generated = generate_files(_specs(), llm_provider="none")
+    for name, content in generated.files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+
+    monkeypatch.syspath_prepend(str(tmp_path))
+    for mod in ("evaluate", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+    evaluate = importlib.import_module("evaluate")
+
+    model = nn.Sequential(nn.Flatten(), nn.Linear(3 * 4 * 4, 3))
+    loader = torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(
+            torch.randn(8, 3, 4, 4),
+            torch.tensor([0, 1, 2, 0, 1, 2, 0, 1]),
+        ),
+        batch_size=4,
+    )
+    result = evaluate._eval_on_dataloader(
+        model,
+        loader,
+        {
+            "task_type": "classification",
+            "num_classes": 3,
+            "evaluation_metric": "log_loss",
+            "checkpoint_dir": str(tmp_path / "checkpoints"),
+        },
+    )
+
+    artifact = tmp_path / "checkpoints" / "validation_probabilities.npz"
+    assert artifact.exists()
+    assert result["validation_artifact"] == str(artifact)
+
+    for mod in ("evaluate", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+    model_utils = importlib.import_module("model_utils")
+    train = importlib.import_module("train")
+
+    class _Encoder(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.layer = nn.ModuleList([nn.Linear(4, 4) for _ in range(4)])
+
+    class _Core(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.encoder = _Encoder()
+            self.layernorm = nn.LayerNorm(4)
+
+    class _Backbone(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.model = _Core()
+
+    class _Model(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.backbone = _Backbone()
+            self.head = nn.Linear(4, 3)
+
+    model = _Model()
+    config = {
+        "finetune_strategy": "partial",
+        "unfreeze_last_n_blocks": 2,
+        "learning_rate": 1.0e-4,
+        "backbone_learning_rate": 1.0e-5,
+        "head_learning_rate": 3.0e-4,
+        "optimizer": "adamw",
+    }
+    model_utils.apply_freeze(model, config)
+
+    blocks = list(model.backbone.model.encoder.layer)
+    assert all(not parameter.requires_grad for block in blocks[:2] for parameter in block.parameters())
+    assert all(parameter.requires_grad for block in blocks[-2:] for parameter in block.parameters())
+    assert all(parameter.requires_grad for parameter in model.backbone.model.layernorm.parameters())
+    assert all(parameter.requires_grad for parameter in model.head.parameters())
+
+    optimizer = train._build_optimizer(model, config)
+    assert sorted(group["lr"] for group in optimizer.param_groups) == [1.0e-5, 3.0e-4]
+
+    for mod in ("model_utils", "train", "model", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)

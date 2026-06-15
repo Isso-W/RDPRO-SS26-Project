@@ -48,3 +48,35 @@ def test_index_is_rebuildable_from_json(tmp_path):
     store.rebuild_index()
     assert store.index_path.exists()
     assert json.loads((store.strategy_cards / "strategy_aug_test_001.json").read_text())["priority"] == 0.5
+
+
+def test_packaged_medal_cards_are_valid_and_retrievable():
+    store = KnowledgeStore("knowledge_base")
+    card_ids = {card.id for card in store.all_cards()}
+
+    assert "strategy_finetune_dinov2_partial_001" in card_ids
+    assert "strategy_resolution_336_001" in card_ids
+    results = store.search_cards(
+        "fine grained dog breed partial finetune higher resolution log loss",
+        domain="fine_grained_classification",
+        target_metric="log_loss",
+        top_k=5,
+    )
+    result_ids = {item["id"] for item in results}
+    assert "strategy_finetune_dinov2_partial_001" in result_ids
+    assert "strategy_resolution_336_001" in result_ids
+
+
+def test_search_reranks_explicit_tta_intent_into_low_token_top_five():
+    store = KnowledgeStore("knowledge_base")
+    store.rebuild_index()
+    results = store.search_cards(
+        "fine grained dog breed higher resolution label smoothing horizontal flip TTA log loss",
+        domain="fine_grained_classification",
+        target_metric="log_loss",
+        top_k=5,
+    )
+
+    assert "strategy_inference_horizontal_flip_tta_001" in {
+        item["id"] for item in results
+    }

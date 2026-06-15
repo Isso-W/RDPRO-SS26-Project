@@ -22,6 +22,7 @@ VALID_COMPONENTS = {
     "ensemble",
     "backbone",
     "finetune",
+    "resolution",
 }
 VALID_RISK_LEVELS = {"low", "medium", "high"}
 

@@ -185,8 +185,9 @@ class KnowledgeStore:
         if domain:
             sql += " AND c.domain IN (?, 'general', 'fine_grained_classification')"
             params.append(domain)
+        candidate_limit = max(20, min(int(top_k) * 4, 80))
         sql += " ORDER BY text_score ASC, c.priority DESC LIMIT ?"
-        params.append(max(1, min(int(top_k), 20)))
+        params.append(candidate_limit)
         connection = sqlite3.connect(self.index_path)
         try:
             rows = connection.execute(sql, params).fetchall()
@@ -201,13 +202,35 @@ class KnowledgeStore:
                 and (not domain or card.domain in {domain, "general", "fine_grained_classification"})
             ]
             cards.sort(key=lambda item: item.priority, reverse=True)
-            rows = [(json.dumps(card.to_dict()), 0.0) for card in cards[:top_k]]
+            rows = [(json.dumps(card.to_dict()), 0.0) for card in cards[:candidate_limit]]
         results = []
+        normalized_query = query.casefold()
         for payload, text_score in rows:
             card = json.loads(payload)
             if target_metric and card.get("target_metrics"):
                 if target_metric not in card["target_metrics"]:
                     continue
+            component = card.get("component", "")
+            intent_boost = 0.0
+            if component == "finetune" and any(
+                term in normalized_query for term in ("finetune", "fine tune", "partial")
+            ):
+                intent_boost += 2.0
+            if component == "resolution" and any(
+                term in normalized_query for term in ("resolution", "image size", "higher")
+            ):
+                intent_boost += 2.0
+            if component == "loss" and "label smoothing" in normalized_query:
+                intent_boost += 2.0
+            if component == "inference" and any(
+                term in normalized_query for term in ("tta", "test time", "horizontal flip")
+            ):
+                intent_boost += 2.0
+            score = (
+                float(card.get("priority", 0.0))
+                - float(text_score)
+                + intent_boost
+            )
             results.append(
                 {
                     "id": card["id"],
@@ -217,9 +240,10 @@ class KnowledgeStore:
                     "experiment_template": card["experiment_template"],
                     "risk": card.get("risk", ""),
                     "priority": card.get("priority", 0.0),
-                    "score": round(float(card.get("priority", 0.0)) - float(text_score), 4),
+                    "score": round(score, 4),
                 }
             )
+        results.sort(key=lambda item: item["score"], reverse=True)
         return results[:top_k]
 
     def record_observation(

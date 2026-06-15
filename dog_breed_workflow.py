@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import Any
 
 import cost_meter
+from autopipeline import flatten_candidate_config, select_candidate
 from agents.knowledge_learner_agent import learn_fixed_sources
 from agents.mle_experiment_agent import run_experiment_loop
+from ensemble import optimize_validation_ensemble
 from kaggle_submit import predict_and_submit
 from module4_agent.result_parser import extract_last_json
 from pipeline import run_kaggle_pipeline
@@ -21,19 +23,18 @@ from recommender.fingerprint import dataset_fingerprint
 
 
 def flatten_config(config: dict[str, Any]) -> dict[str, Any]:
-    flattened = dict(config)
-    nested = config.get("model_config")
-    if isinstance(nested, dict):
-        for key, value in nested.items():
-            if value is not None or key not in flattened:
-                flattened[key] = value
-    return flattened
+    return flatten_candidate_config(config)
 
 
-def train_baseline(project_dir: str | Path) -> tuple[dict, dict, Path]:
+def train_baseline(
+    project_dir: str | Path,
+    baseline_config: dict[str, Any] | None = None,
+) -> tuple[dict, dict, Path]:
     project = Path(project_dir).resolve()
-    configs = json.loads((project / "configs.json").read_text(encoding="utf-8"))
-    baseline = flatten_config(configs[0] if isinstance(configs, list) else configs)
+    if baseline_config is None:
+        configs = json.loads((project / "configs.json").read_text(encoding="utf-8"))
+        baseline_config = configs[0] if isinstance(configs, list) else configs
+    baseline = flatten_config(baseline_config)
     baseline["checkpoint_dir"] = str(project / ".jiaozi_experiments" / "baseline" / "checkpoints")
     baseline["resume_checkpoint"] = ""
     config_path = project / ".jiaozi_experiments" / "baseline.json"
@@ -63,6 +64,7 @@ def train_baseline(project_dir: str | Path) -> tuple[dict, dict, Path]:
         "metric_value": evaluate.get("metric_value"),
         "accuracy": evaluate.get("accuracy"),
         "macro_f1": evaluate.get("macro_f1"),
+        "validation_artifact": evaluate.get("validation_artifact"),
         "best_epoch": (summary.get("train") or {}).get("best_epoch"),
         "runtime_sec": (summary.get("train") or {}).get("runtime_sec"),
     }
@@ -107,16 +109,56 @@ async def execute_dog_breed_workflow(
             kb_root / "experiments" / "outcomes.jsonl"
         ),
     )
-    baseline, baseline_metrics, baseline_path = train_baseline(project)
     fingerprint = dataset_fingerprint(
         pipeline_result["m2_report"],
         pipeline_result["module3_input"],
     )
+    generated_configs = json.loads(
+        (project / "configs.json").read_text(encoding="utf-8")
+    )
+    if not isinstance(generated_configs, list):
+        generated_configs = [generated_configs]
+    candidate_calibration = select_candidate(
+        project,
+        generated_configs,
+        target_metric="log_loss",
+        probe_epochs=2,
+        max_candidates=3,
+    )
+    baseline, baseline_metrics, baseline_path = train_baseline(
+        project,
+        candidate_calibration["selected_config"],
+    )
+    for trial in candidate_calibration["trials"]:
+        if trial["status"] == "success":
+            cost_meter.record_training(
+                epochs=int(trial.get("probe_epochs", 0) or 0),
+                runs=1,
+            )
     cost_meter.record_training(
         epochs=int(baseline.get("recommended_epochs", 0) or 0),
         runs=1,
     )
     memory = OutcomeMemory(kb_root / "experiments" / "outcomes.jsonl")
+    for trial in candidate_calibration["trials"]:
+        memory.log(
+            fingerprint,
+            trial["config"],
+            {
+                "metric_name": trial.get("metric_name"),
+                "metric_value": trial.get("metric_value"),
+                "accuracy": trial.get("accuracy"),
+                "macro_f1": trial.get("macro_f1"),
+                "status": trial.get("status"),
+            },
+            dataset_id="dog_breed",
+            cost={"wall_clock_sec": trial.get("runtime_sec")},
+            metadata={
+                "experiment_name": f"autopipeline_probe_{trial['candidate_index']}",
+                "stage": "candidate_calibration",
+                "status": trial.get("status"),
+            },
+        )
     memory.log(
         fingerprint,
         baseline,
@@ -160,14 +202,55 @@ async def execute_dog_breed_workflow(
             )
         cost_meter.record_training(epochs=actual_epochs, runs=1)
     selected_name, selected_config = _selected_experiment(loop, baseline_path)
+    ensemble_candidates = [
+        {
+            "name": "baseline",
+            "config_path": str(baseline_path),
+            "validation_artifact": baseline_metrics.get("validation_artifact"),
+            "metric_value": baseline_metrics.get("metric_value"),
+        }
+    ]
+    metrics_by_name = {
+        item.get("experiment_name"): item for item in loop.get("metrics", [])
+    }
+    for run in loop.get("runs", []):
+        measured = metrics_by_name.get(run.get("experiment_name")) or {}
+        if run.get("status") != "success" or measured.get("metric_value") is None:
+            continue
+        ensemble_candidates.append(
+            {
+                "name": run["experiment_name"],
+                "config_path": run["config_path"],
+                "validation_artifact": measured.get("validation_artifact"),
+                "metric_value": measured.get("metric_value"),
+            }
+        )
+    ensemble_candidates.sort(
+        key=lambda item: (
+            item.get("metric_value") is None,
+            float(item.get("metric_value") or float("inf")),
+        )
+    )
+    ensemble_plan = optimize_validation_ensemble(
+        ensemble_candidates,
+        step=0.05,
+        max_members=3,
+    )
+    submission_members = (
+        ensemble_plan["members"]
+        if ensemble_plan.get("improved") and len(ensemble_plan.get("members", [])) > 1
+        else None
+    )
+    submission_selection = "validation_ensemble" if submission_members else selected_name
     submission = predict_and_submit(
         "dog_breed",
         project,
         data_root,
-        message=f"Jiaozi MCP {selected_name}",
+        message=f"Jiaozi MCP {submission_selection}",
         do_submit=submit_to_kaggle,
         config_path=selected_config,
-        selected_experiment=selected_name,
+        selected_experiment=submission_selection,
+        ensemble_members=submission_members,
         score_timeout_sec=1800,
         metadata_path=Path(report_path).with_name("submission_result.json"),
     )
@@ -178,7 +261,10 @@ async def execute_dog_breed_workflow(
     report = {
         "benchmark": "Dog Breed Identification",
         "standard_reference_only": pipeline_result.get("benchmark_reference"),
-        "autopipeline_selected": pipeline_result["recommendations"][0],
+        "autopipeline_selected": pipeline_result["recommendations"][
+            candidate_calibration["selected_index"]
+        ],
+        "candidate_calibration": candidate_calibration,
         "module3_input": pipeline_result["module3_input"],
         "m2_report": pipeline_result["m2_report"],
         "knowledge": knowledge,
@@ -196,6 +282,8 @@ async def execute_dog_breed_workflow(
         "experiment_loop": loop,
         "selected_experiment": selected_name,
         "selected_config_path": str(selected_config),
+        "ensemble": ensemble_plan,
+        "submission_selection": submission_selection,
         "submission": submission,
         "cost": cost,
     }

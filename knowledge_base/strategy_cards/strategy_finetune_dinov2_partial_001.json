@@ -1,0 +1,37 @@
+{
+  "avoid_when": [
+    "The frozen DINOv2 representation already reaches the target metric or GPU memory is insufficient."
+  ],
+  "compatible_with": [
+    "facebook/dinov2-base",
+    "fine_grained_classification",
+    "discriminative_learning_rates"
+  ],
+  "component": "finetune",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "The official DINOv2 model card permits downstream fine-tuning when the frozen representation is insufficient.",
+      "source_id": "fixed_dinov2_model_card",
+      "url": "https://github.com/facebookresearch/dinov2/blob/main/MODEL_CARD.md"
+    }
+  ],
+  "experiment_template": {
+    "finetune_strategy": "partial",
+    "unfreeze_last_n_blocks": 2
+  },
+  "id": "strategy_finetune_dinov2_partial_001",
+  "observed_results": [],
+  "priority": 0.96,
+  "risk": "A high backbone learning rate can destroy pretrained features on a small dataset.",
+  "risk_level": "medium",
+  "strategy_name": "DINOv2 Partial Finetune",
+  "summary": "Unfreeze only the final two DINOv2 encoder blocks for fine-grained dog breed adaptation while retaining most pretrained features.",
+  "target_metrics": [
+    "log_loss"
+  ],
+  "task_type": "classification",
+  "use_when": [
+    "A frozen linear probe underfits visually similar dog breeds."
+  ]
+}

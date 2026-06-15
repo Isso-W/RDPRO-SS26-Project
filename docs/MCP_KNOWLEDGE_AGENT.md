@@ -36,6 +36,12 @@ Retrieval returns at most five compact cards and ten historical outcomes. The pl
 creates at most three experiments and changes at most two strategy-controlled fields
 per experiment. Baseline split, seed, and `recommended_epochs` are preserved.
 
+For fine-grained Dog Breed runs, AutoPipeline first probes the Module 3 Top-3
+candidates on the same stratified holdout. The selected baseline then enters the
+MCP loop. Strategy cards can execute partial DINOv2 fine-tuning,
+discriminative backbone/head learning rates, 336-pixel training, label
+smoothing, and horizontal-flip TTA.
+
 ## Safety
 
 `run_experiment` accepts structured JSON only. The project must be below
@@ -70,3 +76,7 @@ configuration differences, validation Log Loss, accuracy, macro-F1, best epoch,
 runtime and token cost, selected checkpoint, Git commit, submission status, and
 official Kaggle score when available. A timeout or rejected submission keeps
 `submission.csv` and records a null score.
+
+Every successful run also writes validation probabilities. Jiaozi searches
+non-negative ensemble weights on validation data and submits the ensemble only
+when it improves validation Log Loss over the best individual model.

@@ -24,7 +24,10 @@ async def run_experiment_loop(
             session,
             "search_strategy_cards",
             {
-                "query": "fine grained dog breed transfer learning augmentation log loss",
+                "query": (
+                    "fine grained dog breed partial finetune higher resolution "
+                    "label smoothing TTA log loss"
+                ),
                 "task_type": "classification",
                 "domain": "fine_grained_classification",
                 "target_metric": "log_loss",

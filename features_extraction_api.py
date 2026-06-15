@@ -93,7 +93,14 @@ _CV_SYSTEM_PROMPT = textwrap.dedent("""\
        "accuracy" (user emphasizes high accuracy, best performance, state-of-the-art)
        "balanced" (no clear preference, or user wants both)
 
-    3. constraints — an object with the following boolean fields:
+    3. domain — exactly one of:
+       "fine_grained_classification" (many visually similar classes such as breeds/species)
+       "general" (all other CV tasks)
+
+    4. evaluation_metric — use the explicit metric name when present, otherwise null.
+       Examples: "log_loss", "accuracy", "roc_auc", "qwk", "map", "miou".
+
+    5. constraints — an object with the following boolean fields:
        "real_time": real-time inference needed (30fps, video stream, online inference)
        "edge_deployment": deploy on edge/mobile (phone, embedded, Raspberry Pi, Jetson)
        "class_imbalance": dataset has class imbalance (rare classes, long-tail distribution)
@@ -113,10 +120,26 @@ _VALID_TASK_TYPES = {
     "classification", "object_detection", "image_segmentation", "feature_extraction",
 }
 _VALID_PRIORITIES = {"speed", "accuracy", "balanced"}
+_VALID_DOMAINS = {"general", "fine_grained_classification"}
 _CONSTRAINT_KEYS = [
     "real_time", "edge_deployment", "class_imbalance",
     "cross_modal", "medical", "zero_shot", "few_shot",
 ]
+_ACCURACY_INTENT = (
+    "high accuracy",
+    "high-quality",
+    "high quality",
+    "best performance",
+    "state-of-the-art",
+    "state of the art",
+)
+_FINE_GRAINED_INTENT = (
+    "fine-grained",
+    "fine grained",
+    "dog breed",
+    "bird species",
+    "plant species",
+)
 
 _TASK_TYPE_ALIASES = {
     "detection":            "object_detection",
@@ -186,6 +209,23 @@ def parse_module1_output(raw: str, user_message: str) -> dict:
     priority = str(parsed.get("priority") or "").lower().strip()
     if priority not in _VALID_PRIORITIES:
         priority = "balanced"
+    message_lower = user_message.lower()
+    if priority == "balanced" and any(term in message_lower for term in _ACCURACY_INTENT):
+        priority = "accuracy"
+
+    domain = str(parsed.get("domain") or "").lower().strip()
+    if domain not in _VALID_DOMAINS:
+        domain = (
+            "fine_grained_classification"
+            if any(term in message_lower for term in _FINE_GRAINED_INTENT)
+            else "general"
+        )
+
+    evaluation_metric = str(parsed.get("evaluation_metric") or "").lower().strip()
+    if "log loss" in message_lower or "log-loss" in message_lower:
+        evaluation_metric = "log_loss"
+    elif not evaluation_metric and "calibrated multiclass probabilities" in message_lower:
+        evaluation_metric = "log_loss"
 
     # constraints 校验
     raw_constraints = parsed.get("constraints", {})
@@ -197,6 +237,8 @@ def parse_module1_output(raw: str, user_message: str) -> dict:
         "task_type":   task_type,
         "data_size":   "medium",
         "priority":    priority,
+        "domain":      domain,
+        "evaluation_metric": evaluation_metric or None,
         "constraints": constraints,
         "description": user_message,
     }

@@ -1165,10 +1165,16 @@ def _input_to_query_text(input_json: dict) -> str:
     task = input_json["task_type"].replace("_", " ")
     size = input_json.get("data_size", "medium")
     priority = input_json.get("priority", "balanced")
+    domain = input_json.get("domain", "general")
+    metric = input_json.get("evaluation_metric")
     c = input_json.get("constraints", {})
     desc = input_json.get("description", "")
 
     parts = [f"{task} task on a {size} dataset"]
+    if domain == "fine_grained_classification":
+        parts.append("fine-grained classification with visually similar classes")
+    if metric:
+        parts.append(f"optimize {str(metric).replace('_', ' ')}")
 
     if priority == "speed":
         parts.append("speed and efficiency are the priority")
@@ -1239,6 +1245,13 @@ def _score_backbone(backbone_id: str, input_json: dict, graph: nx.DiGraph) -> fl
     caps = node.get("capabilities", [])
     if input_json.get("constraints", {}).get("few_shot") and "few_shot" in caps:
         score += 1.5
+
+    if (
+        input_json.get("task_type") == "classification"
+        and input_json.get("domain") == "fine_grained_classification"
+    ):
+        if backbone_id in {"dinov2", "swin_transformer", "convnext", "vit"}:
+            score += 1.5
 
     return score
 
@@ -1576,10 +1589,24 @@ def _recommend_training(
         finetune_strategy = cp.get("finetune_strategy")
         freeze_viable = cp.get("freeze_viable", False)
 
+    partial_recipe = (
+        backbone_id == "dinov2"
+        and input_json.get("task_type") == "classification"
+        and input_json.get("domain") == "fine_grained_classification"
+        and input_json.get("priority") == "accuracy"
+    )
+    if partial_recipe:
+        finetune_strategy = "partial"
+
     return {
         "scratch_viable":   scratch_viable,
         "finetune_strategy": finetune_strategy,
         "freeze_viable":    freeze_viable,
+        "unfreeze_last_n_blocks": 2 if partial_recipe else 0,
+        "backbone_learning_rate": 1.0e-5 if partial_recipe else None,
+        "head_learning_rate": 3.0e-4 if partial_recipe else None,
+        "warmup_epochs": 2 if partial_recipe else 0,
+        "early_stopping_patience": 5 if partial_recipe else 0,
     }
 
 
@@ -1659,6 +1686,11 @@ def retrieve_top3_hybrid(
             "scratch_viable":    training["scratch_viable"],
             "finetune_strategy": training["finetune_strategy"],
             "freeze_viable":     training["freeze_viable"],
+            "unfreeze_last_n_blocks": training["unfreeze_last_n_blocks"],
+            "backbone_learning_rate": training["backbone_learning_rate"],
+            "head_learning_rate": training["head_learning_rate"],
+            "warmup_epochs": training["warmup_epochs"],
+            "early_stopping_patience": training["early_stopping_patience"],
             "alt_backbones":     alt_backbones,
             "score": round(final_scores[backbone_id], 3),
             "score_detail": {
@@ -1687,6 +1719,11 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
     loss_id       = result.get("loss")
     optimizer_id  = result.get("optimizer")
     strategy      = result.get("finetune_strategy")
+    unfreeze_last_n_blocks = result.get("unfreeze_last_n_blocks", 0)
+    backbone_learning_rate = result.get("backbone_learning_rate")
+    head_learning_rate = result.get("head_learning_rate")
+    warmup_epochs = result.get("warmup_epochs", 0)
+    early_stopping_patience = result.get("early_stopping_patience", 0)
     freeze        = result.get("freeze_viable", False)
     scratch       = result.get("scratch_viable", False)
     alternatives  = result.get("alt_backbones", [])
@@ -1720,6 +1757,11 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "strategy":        strategy,
             "freeze_backbone": strategy == "head_only",
             "scratch_viable":  scratch,
+            "unfreeze_last_n_blocks": unfreeze_last_n_blocks,
+            "backbone_learning_rate": backbone_learning_rate,
+            "head_learning_rate": head_learning_rate,
+            "warmup_epochs": warmup_epochs,
+            "early_stopping_patience": early_stopping_patience,
         })
 
         if head_id:
@@ -1770,6 +1812,7 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
 
         strategy_desc = {
             "full":      "Full finetune: update all backbone and head weights",
+            "partial":   "Partial finetune: update the final encoder blocks and head",
             "head_only": "Head-only finetune: freeze backbone, train head only",
             "either":    "Either full finetune or freeze backbone + train head is viable",
         }.get(strategy, f"Finetune strategy: {strategy}")
@@ -1797,6 +1840,11 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "optimizer":         optimizer_id,
             "finetune_strategy": strategy,
             "freeze_backbone":   strategy == "head_only",
+            "unfreeze_last_n_blocks": unfreeze_last_n_blocks,
+            "backbone_learning_rate": backbone_learning_rate,
+            "head_learning_rate": head_learning_rate,
+            "warmup_epochs": warmup_epochs,
+            "early_stopping_patience": early_stopping_patience,
             "scratch_viable":    scratch,
         })
 
