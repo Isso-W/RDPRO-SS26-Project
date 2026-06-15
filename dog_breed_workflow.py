@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any
 
 import cost_meter
-from autopipeline import flatten_candidate_config, select_candidate
+from autopipeline import (
+    flatten_candidate_config,
+    select_candidate,
+    train_selected_folds,
+)
 from agents.knowledge_learner_agent import learn_fixed_sources
 from agents.mle_experiment_agent import run_experiment_loop
 from ensemble import optimize_validation_ensemble
@@ -79,6 +83,20 @@ def _selected_experiment(loop: dict, baseline_path: Path) -> tuple[str, Path]:
         if run.get("experiment_name") == selected:
             return selected, Path(run["config_path"])
     return "baseline", baseline_path
+
+
+def _submission_plan(
+    selected_name: str,
+    validation_ensemble: dict,
+    fold_ensemble: dict,
+) -> tuple[str, list[dict] | None]:
+    fold_members = fold_ensemble.get("members") or []
+    if len(fold_members) >= 2:
+        return f"{selected_name}_{len(fold_members)}fold", fold_members
+    validation_members = validation_ensemble.get("members") or []
+    if validation_ensemble.get("improved") and len(validation_members) > 1:
+        return "validation_ensemble", validation_members
+    return selected_name, None
 
 
 async def execute_dog_breed_workflow(
@@ -236,12 +254,46 @@ async def execute_dog_breed_workflow(
         step=0.05,
         max_members=3,
     )
-    submission_members = (
-        ensemble_plan["members"]
-        if ensemble_plan.get("improved") and len(ensemble_plan.get("members", [])) > 1
-        else None
+    fold_ensemble = train_selected_folds(
+        project,
+        selected_config,
+        fold_count=3,
     )
-    submission_selection = "validation_ensemble" if submission_members else selected_name
+    for fold_run in fold_ensemble.get("runs", []):
+        if fold_run.get("status") != "success":
+            continue
+        fold_config = json.loads(
+            Path(fold_run["config_path"]).read_text(encoding="utf-8")
+        )
+        actual_epochs = int(fold_run.get("actual_epochs", 0) or 0)
+        if not actual_epochs:
+            actual_epochs = int(fold_config.get("recommended_epochs", 0) or 0)
+        cost_meter.record_training(epochs=actual_epochs, runs=1)
+        memory.log(
+            fingerprint,
+            fold_config,
+            {
+                "metric_name": fold_run.get("metric_name"),
+                "metric_value": fold_run.get("metric_value"),
+                "accuracy": fold_run.get("accuracy"),
+                "macro_f1": fold_run.get("macro_f1"),
+                "best_epoch": fold_run.get("best_epoch"),
+                "status": fold_run.get("status"),
+            },
+            dataset_id="dog_breed",
+            cost={"wall_clock_sec": fold_run.get("runtime_sec")},
+            metadata={
+                "experiment_name": fold_run.get("name"),
+                "stage": "selected_config_cross_validation",
+                "selected_experiment": selected_name,
+                "status": fold_run.get("status"),
+            },
+        )
+    submission_selection, submission_members = _submission_plan(
+        selected_name,
+        ensemble_plan,
+        fold_ensemble,
+    )
     submission = predict_and_submit(
         "dog_breed",
         project,
@@ -283,6 +335,7 @@ async def execute_dog_breed_workflow(
         "selected_experiment": selected_name,
         "selected_config_path": str(selected_config),
         "ensemble": ensemble_plan,
+        "fold_ensemble": fold_ensemble,
         "submission_selection": submission_selection,
         "submission": submission,
         "cost": cost,

@@ -20,6 +20,7 @@ REQUIRED_GENERATED_FILES = (
     "smoke_data.py",
     "model.py",
     "train.py",
+    "imagenet_prior.py",
     "evaluate.py",
     "infer.py",
     "run.py",
@@ -64,6 +65,7 @@ def generate_files(
         "smoke_data.py": _smoke_data_py(),
         "model.py": llm_model if llm_model else _model_py(),
         "train.py": _train_py(),
+        "imagenet_prior.py": _imagenet_prior_py(),
         "evaluate.py": _evaluate_py(),
         "infer.py": _infer_py(),
         "run.py": _run_py(first_config_json),
@@ -241,6 +243,10 @@ def _utils_py() -> str:
                 "mixup_alpha": config.get("mixup_alpha", 0.0),
                 "cutmix_alpha": config.get("cutmix_alpha", 0.0),
                 "tta_horizontal_flip": config.get("tta_horizontal_flip", False),
+                "imagenet_prior_blend": config.get("imagenet_prior_blend", False),
+                "imagenet_prior_model": config.get("imagenet_prior_model", ""),
+                "fold_count": config.get("fold_count", 1),
+                "fold_index": config.get("fold_index", 0),
             }
         '''
     ).lstrip()
@@ -969,11 +975,23 @@ def _train_py() -> str:
             return weights, [int(value) for value in counts.tolist()]
 
 
-        def _split_indices(labels: list[int], validation_fraction: float, seed: int):
+        def _split_indices(
+            labels: list[int],
+            validation_fraction: float,
+            seed: int,
+            fold_count: int = 1,
+            fold_index: int = 0,
+        ):
             grouped: dict[int, list[int]] = {}
             for index, label in enumerate(labels):
                 grouped.setdefault(int(label), []).append(index)
             rng = random.Random(seed)
+            fold_count = max(1, int(fold_count))
+            fold_index = int(fold_index)
+            if not 0 <= fold_index < fold_count:
+                raise ValueError(
+                    f"fold_index must be in [0, {fold_count}); got {fold_index}."
+                )
             train_indices: list[int] = []
             validation_indices: list[int] = []
             for class_indices in grouped.values():
@@ -982,10 +1000,19 @@ def _train_py() -> str:
                 if len(shuffled) < 2:
                     train_indices.extend(shuffled)
                     continue
-                validation_count = max(1, round(len(shuffled) * validation_fraction))
-                validation_count = min(validation_count, len(shuffled) - 1)
-                validation_indices.extend(shuffled[:validation_count])
-                train_indices.extend(shuffled[validation_count:])
+                if fold_count > 1:
+                    for position, sample_index in enumerate(shuffled):
+                        destination = (
+                            validation_indices
+                            if position % fold_count == fold_index
+                            else train_indices
+                        )
+                        destination.append(sample_index)
+                else:
+                    validation_count = max(1, round(len(shuffled) * validation_fraction))
+                    validation_count = min(validation_count, len(shuffled) - 1)
+                    validation_indices.extend(shuffled[:validation_count])
+                    train_indices.extend(shuffled[validation_count:])
             rng.shuffle(train_indices)
             rng.shuffle(validation_indices)
             return train_indices, validation_indices
@@ -1006,6 +1033,8 @@ def _train_py() -> str:
             transform = _build_image_transform(config, "test" if deterministic else split)
             seed = as_int(get_value(config, "seed", 42), 42)
             validation_fraction = as_float(get_value(config, "validation_fraction", 0.2), 0.2)
+            fold_count = max(1, as_int(get_value(config, "fold_count", 1), 1))
+            fold_index = as_int(get_value(config, "fold_index", 0), 0)
             max_samples_key = "max_train_samples" if split == "train" else "max_eval_samples"
             max_samples = as_int(get_value(config, max_samples_key, 0), 0)
 
@@ -1030,6 +1059,8 @@ def _train_py() -> str:
                     encoded_labels,
                     validation_fraction=validation_fraction,
                     seed=seed,
+                    fold_count=fold_count,
+                    fold_index=fold_index,
                 )
                 selected_indices = train_indices if split == "train" else validation_indices
                 if max_samples > 0:
@@ -1093,6 +1124,8 @@ def _train_py() -> str:
                 labels,
                 validation_fraction=validation_fraction,
                 seed=seed,
+                fold_count=fold_count,
+                fold_index=fold_index,
             )
             selected_indices = train_indices if split == "train" else validation_indices
             if max_samples > 0:
@@ -1942,6 +1975,8 @@ def _train_py() -> str:
                     ),
                     "head_learning_rate": get_value(config, "head_learning_rate", None),
                     "tta_horizontal_flip": get_value(config, "tta_horizontal_flip", False),
+                    "fold_count": get_value(config, "fold_count", 1),
+                    "fold_index": get_value(config, "fold_index", 0),
                     "frozen_backbone_params": int(getattr(model, "_frozen_backbone_params", 0)),
                 },
             }
@@ -1952,6 +1987,385 @@ def _train_py() -> str:
             """Run training and return a summary."""
             _model, summary = train_model(config, data=data, epochs=epochs, max_steps=max_steps)
             return summary
+        '''
+    ).lstrip()
+
+
+def _imagenet_prior_py() -> str:
+    return dedent(
+        '''
+        """ImageNet dog-category prior projection and validation calibration."""
+
+        from __future__ import annotations
+
+        import re
+        from pathlib import Path
+        from typing import Any
+
+        import numpy as np
+        import torch
+
+        from utils import as_bool, as_int, get_value
+
+
+        def normalize_category_name(value: Any) -> str:
+            """Normalize Kaggle snake-case and ImageNet display names identically."""
+            return " ".join(
+                re.sub(r"[^a-z0-9]+", " ", str(value).lower()).split()
+            )
+
+
+        def build_label_projection(
+            label_names: list[str],
+            imagenet_categories: list[str],
+        ) -> list[int]:
+            """Return ImageNet indices in the exact training-label order."""
+            category_to_index = {}
+            for index, category in enumerate(imagenet_categories):
+                category_to_index.setdefault(
+                    normalize_category_name(category),
+                    index,
+                )
+            missing = [
+                label
+                for label in label_names
+                if normalize_category_name(label) not in category_to_index
+            ]
+            if missing:
+                raise ValueError(
+                    "ImageNet prior cannot map training labels: "
+                    + ", ".join(str(value) for value in missing[:10])
+                )
+            return [
+                category_to_index[normalize_category_name(label)]
+                for label in label_names
+            ]
+
+
+        def multiclass_log_loss(labels, probabilities) -> float:
+            matrix = np.asarray(probabilities, dtype=np.float64)
+            matrix = np.clip(matrix, 1.0e-15, 1.0)
+            matrix /= matrix.sum(axis=1, keepdims=True)
+            targets = np.asarray(labels, dtype=np.int64)
+            return float(-np.log(matrix[np.arange(len(targets)), targets]).mean())
+
+
+        def calibrate_probability_blend(
+            learned_probabilities,
+            prior_probabilities,
+            labels,
+            *,
+            step: float = 0.05,
+        ) -> tuple[float, np.ndarray, float]:
+            """Select a convex prior blend using validation multiclass log loss."""
+            learned = np.asarray(learned_probabilities, dtype=np.float64)
+            prior = np.asarray(prior_probabilities, dtype=np.float64)
+            targets = np.asarray(labels, dtype=np.int64)
+            if learned.shape != prior.shape:
+                raise ValueError("Learned and ImageNet-prior probabilities must align.")
+            if len(learned) != len(targets):
+                raise ValueError("Probability rows and labels must align.")
+            units = max(1, round(1.0 / float(step)))
+            best_alpha = 0.0
+            best_matrix = learned
+            best_loss = multiclass_log_loss(targets, learned)
+            for unit in range(1, units + 1):
+                alpha = unit / units
+                combined = ((1.0 - alpha) * learned) + (alpha * prior)
+                combined = np.clip(combined, 1.0e-15, 1.0)
+                combined /= combined.sum(axis=1, keepdims=True)
+                loss = multiclass_log_loss(targets, combined)
+                if loss < best_loss - 1.0e-12:
+                    best_alpha = float(alpha)
+                    best_matrix = combined
+                    best_loss = float(loss)
+            return best_alpha, np.asarray(best_matrix, dtype=np.float32), best_loss
+
+
+        def _prior_enabled(config: dict[str, Any]) -> bool:
+            value = get_value(config, "imagenet_prior_blend", False)
+            if isinstance(value, str):
+                return value.strip().lower() in {"auto", "true", "yes", "on", "1"}
+            return bool(value)
+
+
+        def _load_prior_model(config: dict[str, Any], device: torch.device):
+            import torchvision.models as models
+
+            model_name = str(
+                get_value(config, "imagenet_prior_model", "efficientnet_v2_s")
+                or "efficientnet_v2_s"
+            ).strip().lower()
+            try:
+                weights = models.get_model_weights(model_name).DEFAULT
+                model = models.get_model(model_name, weights=weights)
+            except (AttributeError, ValueError) as exc:
+                raise ValueError(
+                    f"Unsupported torchvision ImageNet prior model: {model_name}"
+                ) from exc
+            model.to(device).eval()
+            for parameter in model.parameters():
+                parameter.requires_grad = False
+            return model, weights, model_name
+
+
+        def _csv_prior_loader(
+            config: dict[str, Any],
+            transform,
+            *,
+            split: str,
+            batch_size: int,
+        ):
+            import pandas as pd
+            from PIL import Image
+            from train import _split_indices
+
+            csv_path = Path(str(get_value(config, "train_csv", ""))).expanduser().resolve()
+            if not csv_path.is_file():
+                raise FileNotFoundError(
+                    "ImageNet prior currently requires a local train_csv."
+                )
+            frame = pd.read_csv(csv_path)
+            image_column = str(get_value(config, "image_column", "image") or "image")
+            label_column = str(get_value(config, "label_column", "label") or "label")
+            label_values = frame[label_column].tolist()
+            label_names = sorted(set(label_values), key=lambda value: str(value))
+            label_to_index = {value: index for index, value in enumerate(label_names)}
+            encoded_labels = [label_to_index[value] for value in label_values]
+            train_indices, validation_indices = _split_indices(
+                encoded_labels,
+                validation_fraction=float(get_value(config, "validation_fraction", 0.2)),
+                seed=as_int(get_value(config, "seed", 42), 42),
+                fold_count=max(1, as_int(get_value(config, "fold_count", 1), 1)),
+                fold_index=as_int(get_value(config, "fold_index", 0), 0),
+            )
+            selected_indices = train_indices if split == "train" else validation_indices
+            max_samples_key = "max_train_samples" if split == "train" else "max_eval_samples"
+            max_samples = as_int(get_value(config, max_samples_key, 0), 0)
+            if max_samples > 0:
+                selected_indices = selected_indices[:max_samples]
+            selected_frame = frame.iloc[selected_indices].reset_index(drop=True)
+            selected_labels = [encoded_labels[index] for index in selected_indices]
+            base_dir_value = str(get_value(config, "image_dir", "") or "")
+            base_dir = (
+                Path(base_dir_value).expanduser().resolve()
+                if base_dir_value
+                else csv_path.parent
+            )
+            path_template = str(
+                get_value(config, "image_path_template", "{image}") or "{image}"
+            )
+            image_extension = str(get_value(config, "image_extension", "") or "")
+
+            class PriorDataset(torch.utils.data.Dataset):
+                def __len__(self):
+                    return len(selected_frame)
+
+                def __getitem__(self, index):
+                    row = selected_frame.iloc[index]
+                    image_value = str(row[image_column])
+                    relative = path_template.format(
+                        image=image_value,
+                        label=str(row[label_column]),
+                        stem=Path(image_value).stem,
+                    )
+                    image_path = base_dir / relative
+                    if image_extension and not image_path.suffix:
+                        image_path = image_path.with_suffix(image_extension)
+                    with Image.open(image_path) as image:
+                        tensor = transform(image.convert("RGB"))
+                    return tensor, torch.tensor(
+                        selected_labels[index],
+                        dtype=torch.long,
+                    )
+
+            workers = as_int(get_value(config, "num_workers", 2), 2)
+            loader = torch.utils.data.DataLoader(
+                PriorDataset(),
+                batch_size=max(1, int(batch_size)),
+                shuffle=False,
+                num_workers=workers,
+                pin_memory=torch.cuda.is_available(),
+                persistent_workers=workers > 0,
+            )
+            return loader, [str(value) for value in label_names]
+
+
+        def _project_logits(
+            logits: torch.Tensor,
+            projection: list[int],
+        ) -> torch.Tensor:
+            probabilities = torch.softmax(logits, dim=1)[:, projection]
+            return probabilities / probabilities.sum(dim=1, keepdim=True).clamp_min(1.0e-15)
+
+
+        def validation_prior_probabilities(
+            config: dict[str, Any],
+            *,
+            device: torch.device,
+            batch_size: int,
+        ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+            """Run the native ImageNet classifier on the configured validation fold."""
+            model, weights, model_name = _load_prior_model(config, device)
+            loader, label_names = _csv_prior_loader(
+                config,
+                weights.transforms(),
+                split="test",
+                batch_size=batch_size,
+            )
+            categories = list(weights.meta["categories"])
+            projection = build_label_projection(label_names, categories)
+            probability_batches = []
+            label_batches = []
+            use_tta = as_bool(
+                get_value(config, "tta_horizontal_flip", False),
+                False,
+            )
+            with torch.no_grad():
+                for images, labels in loader:
+                    images = images.to(device, non_blocking=True)
+                    probabilities = _project_logits(model(images), projection)
+                    if use_tta:
+                        flipped = _project_logits(
+                            model(torch.flip(images, dims=[3])),
+                            projection,
+                        )
+                        probabilities = (probabilities + flipped) / 2.0
+                    probability_batches.append(probabilities.cpu())
+                    label_batches.append(labels.cpu())
+            del model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            metadata = {
+                "prior_model": model_name,
+                "imagenet_indices": projection,
+                "label_names": label_names,
+            }
+            return (
+                torch.cat(probability_batches).numpy().astype("float32"),
+                torch.cat(label_batches).numpy().astype("int64"),
+                metadata,
+            )
+
+
+        def predict_prior_directory(
+            config: dict[str, Any],
+            image_dir: str | Path,
+            *,
+            batch_size: int = 16,
+        ) -> tuple[list[tuple[str, list[float]]], dict[str, Any]]:
+            """Run projected native ImageNet probabilities on a test directory."""
+            import pandas as pd
+            from PIL import Image
+
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model, weights, model_name = _load_prior_model(config, device)
+            csv_path = Path(str(get_value(config, "train_csv", ""))).expanduser().resolve()
+            frame = pd.read_csv(csv_path)
+            label_column = str(get_value(config, "label_column", "label") or "label")
+            label_names = sorted(
+                {str(value) for value in frame[label_column].tolist()},
+                key=str,
+            )
+            projection = build_label_projection(
+                label_names,
+                list(weights.meta["categories"]),
+            )
+            transform = weights.transforms()
+            extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+            files = sorted(
+                path
+                for path in Path(image_dir).rglob("*")
+                if path.suffix.lower() in extensions
+            )
+            if not files:
+                raise FileNotFoundError(f"No images found under {image_dir}")
+
+            class PriorTestDataset(torch.utils.data.Dataset):
+                def __len__(self):
+                    return len(files)
+
+                def __getitem__(self, index):
+                    path = files[index]
+                    with Image.open(path) as image:
+                        tensor = transform(image.convert("RGB"))
+                    return tensor, path.name
+
+            loader = torch.utils.data.DataLoader(
+                PriorTestDataset(),
+                batch_size=max(1, min(16, int(batch_size))),
+                shuffle=False,
+                num_workers=as_int(get_value(config, "num_workers", 2), 2),
+                pin_memory=torch.cuda.is_available(),
+            )
+            use_tta = as_bool(
+                get_value(config, "tta_horizontal_flip", False),
+                False,
+            )
+            results: list[tuple[str, list[float]]] = []
+            with torch.no_grad():
+                for images, names in loader:
+                    images = images.to(device, non_blocking=True)
+                    probabilities = _project_logits(model(images), projection)
+                    if use_tta:
+                        flipped = _project_logits(
+                            model(torch.flip(images, dims=[3])),
+                            projection,
+                        )
+                        probabilities = (probabilities + flipped) / 2.0
+                    for name, values in zip(names, probabilities.cpu().tolist()):
+                        results.append(
+                            (str(name), [float(value) for value in values])
+                        )
+            del model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            return results, {
+                "prior_model": model_name,
+                "imagenet_indices": projection,
+                "label_names": label_names,
+            }
+
+
+        def apply_validation_prior(
+            learned_probabilities,
+            labels,
+            config: dict[str, Any],
+            *,
+            device: torch.device,
+            batch_size: int,
+        ) -> tuple[np.ndarray, dict[str, Any]]:
+            """Return validation-selected learned/native ImageNet probability blend."""
+            learned = np.asarray(learned_probabilities, dtype=np.float32)
+            if not _prior_enabled(config):
+                return learned, {
+                    "prior_alpha": 0.0,
+                    "prior_model": "",
+                    "imagenet_indices": [],
+                    "label_names": [],
+                }
+            prior, prior_labels, metadata = validation_prior_probabilities(
+                config,
+                device=device,
+                batch_size=batch_size,
+            )
+            targets = np.asarray(labels, dtype=np.int64)
+            if not np.array_equal(targets, prior_labels):
+                raise ValueError("ImageNet-prior validation labels are not aligned.")
+            alpha, combined, loss = calibrate_probability_blend(
+                learned,
+                prior,
+                targets,
+            )
+            metadata.update(
+                {
+                    "prior_alpha": alpha,
+                    "prior_log_loss": multiclass_log_loss(targets, prior),
+                    "learned_log_loss": multiclass_log_loss(targets, learned),
+                    "combined_log_loss": loss,
+                }
+            )
+            return combined, metadata
         '''
     ).lstrip()
 
@@ -1969,6 +2383,7 @@ def _evaluate_py() -> str:
         import numpy as np
         import torch
 
+        from imagenet_prior import apply_validation_prior
         from smoke_data import synthetic_batch
         from utils import as_bool, as_int, get_value, task_type
 
@@ -2064,9 +2479,20 @@ def _evaluate_py() -> str:
                         all_labels.append(target)
 
             if task == "classification":
-                preds = torch.cat(all_preds).cpu()
                 labels = torch.cat(all_labels).cpu()
                 probabilities = torch.cat(all_probabilities).cpu()
+                probability_values, prior_metadata = apply_validation_prior(
+                    probabilities.numpy(),
+                    labels.numpy(),
+                    config,
+                    device=device,
+                    batch_size=min(
+                        16,
+                        max(1, int(getattr(dataloader, "batch_size", 16) or 16)),
+                    ),
+                )
+                probabilities = torch.from_numpy(probability_values)
+                preds = probabilities.argmax(dim=1)
                 artifact_dir = Path(
                     str(get_value(config, "checkpoint_dir", "checkpoints"))
                 )
@@ -2076,6 +2502,17 @@ def _evaluate_py() -> str:
                     validation_artifact,
                     probabilities=probabilities.numpy().astype("float32"),
                     labels=labels.numpy().astype("int64"),
+                    prior_alpha=np.asarray(
+                        prior_metadata.get("prior_alpha", 0.0),
+                        dtype="float32",
+                    ),
+                    prior_model=np.asarray(
+                        prior_metadata.get("prior_model", ""),
+                    ),
+                    imagenet_indices=np.asarray(
+                        prior_metadata.get("imagenet_indices", []),
+                        dtype="int64",
+                    ),
                 )
                 accuracy = float((preds == labels).float().mean().item())
                 requested_metric = str(get_value(config, "evaluation_metric", "accuracy") or "accuracy").lower()
@@ -2117,6 +2554,10 @@ def _evaluate_py() -> str:
                     "num_samples": len(labels),
                     "params": _count_params(model),
                     "validation_artifact": str(validation_artifact),
+                    "prior_alpha": float(prior_metadata.get("prior_alpha", 0.0)),
+                    "prior_model": prior_metadata.get("prior_model", ""),
+                    "prior_log_loss": prior_metadata.get("prior_log_loss"),
+                    "learned_log_loss": prior_metadata.get("learned_log_loss"),
                     "status": "success",
                 }
             if task == "feature_extraction":

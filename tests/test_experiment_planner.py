@@ -98,3 +98,30 @@ def test_planner_supports_medal_recipe_fields_and_prioritizes_resolution():
         "rates",
     ]
     assert all(len(proposal.changed_fields) <= 2 for proposal in proposals)
+
+
+def test_planner_accepts_controlled_imagenet_prior_pair():
+    proposals = generate_proposals(
+        {"imagenet_prior_blend": False},
+        [
+            {
+                "id": "imagenet_prior",
+                "strategy_name": "ImageNet Breed Prior",
+                "component": "inference",
+                "priority": 0.99,
+                "summary": "validation-calibrated prior",
+                "experiment_template": {
+                    "imagenet_prior_blend": "auto",
+                    "imagenet_prior_model": "efficientnet_v2_s",
+                },
+            }
+        ],
+        max_experiments=1,
+        max_changed_variables=2,
+    )
+
+    assert len(proposals) == 1
+    assert proposals[0].changed_fields == [
+        "imagenet_prior_blend",
+        "imagenet_prior_model",
+    ]

@@ -223,7 +223,8 @@ def extract_strategy_cards_service(
             "label_smoothing, optimizer, scheduler, learning_rate, finetune_strategy, "
             "freeze_backbone, unfreeze_last_n_blocks, backbone_learning_rate, "
             "head_learning_rate, backbone, pretrained_hf_id, use_pretrained, image_size, "
-            "batch_size, tta_horizontal_flip. "
+            "batch_size, tta_horizontal_flip, imagenet_prior_blend, "
+            "imagenet_prior_model. "
             "Use at most two fields per card and never enable MixUp and CutMix together."
         ),
         json.dumps(summary.to_dict(), ensure_ascii=False),

@@ -56,6 +56,7 @@ def test_packaged_medal_cards_are_valid_and_retrievable():
 
     assert "strategy_finetune_dinov2_partial_001" in card_ids
     assert "strategy_resolution_336_001" in card_ids
+    assert "strategy_inference_imagenet_breed_prior_001" in card_ids
     results = store.search_cards(
         "fine grained dog breed partial finetune higher resolution log loss",
         domain="fine_grained_classification",
@@ -78,5 +79,20 @@ def test_search_reranks_explicit_tta_intent_into_low_token_top_five():
     )
 
     assert "strategy_inference_horizontal_flip_tta_001" in {
+        item["id"] for item in results
+    }
+
+
+def test_search_reranks_imagenet_breed_prior_into_low_token_top_five():
+    store = KnowledgeStore("knowledge_base")
+    store.rebuild_index()
+    results = store.search_cards(
+        "fine grained dog breed ImageNet breed prior native classifier log loss",
+        domain="fine_grained_classification",
+        target_metric="log_loss",
+        top_k=5,
+    )
+
+    assert "strategy_inference_imagenet_breed_prior_001" in {
         item["id"] for item in results
     }

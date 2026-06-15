@@ -130,6 +130,71 @@ def index_to_label_map(train_csv: str | Path, label_column: str) -> dict:
     return {index: value for index, value in enumerate(unique)}
 
 
+def apply_calibrated_imagenet_prior(
+    project_dir: str | Path,
+    config: dict,
+    image_dir: str | Path,
+    learned_predictions,
+    *,
+    batch_size: int,
+):
+    """Apply the validation-selected ImageNet breed-prior blend to test predictions."""
+    value = config.get("imagenet_prior_blend", False)
+    enabled = (
+        value.strip().lower() in {"auto", "true", "yes", "on", "1"}
+        if isinstance(value, str)
+        else bool(value)
+    )
+    if not enabled:
+        return learned_predictions, None
+
+    import numpy as np
+
+    checkpoint_dir = Path(str(config.get("checkpoint_dir", "checkpoints")))
+    if not checkpoint_dir.is_absolute():
+        checkpoint_dir = Path(project_dir).resolve() / checkpoint_dir
+    artifact_path = checkpoint_dir / "validation_probabilities.npz"
+    if not artifact_path.is_file():
+        raise FileNotFoundError(
+            f"ImageNet-prior calibration artifact not found: {artifact_path}"
+        )
+    artifact = np.load(artifact_path, allow_pickle=False)
+    if "prior_alpha" not in artifact:
+        raise ValueError(
+            f"Validation artifact does not contain prior_alpha: {artifact_path}"
+        )
+    alpha = float(np.asarray(artifact["prior_alpha"]).item())
+    if not 0.0 <= alpha <= 1.0:
+        raise ValueError(f"Invalid ImageNet-prior alpha: {alpha}")
+    if alpha <= 0.0:
+        return learned_predictions, {
+            "alpha": 0.0,
+            "validation_artifact": str(artifact_path),
+            "prior_model": str(config.get("imagenet_prior_model", "")),
+        }
+
+    project = Path(project_dir).resolve()
+    if str(project) not in sys.path:
+        sys.path.insert(0, str(project))
+    from ensemble import combine_prediction_sets
+    from imagenet_prior import predict_prior_directory
+
+    prior_predictions, metadata = predict_prior_directory(
+        config,
+        image_dir,
+        batch_size=batch_size,
+    )
+    combined = combine_prediction_sets(
+        [learned_predictions, prior_predictions],
+        [1.0 - alpha, alpha],
+    )
+    return combined, {
+        **metadata,
+        "alpha": alpha,
+        "validation_artifact": str(artifact_path),
+    }
+
+
 def write_submission(predictions, index_to_label, sample_submission, out_path):
     """Write calibrated probabilities using the sample's exact class-column order."""
     import pandas as pd
@@ -289,6 +354,7 @@ def predict_and_submit(
         )
 
     ensemble_metadata = None
+    prior_metadata = None
     if ensemble_members:
         import torch
 
@@ -313,6 +379,13 @@ def predict_and_submit(
                 batch_size=batch_size,
                 tta_horizontal_flip=bool(config.get("tta_horizontal_flip", False)),
             )
+            member_predictions, member_prior = apply_calibrated_imagenet_prior(
+                project_dir,
+                config,
+                info["test_dir"],
+                member_predictions,
+                batch_size=batch_size,
+            )
             prediction_sets.append(member_predictions)
             weights.append(float(member["weight"]))
             artifact_path = save_probability_artifact(
@@ -324,6 +397,7 @@ def predict_and_submit(
                 {
                     **member,
                     "test_artifact": str(artifact_path),
+                    "imagenet_prior": member_prior,
                 }
             )
             del model
@@ -343,6 +417,13 @@ def predict_and_submit(
             info["test_dir"],
             batch_size=batch_size,
             tta_horizontal_flip=bool(config.get("tta_horizontal_flip", False)),
+        )
+        predictions, prior_metadata = apply_calibrated_imagenet_prior(
+            project_dir,
+            config,
+            info["test_dir"],
+            predictions,
+            batch_size=batch_size,
         )
     idx_to_label = index_to_label_map(info["train_csv"], info["label_column"])
 
@@ -381,6 +462,7 @@ def predict_and_submit(
         "git_commit": commit,
         "selected_experiment": selected_experiment,
         "ensemble": ensemble_metadata,
+        "imagenet_prior": prior_metadata,
         "config_path": str(config_path) if config_path else str(Path(project_dir) / "configs.json"),
     }
     destination = Path(metadata_path) if metadata_path else Path(project_dir) / "submission_result.json"

@@ -17,6 +17,7 @@ def test_integration_notebook_is_colab_entrypoint_without_hyperparameter_overrid
     assert "KAGGLE_API_TOKEN" in text
     assert 'report["candidate_calibration"]' in source_text
     assert 'report["ensemble"]' in source_text
+    assert 'report["fold_ensemble"]' in source_text
     assert 'report["submission_selection"]' in source_text
     for forbidden in (
         "EPOCHS =",

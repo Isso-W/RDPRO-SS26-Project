@@ -1,7 +1,12 @@
 import json
 from types import SimpleNamespace
 
-from dog_breed_workflow import _selected_experiment, flatten_config, train_baseline
+from dog_breed_workflow import (
+    _selected_experiment,
+    _submission_plan,
+    flatten_config,
+    train_baseline,
+)
 
 
 def test_flatten_config_preserves_runtime_fields():
@@ -56,3 +61,47 @@ def test_train_baseline_uses_calibrated_candidate_config(tmp_path, monkeypatch):
     assert config["backbone"] == "selected"
     assert metrics["metric_value"] == 0.42
     assert path.name == "baseline.json"
+
+
+def test_submission_plan_prefers_selected_config_fold_ensemble():
+    selected, members = _submission_plan(
+        "exp_3_prior",
+        {
+            "improved": True,
+            "members": [
+                {"name": "baseline", "weight": 0.5},
+                {"name": "exp_3_prior", "weight": 0.5},
+            ],
+        },
+        {
+            "members": [
+                {"name": "fold_0", "weight": 0.34},
+                {"name": "fold_1", "weight": 0.33},
+                {"name": "fold_2", "weight": 0.33},
+            ]
+        },
+    )
+
+    assert selected == "exp_3_prior_3fold"
+    assert [member["name"] for member in members] == [
+        "fold_0",
+        "fold_1",
+        "fold_2",
+    ]
+
+
+def test_submission_plan_falls_back_to_validation_ensemble():
+    selected, members = _submission_plan(
+        "baseline",
+        {
+            "improved": True,
+            "members": [
+                {"name": "baseline", "weight": 0.6},
+                {"name": "exp_1", "weight": 0.4},
+            ],
+        },
+        {"members": [{"name": "fold_0", "weight": 1.0}]},
+    )
+
+    assert selected == "validation_ensemble"
+    assert len(members) == 2

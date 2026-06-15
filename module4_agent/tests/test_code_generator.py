@@ -36,6 +36,7 @@ def test_generate_files_contains_required_files_and_compiles():
     assert "configs.json" in generated.files
     assert "generation_info.json" in generated.files
     assert "utils.py" in generated.files
+    assert "imagenet_prior.py" in generated.files
     for filename, content in generated.files.items():
         if filename.endswith(".py"):
             compile(content, filename, "exec")
@@ -324,4 +325,94 @@ def test_generated_evaluate_saves_validation_probability_artifact(tmp_path, monk
     assert sorted(group["lr"] for group in optimizer.param_groups) == [1.0e-5, 3.0e-4]
 
     for mod in ("model_utils", "train", "model", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+
+
+def test_generated_stratified_folds_are_disjoint_and_cover_all_samples(
+    tmp_path, monkeypatch
+):
+    import importlib
+    import sys
+
+    generated = generate_files(_specs(), llm_provider="none")
+    for name, content in generated.files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+
+    monkeypatch.syspath_prepend(str(tmp_path))
+    for mod in ("train", "model", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+
+
+def test_generated_imagenet_prior_maps_breeds_and_calibrates_blend(
+    tmp_path, monkeypatch
+):
+    import importlib
+    import sys
+
+    import numpy as np
+    import pytest
+
+    generated = generate_files(_specs(), llm_provider="none")
+    for name, content in generated.files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+
+    monkeypatch.syspath_prepend(str(tmp_path))
+    sys.modules.pop("imagenet_prior", None)
+    prior = importlib.import_module("imagenet_prior")
+
+    labels = [
+        "black-and-tan_coonhound",
+        "brabancon_griffon",
+        "cardigan",
+        "german_short-haired_pointer",
+        "staffordshire_bullterrier",
+        "walker_hound",
+    ]
+    categories = [
+        "other",
+        "black-and-tan coonhound",
+        "Brabancon griffon",
+        "Cardigan",
+        "German short-haired pointer",
+        "Staffordshire bullterrier",
+        "Walker hound",
+        "cardigan",
+    ]
+    assert prior.build_label_projection(labels, categories) == [1, 2, 3, 4, 5, 6]
+
+    learned = np.asarray([[0.55, 0.45], [0.45, 0.55]], dtype=np.float32)
+    imagenet = np.asarray([[0.95, 0.05], [0.05, 0.95]], dtype=np.float32)
+    alpha, combined, loss = prior.calibrate_probability_blend(
+        learned,
+        imagenet,
+        np.asarray([0, 1]),
+        step=0.05,
+    )
+    assert alpha == pytest.approx(1.0)
+    assert loss < prior.multiclass_log_loss([0, 1], learned)
+    assert combined.sum(axis=1).tolist() == pytest.approx([1.0, 1.0])
+
+    sys.modules.pop("imagenet_prior", None)
+    train = importlib.import_module("train")
+
+    labels = [label for label in range(3) for _ in range(9)]
+    validation_sets = []
+    for fold_index in range(3):
+        train_indices, validation_indices = train._split_indices(
+            labels,
+            validation_fraction=0.2,
+            seed=42,
+            fold_count=3,
+            fold_index=fold_index,
+        )
+        assert set(train_indices).isdisjoint(validation_indices)
+        assert set(train_indices) | set(validation_indices) == set(range(len(labels)))
+        validation_sets.append(set(validation_indices))
+
+    assert validation_sets[0].isdisjoint(validation_sets[1])
+    assert validation_sets[0].isdisjoint(validation_sets[2])
+    assert validation_sets[1].isdisjoint(validation_sets[2])
+    assert set().union(*validation_sets) == set(range(len(labels)))
+
+    for mod in ("train", "model", "smoke_data", "utils"):
         sys.modules.pop(mod, None)

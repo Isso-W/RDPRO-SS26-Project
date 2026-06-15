@@ -1,9 +1,17 @@
+import sys
+from types import ModuleType
 from types import SimpleNamespace
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from kaggle_submit import _submission_status, _submission_value, write_submission
+from kaggle_submit import (
+    _submission_status,
+    _submission_value,
+    apply_calibrated_imagenet_prior,
+    write_submission,
+)
 
 
 def test_dog_breed_probability_submission_has_exact_order_and_sums(tmp_path):
@@ -60,3 +68,39 @@ def test_submission_value_supports_new_kaggle_private_fields():
     assert _submission_value(
         submission, "publicScore", "public_score", "_public_score"
     ) == "0.82967"
+
+
+def test_apply_calibrated_imagenet_prior_uses_saved_validation_alpha(
+    tmp_path, monkeypatch
+):
+    checkpoint_dir = tmp_path / "checkpoints"
+    checkpoint_dir.mkdir()
+    np.savez_compressed(
+        checkpoint_dir / "validation_probabilities.npz",
+        probabilities=np.asarray([[0.5, 0.5]], dtype=np.float32),
+        labels=np.asarray([0], dtype=np.int64),
+        prior_alpha=np.asarray(0.25, dtype=np.float32),
+    )
+    module = ModuleType("imagenet_prior")
+    module.predict_prior_directory = lambda *_args, **_kwargs: (
+        [("a.jpg", [0.8, 0.2]), ("b.jpg", [0.2, 0.8])],
+        {"prior_model": "efficientnet_v2_s"},
+    )
+    monkeypatch.setitem(sys.modules, "imagenet_prior", module)
+
+    combined, metadata = apply_calibrated_imagenet_prior(
+        tmp_path,
+        {
+            "imagenet_prior_blend": "auto",
+            "imagenet_prior_model": "efficientnet_v2_s",
+            "checkpoint_dir": str(checkpoint_dir),
+        },
+        tmp_path / "test",
+        [("a.jpg", [0.6, 0.4]), ("b.jpg", [0.4, 0.6])],
+        batch_size=8,
+    )
+
+    assert combined[0][1] == pytest.approx([0.65, 0.35])
+    assert combined[1][1] == pytest.approx([0.35, 0.65])
+    assert metadata["alpha"] == pytest.approx(0.25)
+    assert metadata["prior_model"] == "efficientnet_v2_s"

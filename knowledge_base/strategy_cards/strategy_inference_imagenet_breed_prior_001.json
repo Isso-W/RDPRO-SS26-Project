@@ -1,0 +1,44 @@
+{
+  "avoid_when": [
+    "The target labels do not map exactly to ImageNet categories.",
+    "Competition rules prohibit ImageNet-pretrained classifiers."
+  ],
+  "compatible_with": [
+    "fine_grained_classification",
+    "probability_ensemble",
+    "horizontal_flip_tta"
+  ],
+  "component": "inference",
+  "domain": "fine_grained_classification",
+  "evidence": [
+    {
+      "note": "The Dog Breed Identification data is a strict canine subset of ImageNet, so the native ImageNet classifier contains directly corresponding breed logits.",
+      "source_id": "fixed_kaggle_dog_breed_overview",
+      "url": "https://www.kaggle.com/competitions/dog-breed-identification/overview"
+    },
+    {
+      "note": "A public competition solution reports strong results by ensembling only ImageNet-pretrained classifiers.",
+      "source_id": "fixed_dog_breed_pretrained_models",
+      "url": "https://github.com/TreB1eN/Dog-breed-competition-with-only-the-pretrained-models-from-imagenet"
+    }
+  ],
+  "experiment_template": {
+    "imagenet_prior_blend": "auto",
+    "imagenet_prior_model": "efficientnet_v2_s"
+  },
+  "id": "strategy_inference_imagenet_breed_prior_001",
+  "observed_results": [],
+  "priority": 0.99,
+  "risk": "The prior may be over-confident or reflect pretraining overlap; select its weight only on validation data and record the source.",
+  "risk_level": "medium",
+  "strategy_name": "ImageNet Breed Prior Calibration",
+  "summary": "Project the native ImageNet dog-category probabilities into the exact 120-breed order and validation-calibrate a convex blend with the Module 4 classifier.",
+  "target_metrics": [
+    "log_loss"
+  ],
+  "task_type": "classification",
+  "use_when": [
+    "The competition labels are a direct subset of ImageNet categories.",
+    "The target metric rewards calibrated probabilities."
+  ]
+}

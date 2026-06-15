@@ -30,6 +30,8 @@ SUPPORTED_EXPERIMENT_FIELDS = {
     "image_size",
     "batch_size",
     "tta_horizontal_flip",
+    "imagenet_prior_blend",
+    "imagenet_prior_model",
 }
 PREFERRED_COMPONENTS = {
     "finetune": 0,

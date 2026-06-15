@@ -7,14 +7,17 @@ Dog Breed Identification:
 
 ```text
 fixed sources -> Knowledge Learner -> strategy cards -> Module 1-4 AutoPipeline
--> baseline -> MCP MLE Agent (max 3 experiments) -> Kaggle probability submission
+-> baseline -> MCP MLE Agent (max 3 experiments) -> selected-config 3-fold
+-> Kaggle probability submission
 ```
 
 Fine-grained runs probe all three Module 3 candidates before selecting the
 baseline. DINOv2 recipes support official class-token plus pooled-patch
 features, partial last-block fine-tuning, discriminative learning rates,
 warmup, higher-resolution strategy cards, TTA, and validation-selected
-probability ensembles.
+probability ensembles. The Dog Breed path can also retrieve an evidence-backed
+ImageNet breed-prior card, calibrate its probability blend on validation data,
+and average deterministic stratified-fold checkpoints for final submission.
 
 Open `integration_update_colab.ipynb` in Colab and run all cells. Training choices
 come from Jiaozi and retrieved strategy cards; the notebook does not override model

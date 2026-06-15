@@ -26,7 +26,8 @@ async def run_experiment_loop(
             {
                 "query": (
                     "fine grained dog breed partial finetune higher resolution "
-                    "label smoothing TTA log loss"
+                    "label smoothing ImageNet breed prior native classifier "
+                    "TTA log loss"
                 ),
                 "task_type": "classification",
                 "domain": "fine_grained_classification",

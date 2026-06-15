@@ -31,7 +31,8 @@ It runs:
 1. Fixed-source Knowledge Learner through MCP.
 2. Full Jiaozi Module 1 -> 2 -> 3 -> accumulating recommender -> Module 4.
 3. One AutoPipeline baseline and at most three controlled MCP experiments.
-4. Best-checkpoint probability prediction, Kaggle submission, and official score polling.
+4. Validation-selected ImageNet breed-prior calibration and selected-config folds.
+5. Fold-ensemble probability prediction, Kaggle submission, and official score polling.
 
 InceptionV3 + a basic classification head is reported only as the official comparison template. It is not forced into training. This notebook deliberately exposes no backbone, optimizer, learning rate, batch size, image size, augmentation, scheduler, or epoch controls.
 """
@@ -181,10 +182,16 @@ display(pd.DataFrame(diff_rows))
 
 metric_rows = [report["baseline_metrics"], *report["experiment_loop"]["metrics"]]
 display(pd.DataFrame(metric_rows))
+fold_rows = report["fold_ensemble"]["runs"]
+display(pd.DataFrame(fold_rows)[[
+    "name", "status", "metric_name", "metric_value", "accuracy", "macro_f1",
+    "prior_alpha", "prior_model", "best_epoch", "runtime_sec",
+]])
 display(JSON({
     "mcp_calls": report["mcp_calls"],
     "comparison": report["experiment_loop"]["comparison"],
     "validation_ensemble": report["ensemble"],
+    "selected_config_fold_ensemble": report["fold_ensemble"],
 }))
 """
     ),
@@ -196,6 +203,7 @@ display(JSON({
     "submission_selection": report["submission_selection"],
     "candidate_calibration": report["candidate_calibration"],
     "validation_ensemble": report["ensemble"],
+    "selected_config_fold_ensemble": report["fold_ensemble"],
     "kaggle_submission": report["submission"],
     "token_and_training_cost": report["cost"],
     "report_path": str(REPORT_PATH),

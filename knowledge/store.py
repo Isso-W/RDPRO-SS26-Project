@@ -226,6 +226,11 @@ class KnowledgeStore:
                 term in normalized_query for term in ("tta", "test time", "horizontal flip")
             ):
                 intent_boost += 2.0
+            if component == "inference" and any(
+                term in normalized_query
+                for term in ("imagenet", "breed prior", "native classifier")
+            ):
+                intent_boost += 3.5
             score = (
                 float(card.get("priority", 0.0))
                 - float(text_score)
