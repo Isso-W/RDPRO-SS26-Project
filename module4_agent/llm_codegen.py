@@ -145,6 +145,21 @@ def _response_text(response: Any) -> str | None:
     return None
 
 
+def _chat_completion(client, model: str, system_prompt: str, user_prompt: str):
+    """chat.completions with temperature=0, retrying without it for models that only
+    allow the default temperature (e.g. gpt-5.x reject temperature=0 with a 400)."""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    try:
+        return client.chat.completions.create(model=model, temperature=0, messages=messages)
+    except Exception as exc:
+        if "temperature" in str(exc).lower():
+            return client.chat.completions.create(model=model, messages=messages)
+        raise
+
+
 def _call_qwen(system_prompt: str, user_prompt: str) -> str | None:
     try:
         load_env_file()
@@ -153,14 +168,7 @@ def _call_qwen(system_prompt: str, user_prompt: str) -> str | None:
             api_key=os.environ["JIAOZI_DASHSCOPE_API_KEY"],
             base_url=os.environ.get("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
         )
-        resp = client.chat.completions.create(
-            model=os.environ.get("M4_QWEN_MODEL", "qwen-plus"),
-            temperature=0,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        resp = _chat_completion(client, os.environ.get("M4_QWEN_MODEL", "qwen-plus"), system_prompt, user_prompt)
         return _response_text(resp)
     except Exception as e:
         print(f"[LLM] Qwen call failed: {e}")
@@ -185,14 +193,7 @@ def _call_openai(system_prompt: str, user_prompt: str) -> str | None:
                 input=user_prompt,
             )
         else:
-            resp = client.chat.completions.create(
-                model=model,
-                temperature=0,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
+            resp = _chat_completion(client, model, system_prompt, user_prompt)
         text = _response_text(resp)
         if not text:
             raise ValueError(f"Unsupported empty response type: {type(resp).__name__}")
