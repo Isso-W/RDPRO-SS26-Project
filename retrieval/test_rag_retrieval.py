@@ -220,6 +220,7 @@ class TestBehavior(unittest.TestCase):
     # ── Test 9: DINOv2 checkpoint → finetune_strategy = head_only ─────────────
 
     def test_dinov2_finetune_strategy(self):
+        # feature_extraction → frozen (head_only): frozen features are the point
         inp = _make_input(
             task_type="feature_extraction",
             data_size="medium",
@@ -230,8 +231,25 @@ class TestBehavior(unittest.TestCase):
             if r["backbone"] == "dinov2" and r["pretrained"] is not None:
                 self.assertEqual(
                     r["finetune_strategy"], "head_only",
-                    f"DINOv2 finetune_strategy should be head_only, got {r['finetune_strategy']}"
+                    f"DINOv2 (feature_extraction) should be head_only, got {r['finetune_strategy']}"
                 )
+
+    def test_dinov2_full_finetune_on_medium_classification(self):
+        # classification + enough data → full finetune (resolved from "either"),
+        # so it competes fairly instead of being a frozen linear probe
+        inp = _make_input(task_type="classification", data_size="medium", priority="accuracy",
+                          description="fine-grained classification")
+        for r in self._run(inp):
+            if r["backbone"] == "dinov2" and r["pretrained"] is not None:
+                self.assertEqual(r["finetune_strategy"], "full")
+
+    def test_dinov2_frozen_when_few_shot(self):
+        # few-shot → frozen, avoid overfitting a big ViT on tiny data
+        inp = _make_input(task_type="classification", data_size="medium", priority="accuracy",
+                          few_shot=True, description="few shot")
+        for r in self._run(inp):
+            if r["backbone"] == "dinov2" and r["pretrained"] is not None:
+                self.assertEqual(r["finetune_strategy"], "head_only")
 
     # ── Test 10: class_imbalance → focal_loss selected ────────────────────────
 
