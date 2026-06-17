@@ -185,3 +185,40 @@ def test_chat_completion_propagates_other_errors():
     import pytest
     with pytest.raises(RuntimeError, match="authentication"):
         _chat_completion(_Client(), "m", "s", "u")
+
+
+def test_generate_model_py_self_corrects(monkeypatch):
+    """Invalid output is fed back and corrected before giving up."""
+    import module4_agent.llm_codegen as llm
+
+    valid = "from model_utils import load_backbone, apply_freeze\ndef build_model(config):\n    return None\n"
+    invalid = "def not_build_model():\n    pass\n"
+    seq = [invalid, valid]
+    monkeypatch.setattr(llm, "_call_llm", lambda *a, **k: seq.pop(0))
+    out = generate_model_py(TrainingSpec(), provider="openai", max_attempts=2)
+    assert out is not None and "build_model" in out
+    assert seq == []  # both attempts used (1 reject + 1 success)
+
+
+def test_generate_model_py_transport_failure_no_retry(monkeypatch):
+    """A transport failure (no content) falls back immediately without retrying."""
+    import module4_agent.llm_codegen as llm
+
+    calls = []
+
+    def _fake(*args, **kwargs):
+        calls.append(1)
+        return None
+
+    monkeypatch.setattr(llm, "_call_llm", _fake)
+    assert generate_model_py(TrainingSpec(), provider="openai", max_attempts=3) is None
+    assert len(calls) == 1
+
+
+def test_generate_model_py_falls_back_after_exhausting_attempts(monkeypatch):
+    import module4_agent.llm_codegen as llm
+
+    # valid Python but no build_model -> rejected every attempt -> template fallback
+    monkeypatch.setattr(llm, "_call_llm", lambda *a, **k: "def other():\n    pass\n")
+    assert generate_model_py(TrainingSpec(), provider="openai", max_attempts=2) is None
+    assert "build_model" in get_last_generation_error()

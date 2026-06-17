@@ -344,25 +344,56 @@ CRITICAL — forward() return types (the template train.py and evaluate.py depen
 # 公开接口
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def generate_model_py(spec: TrainingSpec, feedback: str = "", provider: str | None = None) -> str | None:
-    """用 LLM 生成 model.py（使用 model_utils helper）。失败返回 None。"""
+def generate_model_py(
+    spec: TrainingSpec,
+    feedback: str = "",
+    provider: str | None = None,
+    max_attempts: int | None = None,
+) -> str | None:
+    """用 LLM 生成 model.py（使用 model_utils helper）。失败返回 None。
+
+    Content errors (invalid Python / missing build_model) are *self-corrected*: the
+    validation reason is fed back and the model is asked to fix it, up to max_attempts
+    times, before falling back to the template. Transport failures (no content: 400 /
+    HTML gateway / auth) fall back immediately — retrying the same call won't help.
+    `max_attempts` defaults to env M4_MODEL_PY_ATTEMPTS or 2.
+    """
     _set_generation_error("")
-    prompt = _MODEL_PY_PROMPT.format(
+    if max_attempts is None:
+        try:
+            max_attempts = max(1, int(os.environ.get("M4_MODEL_PY_ATTEMPTS", "2")))
+        except (TypeError, ValueError):
+            max_attempts = 2
+
+    base_prompt = _MODEL_PY_PROMPT.format(
         task_type=spec.task_type,
         backbone=spec.backbone,
         head=spec.head,
     )
     if feedback:
-        prompt += f"\n\nPrevious attempt failed with this feedback:\n{feedback}\nFix the issues."
-    raw = _call_llm(_SYSTEM_PROMPT, prompt, provider=provider)
-    if not raw:
-        if not get_last_generation_error():
-            _set_generation_error("provider returned no content")
-        return None
-    source = _extract_python(raw)
-    invalid_reason = _validate_model_python(source)
-    if invalid_reason:
+        base_prompt += f"\n\nPrevious attempt failed with this feedback:\n{feedback}\nFix the issues."
+
+    error_feedback = ""
+    for attempt in range(max_attempts):
+        prompt = base_prompt
+        if error_feedback:
+            prompt += (
+                f"\n\nYour previous output was REJECTED: {error_feedback}\n"
+                "Return corrected, valid Python that defines build_model(config). No markdown fences."
+            )
+        raw = _call_llm(_SYSTEM_PROMPT, prompt, provider=provider)
+        if not raw:
+            # transport failure — self-correction can't help
+            if not get_last_generation_error():
+                _set_generation_error("provider returned no content")
+            return None
+        source = _extract_python(raw)
+        invalid_reason = _validate_model_python(source)
+        if not invalid_reason:
+            return source
         _set_generation_error(invalid_reason)
-        print(f"[LLM] Rejected provider output: {invalid_reason}. Using template fallback.")
-        return None
-    return source
+        error_feedback = invalid_reason
+        print(f"[LLM] attempt {attempt + 1}/{max_attempts} rejected: {invalid_reason}")
+
+    print(f"[LLM] All {max_attempts} attempt(s) failed; using template fallback.")
+    return None
