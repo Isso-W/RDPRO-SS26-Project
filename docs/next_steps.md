@@ -28,6 +28,19 @@ Leaning: **C + B** (Jiaozi knows when to ensemble; defaults to single strong mod
 Model soup is demoted to an optional product of the ensemble mode under tight deployment budgets,
 not a headline.
 
+## Recipe layer (hyperparameters)
+
+- **v0 — done** (`recommender/recipe.py`, pipeline `--use-recipe`). Rules: backbone hard
+  constraints (DINOv2 patch-14 image_size) + finetuning conventions (lr by strategy/family
+  with backbone_lr_scale, augmentation by data size, early stopping). Opt-in; emits only keys
+  the train template consumes (learning_rate, backbone_lr_scale, image_size, augmentation,
+  early_stopping_patience).
+- **v1 — reserved** (`_llm_recipe_proposal` stub): an LLM proposes the soft HPs grounded by the
+  outcome memory, validated against the rule recipe's ranges (rules are the guardrailed floor).
+  One call, not a search loop. Expectation: a strong "practitioner first-guess" config, improving
+  via memory — measure it with the AIDE harness (rules vs LLM-recipe vs AIDE, quality-vs-cost).
+- **later**: weight_decay / warmup once the train template consumes them.
+
 ## Pending build items
 
 1. **EMA in generated training** (high value, low risk, no cost tension) — add exponential weight

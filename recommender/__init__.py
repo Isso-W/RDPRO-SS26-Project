@@ -9,6 +9,7 @@ from .fingerprint import dataset_fingerprint, fingerprint_distance
 from .logme import logme_score
 from .outcome_memory import OutcomeMemory
 from .ranker import rank_candidates, recommend, log_run, log_from_summary
+from .recipe import recommend_recipe
 
 __all__ = [
     "dataset_fingerprint",
@@ -19,4 +20,5 @@ __all__ = [
     "recommend",
     "log_run",
     "log_from_summary",
+    "recommend_recipe",
 ]

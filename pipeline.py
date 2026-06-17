@@ -242,6 +242,7 @@ def run_pipeline(
     module4_real_training: bool = False,
     use_recommender: bool = False,
     recommender_memory: str | None = None,
+    use_recipe: bool = False,
 ) -> dict:
     """
     完整流水线入口。
@@ -322,6 +323,19 @@ def run_pipeline(
                     mc.get("finetune_strategy"),
                     bool(mc.get("pretrained_hf_id")),
                 ))
+                # Recipe layer: recommended training hyperparameters (lr / image_size /
+                # augmentation / early stopping). setdefault → KB/user-set values win.
+                if use_recipe:
+                    from recommender.recipe import recommend_recipe
+                    hp = recommend_recipe(
+                        backbone=mc.get("backbone"),
+                        finetune_strategy=mc.get("finetune_strategy"),
+                        data_size=m3_input.get("data_size", "medium"),
+                        m2_report=m2_report,
+                        task_type=m3_input.get("task_type", "classification"),
+                    )
+                    for key, value in hp.items():
+                        mc.setdefault(key, value)
                 if module4_real_training:
                     mc["offline_smoke"] = False
         module4_result = run_module4_generation(
@@ -383,6 +397,8 @@ def main() -> int:
                         help="Re-rank Module 3 candidates with the accumulating recommender (+ explanations)")
     parser.add_argument("--recommender-memory", default=None,
                         help="Path to the outcome-memory JSONL (default: recommender/outcomes.jsonl)")
+    parser.add_argument("--use-recipe", action="store_true",
+                        help="Inject recommended training hyperparameters (lr/image_size/aug/early-stop) from the recipe layer")
     args = parser.parse_args()
 
     dataset_id, parsed_subset = parse_dataset_id(args.dataset)
@@ -404,6 +420,7 @@ def main() -> int:
         module4_real_training=args.module4_real_training,
         use_recommender=args.use_recommender,
         recommender_memory=args.recommender_memory,
+        use_recipe=args.use_recipe,
     )
 
     if result["module3_input"] is None:

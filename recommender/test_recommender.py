@@ -265,5 +265,50 @@ class TestLogME(unittest.TestCase):
         self.assertIn("LogME", ranked[0]["explanation"])
 
 
+class TestRecipe(unittest.TestCase):
+    def test_transformer_full_finetune_low_backbone_lr(self):
+        from recommender.recipe import recommend_recipe
+        r = recommend_recipe("dinov2", "full", "medium")
+        self.assertEqual(r["learning_rate"], 1.0e-3)
+        self.assertEqual(r["backbone_lr_scale"], 0.01)  # backbone ~1e-5
+
+    def test_cnn_full_finetune_lower_lr(self):
+        from recommender.recipe import recommend_recipe
+        r = recommend_recipe("efficientnet", "full", "medium")
+        self.assertEqual(r["learning_rate"], 3.0e-4)
+        self.assertNotIn("backbone_lr_scale", r)  # CNN stays single-group
+
+    def test_frozen_probe_high_lr(self):
+        from recommender.recipe import recommend_recipe
+        r = recommend_recipe("dinov2", "head_only", "medium")
+        self.assertEqual(r["learning_rate"], 1.0e-3)
+        self.assertNotIn("backbone_lr_scale", r)
+
+    def test_small_data_strong_aug_and_early_stop(self):
+        from recommender.recipe import recommend_recipe
+        r = recommend_recipe("resnet", "full", "small")
+        self.assertEqual(r["augmentation"], "strong")
+        self.assertEqual(r["early_stopping_patience"], 3)
+
+    def test_image_size_from_resolution(self):
+        from recommender.recipe import recommend_recipe
+        low = recommend_recipe("efficientnet", "full", "medium", {"avg_width": 200, "avg_height": 200})
+        high = recommend_recipe("efficientnet", "full", "medium", {"avg_width": 600, "avg_height": 800})
+        self.assertEqual(low["image_size"], 224)
+        self.assertEqual(high["image_size"], 384)
+
+    def test_dinov2_image_size_is_patch14_multiple(self):
+        from recommender.recipe import recommend_recipe
+        r = recommend_recipe("dinov2", "full", "medium", {"avg_width": 600, "avg_height": 800})
+        self.assertEqual(r["image_size"] % 14, 0)
+
+    def test_use_llm_stub_falls_back_to_rules(self):
+        from recommender.recipe import recommend_recipe
+        # v1 LLM hook is a no-op stub today → identical to the rule recipe
+        rules = recommend_recipe("dinov2", "full", "medium")
+        with_llm = recommend_recipe("dinov2", "full", "medium", use_llm=True)
+        self.assertEqual(rules, with_llm)
+
+
 if __name__ == "__main__":
     unittest.main()
