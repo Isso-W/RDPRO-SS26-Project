@@ -718,19 +718,45 @@ def _train_py() -> str:
         from utils import as_bool, as_float, as_int, get_value, task_type
 
 
+        _TRANSFORMER_BACKBONES = ("vit", "swin", "dino", "clip", "deit", "beit", "eva")
+
+
         def _build_optimizer(model: torch.nn.Module, config: dict[str, Any] | None) -> torch.optim.Optimizer:
             optimizer_name = str(get_value(config, "optimizer", "adamw")).lower()
             lr = as_float(get_value(config, "learning_rate", 1.0e-3), 1.0e-3)
-            trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
-            if not trainable:
-                trainable = list(model.parameters())
+
+            # Split trainable params into backbone vs the rest (head etc.).
+            backbone_params, other_params = [], []
+            for name, parameter in model.named_parameters():
+                if not parameter.requires_grad:
+                    continue
+                (backbone_params if name.startswith("backbone") else other_params).append(parameter)
+
+            # Finetuning a pretrained transformer backbone needs a LOW backbone LR (the head
+            # keeps the full LR), or a high LR catastrophically forgets the pretrained features.
+            # CNNs and frozen backbones keep a single group (backbone_lr_scale = 1.0).
+            backbone_name = str(get_value(config, "backbone", "")).lower()
+            is_transformer = any(tok in backbone_name for tok in _TRANSFORMER_BACKBONES)
+            backbone_lr_scale = as_float(get_value(config, "backbone_lr_scale", 0.0), 0.0)
+            if backbone_lr_scale <= 0.0:
+                backbone_lr_scale = 0.01 if (is_transformer and backbone_params) else 1.0
+
+            if backbone_params and other_params and backbone_lr_scale != 1.0:
+                groups = [
+                    {"params": backbone_params, "lr": lr * backbone_lr_scale},
+                    {"params": other_params, "lr": lr},
+                ]
+            else:
+                params = backbone_params + other_params or list(model.parameters())
+                groups = [{"params": params, "lr": lr}]
+
             if "sgd" in optimizer_name:
-                return torch.optim.SGD(trainable, lr=lr, momentum=0.9)
+                return torch.optim.SGD(groups, lr=lr, momentum=0.9)
             if "rmsprop" in optimizer_name:
-                return torch.optim.RMSprop(trainable, lr=lr)
+                return torch.optim.RMSprop(groups, lr=lr)
             if optimizer_name == "adam":
-                return torch.optim.Adam(trainable, lr=lr)
-            return torch.optim.AdamW(trainable, lr=lr)
+                return torch.optim.Adam(groups, lr=lr)
+            return torch.optim.AdamW(groups, lr=lr)
 
 
         def _loss_for_output(

@@ -558,8 +558,8 @@ COMPONENTS = [
         "size_tier": "base",
         "recommended_when": {},
         "freeze_viable": True,
-        "finetune_strategy": "head_only",
-        "description": "DINOv2-Base ViT. Strong general-purpose features. Use frozen for extraction or finetune the head.",
+        "finetune_strategy": "either",
+        "description": "DINOv2-Base ViT. Strong general-purpose features. Either full finetune (low backbone LR) for quality, or freeze + head for cheap extraction.",
     },
     {
         "id": "dinov2_large",
@@ -573,8 +573,8 @@ COMPONENTS = [
         "size_tier": "large",
         "recommended_when": {"data_size": "large", "priority": "accuracy"},
         "freeze_viable": True,
-        "finetune_strategy": "head_only",
-        "description": "DINOv2-Large. Best feature quality at higher compute. Use when Base-level features are insufficient.",
+        "finetune_strategy": "either",
+        "description": "DINOv2-Large. Best feature quality at higher compute. Either full finetune (low backbone LR) or freeze + head.",
     },
     {
         "id": "clip_vit_base_32",
@@ -1575,6 +1575,17 @@ def _recommend_training(
         cp = graph.nodes[checkpoint_id]
         finetune_strategy = cp.get("finetune_strategy")
         freeze_viable = cp.get("freeze_viable", False)
+
+    # Resolve "either" by data/task context: full finetune needs enough data and is for
+    # quality; freeze (head_only) avoids catastrophic overfitting on tiny/few-shot data and
+    # is the right default for feature extraction.
+    if finetune_strategy == "either":
+        task_type = input_json.get("task_type", "classification")
+        constraints = input_json.get("constraints", {})
+        if task_type == "feature_extraction" or constraints.get("few_shot") or data_size == "small":
+            finetune_strategy = "head_only"
+        else:
+            finetune_strategy = "full"
 
     return {
         "scratch_viable":   scratch_viable,

@@ -185,6 +185,55 @@ def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):
         os.environ.update(env_snapshot)
 
 
+def test_transformer_backbone_uses_grouped_lr(tmp_path, monkeypatch):
+    """Full-finetuning a transformer backbone splits LR: low backbone, full head."""
+    pytest = __import__("pytest")
+    pytest.importorskip("torch")
+    import importlib
+    import os
+    import sys
+
+    import torch.nn as nn
+
+    env_snapshot = dict(os.environ)
+    generated = generate_files(_specs(), llm_provider="none")
+    for name, content in generated.files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    for mod in ("train", "model", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+    train = importlib.import_module("train")
+
+    class _M(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.backbone = nn.Linear(8, 8)
+            self.head = nn.Linear(8, 3)
+
+    try:
+        # transformer + full finetune -> two groups (backbone 1e-5, head 1e-3)
+        opt = train._build_optimizer(_M(), {"backbone": "dinov2_base", "learning_rate": 1e-3})
+        lrs = sorted(g["lr"] for g in opt.param_groups)
+        assert len(opt.param_groups) == 2
+        assert abs(lrs[0] - 1e-5) < 1e-9 and abs(lrs[1] - 1e-3) < 1e-9
+
+        # CNN -> single group at full lr (no regression)
+        opt_cnn = train._build_optimizer(_M(), {"backbone": "resnet50", "learning_rate": 1e-3})
+        assert len(opt_cnn.param_groups) == 1
+
+        # frozen transformer backbone -> single group (head only)
+        m = _M()
+        for p in m.backbone.parameters():
+            p.requires_grad = False
+        opt_frozen = train._build_optimizer(m, {"backbone": "dinov2_base", "learning_rate": 1e-3})
+        assert len(opt_frozen.param_groups) == 1
+    finally:
+        for mod in ("train", "model", "smoke_data", "utils"):
+            sys.modules.pop(mod, None)
+        os.environ.clear()
+        os.environ.update(env_snapshot)
+
+
 def test_feedback_is_embedded_into_generated_readme():
     generated = generate_files(_specs(), feedback="Smoke test failed.", llm_provider="none")
 
