@@ -146,3 +146,42 @@ def test_generate_model_accepts_valid_build_model(monkeypatch):
     assert generated is not None
     assert "def build_model" in generated
     assert get_last_generation_error() == ""
+
+
+def test_chat_completion_retries_without_temperature():
+    """Models that reject temperature=0 (e.g. gpt-5.x) should be retried without it."""
+    from module4_agent.llm_codegen import _chat_completion
+
+    class _Completions:
+        def __init__(self):
+            self.calls = []
+
+        def create(self, **kwargs):
+            self.calls.append(kwargs)
+            if "temperature" in kwargs:
+                raise RuntimeError("Error code: 400 - 'temperature' does not support 0 with this model")
+            return "ok"
+
+    class _Client:
+        def __init__(self):
+            self.chat = type("C", (), {"completions": _Completions()})()
+
+    client = _Client()
+    assert _chat_completion(client, "gpt-5.5", "sys", "usr") == "ok"
+    assert len(client.chat.completions.calls) == 2  # with temperature, then without
+
+
+def test_chat_completion_propagates_other_errors():
+    from module4_agent.llm_codegen import _chat_completion
+
+    class _Completions:
+        def create(self, **kwargs):
+            raise RuntimeError("401 authentication error")
+
+    class _Client:
+        def __init__(self):
+            self.chat = type("C", (), {"completions": _Completions()})()
+
+    import pytest
+    with pytest.raises(RuntimeError, match="authentication"):
+        _chat_completion(_Client(), "m", "s", "u")
