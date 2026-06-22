@@ -302,6 +302,12 @@ class TestRecipe(unittest.TestCase):
         r = recommend_recipe("dinov2", "full", "medium", {"avg_width": 600, "avg_height": 800})
         self.assertEqual(r["image_size"] % 14, 0)
 
+    def test_dinov3_image_size_is_patch16_multiple(self):
+        from recommender.recipe import recommend_recipe
+        r = recommend_recipe("dinov3", "head_only", "medium", {"avg_width": 600, "avg_height": 800})
+        self.assertEqual(r["image_size"], 384)
+        self.assertEqual(r["image_size"] % 16, 0)
+
     def test_use_llm_stub_falls_back_to_rules(self):
         from recommender.recipe import recommend_recipe
         # v1 LLM hook is a no-op stub today → identical to the rule recipe

@@ -20,7 +20,8 @@ warmup are conventions worth adding once the train template consumes them (see T
 from __future__ import annotations
 
 _TRANSFORMER_FAMILIES = ("vit", "swin", "dino", "clip", "deit", "beit", "eva")
-_PATCH14_FAMILIES = ("dino",)  # DINOv2 uses patch-14 → image_size must be a multiple of 14
+_PATCH14_FAMILIES = ("dinov2",)  # DINOv2 ViT checkpoints use patch-14
+_PATCH16_FAMILIES = ("dinov3",)  # DINOv3 ViT checkpoints use patch-16
 
 # early-stopping patience by data size (more data → can wait longer for improvement)
 _EARLY_STOP_PATIENCE = {"small": 3, "medium": 5, "large": 8}
@@ -32,7 +33,7 @@ def _is_transformer(backbone: str) -> bool:
 
 def _recommend_image_size(backbone: str, m2_report: dict | None) -> int:
     """Pretrained-friendly default (224), bumped to 384 for clearly high-res sources;
-    rounded to a patch multiple for patch-based transformers (DINOv2)."""
+    rounded to a patch multiple for patch-based DINO transformers."""
     size = 224
     if m2_report:
         w = float(m2_report.get("avg_width", 0) or 0)
@@ -42,7 +43,9 @@ def _recommend_image_size(backbone: str, m2_report: dict | None) -> int:
             size = 384
     backbone = (backbone or "").lower()
     if any(tok in backbone for tok in _PATCH14_FAMILIES):
-        size = round(size / 14) * 14  # e.g. 224 -> 224, 384 -> 392
+        size = round(size / 14) * 14  # e.g. 224 -> 224, 384 -> 378
+    elif any(tok in backbone for tok in _PATCH16_FAMILIES):
+        size = round(size / 16) * 16  # e.g. 384 -> 384
     return size
 
 

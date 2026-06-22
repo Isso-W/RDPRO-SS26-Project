@@ -339,6 +339,7 @@ def _model_utils_py() -> str:
                 "actual_model": actual_model or backbone.__class__.__name__,
                 "fallback_reason": fallback_reason,
                 "backbone_class": backbone.__class__.__name__,
+                "feature_pooling": str(getattr(backbone, "feature_pooling", "") or ""),
             }
             return backbone
 
@@ -353,6 +354,7 @@ def _model_utils_py() -> str:
             info.setdefault("requested_hf_id", str(get_value(config, "pretrained_hf_id", "") or ""))
             info.setdefault("actual_model", backbone.__class__.__name__ if backbone is not None else "None")
             info.setdefault("fallback_reason", "")
+            info.setdefault("feature_pooling", str(getattr(backbone, "feature_pooling", "") or ""))
             info["backbone_class"] = backbone.__class__.__name__ if backbone is not None else "None"
             info["model_class"] = model.__class__.__name__
             info["total_params"] = int(sum(p.numel() for p in model.parameters()))
@@ -398,21 +400,26 @@ def _model_utils_py() -> str:
         class _HFBackbone(nn.Module):
             """Wraps a transformers AutoModel to emit plain feature tensors.
 
-            Transformer encoders return [B, seq, D]; we mean-pool to [B, D] so
-            heads can treat the output like any 2D feature vector.
+            Transformer encoders return [B, seq, D]. Prefer the model's pooled
+            image embedding or CLS token; averaging all tokens can mix DINOv3
+            register tokens into the classification feature.
             """
 
             def __init__(self, model: nn.Module) -> None:
                 super().__init__()
                 self.model = model
+                self.feature_pooling = "pooler_output_or_cls_token"
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 out = self.model(pixel_values=x)
+                pooled = getattr(out, "pooler_output", None)
+                if pooled is not None:
+                    return pooled
                 hidden = getattr(out, "last_hidden_state", None)
                 if hidden is None:
                     hidden = out[0] if isinstance(out, (tuple, list)) else out
                 if hidden.dim() == 3:
-                    return hidden.mean(dim=1)
+                    return hidden[:, 0]
                 return hidden
 
 
@@ -1311,7 +1318,8 @@ def _train_py() -> str:
                 f"hf_id={model_load_info.get('requested_hf_id') or '<none>'} "
                 f"source={model_load_info.get('source') or '<unknown>'} "
                 f"actual_model={model_load_info.get('actual_model') or '<unknown>'} "
-                f"backbone_class={model_load_info.get('backbone_class') or '<unknown>'}",
+                f"backbone_class={model_load_info.get('backbone_class') or '<unknown>'} "
+                f"feature_pooling={model_load_info.get('feature_pooling') or '<none>'}",
                 file=sys.stderr,
             )
             print(
@@ -1342,7 +1350,9 @@ def _train_py() -> str:
                     )
                     return False
                 return True
-            keys = ("source", "actual_model", "backbone_class")
+            keys = ["source", "actual_model", "backbone_class"]
+            if model_load_info.get("source") == "huggingface":
+                keys.append("feature_pooling")
             same = all(
                 str(checkpoint_info.get(key, "")) == str(model_load_info.get(key, ""))
                 for key in keys
@@ -1386,6 +1396,12 @@ def _train_py() -> str:
             return torch.cat(feats), torch.cat(labels)
 
 
+        def _cache_token(value: object) -> str:
+            text = str(value or "unknown")
+            safe = "".join(ch if ch.isalnum() else "_" for ch in text)
+            return safe.strip("_")[:120] or "unknown"
+
+
         def _get_or_extract_features(model, loader, device, config, tag, checkpoint_dir):
             """Extract (or load from disk) the frozen-backbone features for one split."""
             cache_dir = Path(
@@ -1395,7 +1411,17 @@ def _train_py() -> str:
             backbone_name = str(get_value(config, "backbone", "backbone"))
             image_size = as_int(get_value(config, "image_size", 224), 224)
             count = len(loader.dataset)
-            cache_path = cache_dir / f"feat_{tag}_{backbone_name}_{image_size}_{count}.pt"
+            backbone = getattr(model, "backbone", None)
+            info = getattr(backbone, "_jiaozi_load_info", {}) or {}
+            cache_sig = _cache_token(
+                "|".join(
+                    [
+                        str(info.get("actual_model") or backbone_name),
+                        str(info.get("feature_pooling") or ""),
+                    ]
+                )
+            )
+            cache_path = cache_dir / f"feat_{tag}_{backbone_name}_{cache_sig}_{image_size}_{count}.pt"
             if cache_path.exists():
                 blob = torch.load(cache_path, map_location="cpu")
                 print(f"[train] Loaded cached {tag} features {tuple(blob['X'].shape)} from {cache_path}")
