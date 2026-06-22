@@ -3,22 +3,39 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cv-autodl-agent"
+name = "jiaozi"
 version = "0.1.0"
-description = "Workflow-first CV Auto-DL code generation and ablation submodule."
+description = "Integrated CV Auto-DL pipeline with retrieval and Module 4 code generation."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 authors = [
   { name = "Jiaozi Project Team" }
 ]
-dependencies = []
+dependencies = [
+  "chromadb",
+  "datasets",
+  "networkx",
+  "numpy",
+  "openai>=2.0.0",
+  "pandas",
+  "pillow",
+  "sentence-transformers",
+  "torch",
+  "torchvision",
+  "transformers",
+]
 
 [project.optional-dependencies]
-llm = [
-  "openai>=2.0.0",
-  "langchain>=1.0.0",
-  "langgraph>=0.2.0"
+dev = [
+  "pytest"
 ]
 
 [tool.setuptools.packages.find]
-include = ["cv_autodl_agent*"]
+include = [
+  "analyzer*",
+  "features*",
+  "ingestion*",
+  "module4_agent*",
+  "processors*",
+  "retrieval*",
+]

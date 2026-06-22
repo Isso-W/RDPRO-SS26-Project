@@ -50,11 +50,19 @@ Module 3 takes a task description from Module 1 and returns a ranked list of mod
 | 数据少、几百张、标注贵、样本不足 | `small` |
 | 几千到几万张、自采数据 | `medium` |
 | 大量数据、百万级、公开大数据集 | `large` |
-| ≤ 5000 张（数字） | `small` |
-| 5000–100000 张（数字） | `medium` |
-| > 100000 张（数字） | `large` |
 
-> **待确认**：用户是否会提供具体数字？如果会，建议模块2统一换算成 small/medium/large 再传过来，模块3不做数字解析。
+数字换算由 `pipeline.derive_data_size()` 实现（2026-06-10 更新为双信号）：
+
+**总量档位**（成本侧——总量决定标注/训练成本）：
+
+| 任务类型 | small | medium | large |
+|---------|-------|--------|-------|
+| classification / feature_extraction | ≤ 3,000 | 3,001–20,000 | > 20,000 |
+| object_detection / image_segmentation | ≤ 1,500 | 1,501–10,000 | > 10,000 |
+
+**每类样本数档位**（过拟合侧，仅分类任务）：≤ 100 张/类 → small，101–1,000 → medium，> 1,000 → large。
+
+最终取两个信号中**更保守**的一档。例：25,000 张 200 类 = 125 张/类 → 总量 large 但每类 medium → 最终 `medium`；3,000 张 2 类 = 1,500 张/类 → 每类 large 但总量 small → 最终 `small`。
 
 #### priority
 

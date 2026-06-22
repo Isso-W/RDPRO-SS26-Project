@@ -18,6 +18,29 @@ Module 3 知识库 — CV任务专用
 """
 
 import json
+
+
+def _patch_torch_metadata():
+    """某些 torch 安装方式下 importlib.metadata.version("torch") 返回 None，
+    sentence-transformers 导入时解析版本号会崩溃。在导入 chromadb 前打补丁。"""
+    import importlib.metadata
+    if getattr(importlib.metadata.version, "_torch_patched", False):
+        return
+    _orig = importlib.metadata.version
+
+    def _patched(name):
+        v = _orig(name)
+        if v is None and name == "torch":
+            import torch
+            return torch.__version__.split("+")[0]
+        return v
+
+    _patched._torch_patched = True
+    importlib.metadata.version = _patched
+
+
+_patch_torch_metadata()
+
 import networkx as nx
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
@@ -431,6 +454,36 @@ COMPONENTS = [
         "description": "EfficientNet-B0 pretrained on ImageNet-1k. Compact baseline; full finetune or freeze+head.",
     },
     {
+        "id": "resnet18_imagenet",
+        "name": "ResNet-18 / ImageNet-1k",
+        "component_type": "pretrained_model",
+        "hf_id": "microsoft/resnet-18",
+        "finetune_base": "resnet",
+        "pretrain_dataset": "ImageNet-1k",
+        "params_M": 11.7,
+        "task_type": ["classification", "feature_extraction"],
+        "size_tier": "small",
+        "recommended_when": {},
+        "freeze_viable": True,
+        "finetune_strategy": "either",
+        "description": "ResNet-18 pretrained on ImageNet-1k. Lightweight ResNet for tight compute/latency budgets.",
+    },
+    {
+        "id": "efficientnet_lite0",
+        "name": "EfficientNet-Lite0 / ImageNet-1k",
+        "component_type": "pretrained_model",
+        "hf_id": "timm/efficientnet_lite0.ra_in1k",
+        "finetune_base": "efficientnet",
+        "pretrain_dataset": "ImageNet-1k",
+        "params_M": 4.7,
+        "task_type": ["classification", "feature_extraction"],
+        "size_tier": "small",
+        "recommended_when": {},
+        "freeze_viable": True,
+        "finetune_strategy": "either",
+        "description": "EfficientNet-Lite0: edge-optimized EfficientNet (no SE/swish, quantization-friendly) for mobile/edge budgets.",
+    },
+    {
         "id": "swin_base_in22k",
         "name": "Swin-Base / ImageNet-22k",
         "component_type": "pretrained_model",
@@ -607,8 +660,8 @@ COMPONENTS = [
         "size_tier": "base",
         "recommended_when": {},
         "freeze_viable": True,
-        "finetune_strategy": "head_only",
-        "description": "DINOv2-Base ViT. Strong general-purpose features. Use frozen for extraction or finetune the head.",
+        "finetune_strategy": "either",
+        "description": "DINOv2-Base ViT. Strong general-purpose features. Either full finetune (low backbone LR) for quality, or freeze + head for cheap extraction.",
     },
     {
         "id": "dinov2_large",
@@ -622,8 +675,8 @@ COMPONENTS = [
         "size_tier": "large",
         "recommended_when": {"data_size": "large", "priority": "accuracy"},
         "freeze_viable": True,
-        "finetune_strategy": "head_only",
-        "description": "DINOv2-Large. Best feature quality at higher compute. Use when Base-level features are insufficient.",
+        "finetune_strategy": "either",
+        "description": "DINOv2-Large. Best feature quality at higher compute. Either full finetune (low backbone LR) or freeze + head.",
     },
     {
         "id": "dinov3_small_lvd1689m",
@@ -1092,6 +1145,7 @@ COMPONENTS = [
 EDGES = [
     # resnet
     ("resnet", "resnet50_imagenet",           "has_pretrained"),
+    ("resnet", "resnet18_imagenet",           "has_pretrained"),
     ("resnet", "classification_head",         "compatible_with"),
     ("resnet", "detection_head_anchor_free",   "compatible_with"),
     ("resnet", "feature_pooling_head",         "compatible_with"),
@@ -1102,6 +1156,7 @@ EDGES = [
 
     # efficientnet
     ("efficientnet", "efficientnet_b0_imagenet", "has_pretrained"),
+    ("efficientnet", "efficientnet_lite0",       "has_pretrained"),
     ("efficientnet", "classification_head",    "compatible_with"),
     ("efficientnet", "feature_pooling_head",   "compatible_with"),
     ("efficientnet", "cross_entropy_loss",     "compatible_with"),
@@ -1440,6 +1495,10 @@ def build_graph() -> nx.DiGraph:
     G = nx.DiGraph()
     for c in COMPONENTS:
         G.add_node(c["id"], **c)
+    # 注入 GFLOPs@224（成本模型用），集中维护在 _CHECKPOINT_FLOPS_G
+    for cid, flops in _CHECKPOINT_FLOPS_G.items():
+        if cid in G:
+            G.nodes[cid]["flops_g"] = flops
     for src, dst, rel in EDGES:
         attrs = {"relation": rel}
         attrs.update(EDGE_CONDITIONS.get((src, dst), {}))
@@ -1457,6 +1516,7 @@ def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collect
     existing_ids = set(collection.get()["ids"])
     new_count = sum(1 for b in backbones if b["id"] not in existing_ids)
 
+    # upsert 而非 add：description 修改后旧 embedding 会被覆盖刷新
     if backbones:
         collection.upsert(
             ids=[b["id"] for b in backbones],
@@ -1534,8 +1594,8 @@ def _input_to_query_text(input_json: dict) -> str:
     if c.get("class_imbalance"):  flags.append("class-imbalanced data")
     if c.get("cross_modal"):      flags.append("cross-modal language-aligned features")
     if c.get("medical"):          flags.append("medical imaging domain")
-    if c.get("zero_shot"):        flags.append("zero-shot transfer")
-    if c.get("few_shot"):         flags.append("few-shot adaptation")
+    if c.get("zero_shot"):        flags.append("zero-shot prediction without labeled training data")
+    if c.get("few_shot"):         flags.append("few-shot learning from very few labeled samples")
     if c.get("open_vocabulary"):  flags.append("open-vocabulary recognition")
     if c.get("text_prompt"):      flags.append("text-prompted prediction")
     if c.get("visual_prompt"):    flags.append("visual prompt or exemplar input")
@@ -1659,14 +1719,89 @@ def _select_components(
 
 _SIZE_TIER_ORDER = ["nano", "small", "base", "large", "xlarge"]
 
-# special_case backbone → 触发它出现所需的 constraint 字段
+# special_case backbone → 触发它出现所需的 constraint 字段（任一命中即激活）
 # 不在此表里的 special_case backbone 视为"宽松特殊"，无约束也保留
-_SPECIAL_CASE_REQUIRES: dict[str, str] = {
-    "mobilenet_v3": "edge_deployment",
-    "unet":         "medical",
-    "clip_vit":     "cross_modal",
-    "siglip2":      "cross_modal",
+# clip_vit 同时响应 zero_shot：CLIP 是零样本分类的首选模型，
+# 仅靠 cross_modal 激活会把它挡在纯零样本查询之外
+_SPECIAL_CASE_REQUIRES: dict[str, tuple[str, ...]] = {
+    "mobilenet_v3": ("edge_deployment",),
+    "unet":         ("medical",),
+    "clip_vit":     ("cross_modal", "zero_shot"),
+    "siglip2":      ("cross_modal", "zero_shot"),
 }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 成本模型 + 预算过滤（约束感知选型，Phase 1+2）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_REF_IMAGE_SIZE = 224  # flops_g 以 224×224 为基准，其它分辨率按面积平方缩放
+
+# 各分类 checkpoint 在 224×224 下的 GFLOPs（近似值，供预算过滤用）。
+# params_M 已在节点上；FLOPs 集中放这里，build_graph 时注入为节点的 flops_g。
+_CHECKPOINT_FLOPS_G = {
+    "resnet50_imagenet":         4.1,
+    "resnet18_imagenet":         1.8,
+    "efficientnet_b0_imagenet":  0.39,
+    "efficientnet_lite0":        0.41,
+    "mobilenet_v3_imagenet":     0.22,
+    "swin_base_in22k":           15.4,
+    "swin_large_in22k":          34.5,
+    "vit_base_in21k":            17.6,
+    "vit_large_in21k":           61.6,
+    "convnext_base_in22k":       15.4,
+    "convnext_large_in22k":      34.4,
+    "dinov2_base":               23.0,
+    "dinov2_large":              81.0,
+    "clip_vit_base_32":          4.4,
+    "clip_vit_large_14":         80.8,
+}
+
+
+def _input_image_size(input_json: dict) -> int:
+    c = input_json.get("constraints", {})
+    size = input_json.get("image_size") or c.get("image_size") or _REF_IMAGE_SIZE
+    try:
+        return int(size)
+    except (TypeError, ValueError):
+        return _REF_IMAGE_SIZE
+
+
+def estimate_cost(checkpoint_id: str | None, input_json: dict, graph: nx.DiGraph) -> dict:
+    """估算某 checkpoint 在输入分辨率下的成本。
+
+    返回 {'params_m': float|None, 'flops_g': float|None}。
+    params_M 来自节点；flops_g 以 224 为基准按 (image_size/224)^2 缩放。
+    缺字段则对应项为 None（成本未知，预算过滤时放行）。head 成本通常远小于
+    backbone，这里以 backbone/checkpoint 为主，暂不计入。
+    """
+    if checkpoint_id is None or checkpoint_id not in graph:
+        return {"params_m": None, "flops_g": None}
+    node = graph.nodes[checkpoint_id]
+    flops_ref = node.get("flops_g")
+    flops_g = None
+    if flops_ref is not None:
+        scale = (_input_image_size(input_json) / _REF_IMAGE_SIZE) ** 2
+        flops_g = round(flops_ref * scale, 3)
+    return {"params_m": node.get("params_M"), "flops_g": flops_g}
+
+
+def _within_budget(checkpoint_id: str | None, input_json: dict, graph: nx.DiGraph) -> bool:
+    """checkpoint 是否在 max_params_m / max_flops_g 预算内。
+
+    无预算 → True。成本未知（None）→ True（放行，宽松）。
+    """
+    c = input_json.get("constraints", {})
+    max_params = c.get("max_params_m")
+    max_flops = c.get("max_flops_g")
+    if max_params is None and max_flops is None:
+        return True
+    cost = estimate_cost(checkpoint_id, input_json, graph)
+    if max_params is not None and cost["params_m"] is not None and cost["params_m"] > max_params:
+        return False
+    if max_flops is not None and cost["flops_g"] is not None and cost["flops_g"] > max_flops:
+        return False
+    return True
 
 
 def _select_checkpoint(
@@ -1687,6 +1822,7 @@ def _select_checkpoint(
         if graph[backbone_id][n]["relation"] == "has_pretrained"
         and task_type in graph.nodes[n].get("task_type", [])
         and (scale_band is None or graph.nodes[n].get("size_tier") in scale_band)
+        and _within_budget(n, input_json, graph)
     ]
     if not candidates:
         return None
@@ -1766,6 +1902,7 @@ def _get_eligible_pairs(
             if graph[node_id][n]["relation"] == "has_pretrained"
             and task_type in graph.nodes[n].get("task_type", [])
             and graph.nodes[n].get("size_tier") in scale_band
+            and _within_budget(n, input_json, graph)
         ]
 
         if cps_in_band:
@@ -1818,7 +1955,7 @@ def _filter_by_tier(
         elif tier == "special_case":
             required = _SPECIAL_CASE_REQUIRES.get(backbone_id)
             if required:
-                if c.get(required):
+                if any(c.get(key) for key in required):
                     result.append((backbone_id, checkpoint_id))
             elif backbone_id == "yolov8" and task_type == "image_segmentation":
                 if c.get("real_time") or c.get("edge_deployment"):
@@ -1864,6 +2001,17 @@ def _recommend_training(
         cp = graph.nodes[checkpoint_id]
         finetune_strategy = cp.get("finetune_strategy")
         freeze_viable = cp.get("freeze_viable", False)
+
+    # Resolve "either" by data/task context: full finetune needs enough data and is for
+    # quality; freeze (head_only) avoids catastrophic overfitting on tiny/few-shot data and
+    # is the right default for feature extraction.
+    if finetune_strategy == "either":
+        task_type = input_json.get("task_type", "classification")
+        constraints = input_json.get("constraints", {})
+        if task_type == "feature_extraction" or constraints.get("few_shot") or data_size == "small":
+            finetune_strategy = "head_only"
+        else:
+            finetune_strategy = "full"
 
     return {
         "scratch_viable":   scratch_viable,
@@ -2007,7 +2155,7 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "id":              "train_strategy",
             "action":          "set_finetune_strategy",
             "strategy":        strategy,
-            "freeze_backbone": not freeze or strategy == "full",
+            "freeze_backbone": strategy == "head_only",
             "scratch_viable":  scratch,
         })
 
@@ -2085,7 +2233,7 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "loss":              loss_id,
             "optimizer":         optimizer_id,
             "finetune_strategy": strategy,
-            "freeze_backbone":   not freeze or strategy == "full",
+            "freeze_backbone":   strategy == "head_only",
             "scratch_viable":    scratch,
         })
 
@@ -2141,23 +2289,23 @@ def print_results(input_json: dict, results: list[dict], graph: nx.DiGraph) -> N
         if pid:
             p = graph.nodes[pid]
             strategy_label = {
-                "full":      "全量 finetune",
-                "head_only": "冻结骨干，只训 head",
-                "either":    "全量 finetune 或冻结骨干均可",
+                "full":      "full finetune",
+                "head_only": "freeze backbone, train head only",
+                "either":    "full finetune or freeze backbone",
             }.get(r.get("finetune_strategy", ""), r.get("finetune_strategy", ""))
             print(f"  {'pretrained':10s}: {p['name']}")
             print(f"               {p['hf_id']}  ({p['pretrain_dataset']}, {p['params_M']}M)")
-            print(f"               策略: {strategy_label}")
+            print(f"               strategy: {strategy_label}")
         else:
-            print(f"  {'pretrained':10s}: 无（从头训练）")
+            print(f"  {'pretrained':10s}: None (train from scratch)")
 
         scratch = r.get("scratch_viable", False)
         if not pid:
-            print(f"  {'training':10s}: 从头训练")
+            print(f"  {'training':10s}: train from scratch")
         elif scratch:
-            print(f"  {'training':10s}: 建议 finetune，数据量足够时从头训练也可行")
+            print(f"  {'training':10s}: finetune recommended; train from scratch also viable with enough data")
         else:
-            print(f"  {'training':10s}: 必须使用预训练权重（数据量不足以从头训练）")
+            print(f"  {'training':10s}: pretrained weights required (insufficient data to train from scratch)")
 
         if r["alt_backbones"]:
             alts = [graph.nodes[a]["name"] for a in r["alt_backbones"]]
