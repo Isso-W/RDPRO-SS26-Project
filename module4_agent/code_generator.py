@@ -306,6 +306,7 @@ def _model_utils_py() -> str:
 
         from __future__ import annotations
 
+        import sys
         from typing import Any
 
         import torch
@@ -330,6 +331,43 @@ def _model_utils_py() -> str:
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 return self.net(x)
+
+
+        def _annotate_backbone(
+            backbone: nn.Module,
+            *,
+            source: str,
+            requested_backbone: str,
+            requested_hf_id: str = "",
+            actual_model: str = "",
+            fallback_reason: str = "",
+        ) -> nn.Module:
+            backbone._jiaozi_load_info = {
+                "source": source,
+                "requested_backbone": requested_backbone,
+                "requested_hf_id": requested_hf_id,
+                "actual_model": actual_model or backbone.__class__.__name__,
+                "fallback_reason": fallback_reason,
+                "backbone_class": backbone.__class__.__name__,
+            }
+            return backbone
+
+
+        def backbone_load_info(model: nn.Module, config: dict[str, Any] | None = None) -> dict[str, Any]:
+            """Return the real backbone that was constructed for logging/checkpoints."""
+            config = config or {}
+            backbone = getattr(model, "backbone", model)
+            info = dict(getattr(backbone, "_jiaozi_load_info", {}) or {})
+            info.setdefault("source", "unknown")
+            info.setdefault("requested_backbone", str(get_value(config, "backbone", "")))
+            info.setdefault("requested_hf_id", str(get_value(config, "pretrained_hf_id", "") or ""))
+            info.setdefault("actual_model", backbone.__class__.__name__ if backbone is not None else "None")
+            info.setdefault("fallback_reason", "")
+            info["backbone_class"] = backbone.__class__.__name__ if backbone is not None else "None"
+            info["model_class"] = model.__class__.__name__
+            info["total_params"] = int(sum(p.numel() for p in model.parameters()))
+            info["trainable_params"] = int(sum(p.numel() for p in model.parameters() if p.requires_grad))
+            return info
 
 
         _TORCHVISION_MODELS: dict[str, str] = {
@@ -388,7 +426,11 @@ def _model_utils_py() -> str:
                 return hidden
 
 
-        def _try_huggingface(hf_id: str, image_size: int) -> tuple[nn.Module, int] | None:
+        def _try_huggingface(
+            hf_id: str,
+            image_size: int,
+            requested_backbone: str,
+        ) -> tuple[nn.Module, int, str | None] | None:
             """Load the exact HuggingFace checkpoint chosen by Module 3.
 
             Requires the optional ``transformers`` dependency and network access
@@ -399,10 +441,18 @@ def _model_utils_py() -> str:
                 from transformers import AutoModel
                 model = AutoModel.from_pretrained(hf_id)
                 backbone = _HFBackbone(model)
+                _annotate_backbone(
+                    backbone,
+                    source="huggingface",
+                    requested_backbone=requested_backbone,
+                    requested_hf_id=hf_id,
+                    actual_model=hf_id,
+                )
                 channels = _infer_channels(backbone, image_size)
-                return backbone, channels
+                return backbone, channels, None
             except Exception as exc:
-                print(f"[model_utils] HuggingFace checkpoint {hf_id!r} unavailable ({exc}); falling back.")
+                reason = f"HuggingFace checkpoint {hf_id!r} unavailable: {exc}"
+                print(f"[model_utils] {reason}; falling back.", file=sys.stderr)
                 return None
 
 
@@ -480,16 +530,32 @@ def _model_utils_py() -> str:
             if pretrained:
                 hf_id = str(get_value(config, "pretrained_hf_id", "") or "").strip()
                 if hf_id:
-                    loaded = _try_huggingface(hf_id, image_size)
+                    loaded = _try_huggingface(hf_id, image_size, name)
                     if loaded is not None:
-                        return loaded
+                        backbone, channels, _reason = loaded
+                        return backbone, channels
 
             model = _try_torchvision(name, pretrained=pretrained)
             if model is None:
                 bb = TinyBackbone()
+                _annotate_backbone(
+                    bb,
+                    source="tiny_fallback",
+                    requested_backbone=name,
+                    requested_hf_id=str(get_value(config, "pretrained_hf_id", "") or ""),
+                    actual_model="TinyBackbone",
+                    fallback_reason="No HuggingFace or torchvision backbone could be loaded.",
+                )
                 return bb, bb.out_channels
 
             extractor = _extract_features(model)
+            _annotate_backbone(
+                extractor,
+                source="torchvision_pretrained" if pretrained else "torchvision_random",
+                requested_backbone=name,
+                requested_hf_id=str(get_value(config, "pretrained_hf_id", "") or ""),
+                actual_model=_TORCHVISION_MODELS.get(name, name),
+            )
             channels = _infer_channels(extractor, image_size)
             return extractor, channels
 
@@ -716,6 +782,7 @@ def _train_py() -> str:
         from __future__ import annotations
 
         import random
+        import sys
         import time
         from pathlib import Path
         from typing import Any
@@ -724,6 +791,7 @@ def _train_py() -> str:
         import torch.nn.functional as F
 
         from model import build_model
+        from model_utils import backbone_load_info
         from smoke_data import synthetic_batch
         from utils import as_bool, as_float, as_int, get_value, task_type
 
@@ -1343,6 +1411,57 @@ def _train_py() -> str:
             )
 
 
+        def _log_model_load_info(model_load_info: dict[str, Any]) -> None:
+            """Print the actual constructed backbone, not just the requested config name."""
+            print(
+                "[train] requested_backbone="
+                f"{model_load_info.get('requested_backbone') or '<none>'} "
+                f"hf_id={model_load_info.get('requested_hf_id') or '<none>'} "
+                f"source={model_load_info.get('source') or '<unknown>'} "
+                f"actual_model={model_load_info.get('actual_model') or '<unknown>'} "
+                f"backbone_class={model_load_info.get('backbone_class') or '<unknown>'}",
+                file=sys.stderr,
+            )
+            print(
+                "[train] params "
+                f"total={model_load_info.get('total_params', 0)} "
+                f"trainable={model_load_info.get('trainable_params', 0)}",
+                file=sys.stderr,
+            )
+            if model_load_info.get("fallback_reason"):
+                print(
+                    f"[train] backbone_fallback_reason={model_load_info['fallback_reason']}",
+                    file=sys.stderr,
+                )
+
+
+        def _checkpoint_matches_current_model(
+            checkpoint: dict[str, Any],
+            model_load_info: dict[str, Any],
+        ) -> bool:
+            """Avoid resuming stale fallback checkpoints into a different real backbone."""
+            checkpoint_info = checkpoint.get("model_load_info")
+            if not isinstance(checkpoint_info, dict):
+                if model_load_info.get("source") == "huggingface":
+                    print(
+                        "[train] Skipping resume checkpoint without model_load_info "
+                        "for current HuggingFace backbone.",
+                        file=sys.stderr,
+                    )
+                    return False
+                return True
+            keys = ("source", "actual_model", "backbone_class")
+            same = all(
+                str(checkpoint_info.get(key, "")) == str(model_load_info.get(key, ""))
+                for key in keys
+            )
+            if not same:
+                print("[train] Skipping resume checkpoint because backbone changed.", file=sys.stderr)
+                print(f"[train] checkpoint_model_load_info={checkpoint_info}", file=sys.stderr)
+                print(f"[train] current_model_load_info={model_load_info}", file=sys.stderr)
+            return same
+
+
         def _backbone_is_frozen(model: torch.nn.Module) -> bool:
             """True only when the model exposes a backbone whose params are all frozen."""
             backbone = getattr(model, "backbone", None)
@@ -1412,6 +1531,7 @@ def _train_py() -> str:
             early_stopping_patience,
             gradient_clip_norm,
             save_every_epoch,
+            model_load_info,
         ):
             """Extract frozen-backbone features once, then train the head on the cache.
 
@@ -1522,6 +1642,7 @@ def _train_py() -> str:
                     "best_epoch": best_epoch,
                     "validation": validation_result,
                     "config": config,
+                    "model_load_info": model_load_info,
                     "feature_cached": True,
                 }
                 torch.save(checkpoint_payload, checkpoint_dir / "last_checkpoint.pt")
@@ -1562,6 +1683,8 @@ def _train_py() -> str:
             task = task_type(config)
             offline_smoke = as_bool(get_value(config, "offline_smoke", True), True)
             model = build_model(config)
+            model_load_info = backbone_load_info(model, config)
+            _log_model_load_info(model_load_info)
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if device.type == "cuda":
                 torch.backends.cudnn.benchmark = True
@@ -1624,6 +1747,7 @@ def _train_py() -> str:
                     resume_checkpoint = str(checkpoint_dir / "last_checkpoint.pt")
                 if resume_checkpoint and Path(resume_checkpoint).exists():
                     checkpoint = torch.load(resume_checkpoint, map_location=device)
+                    if _checkpoint_matches_current_model(checkpoint, model_load_info):
                     model.load_state_dict(checkpoint["model_state_dict"])
                     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
                     if scheduler is not None and checkpoint.get("scheduler_state_dict"):
@@ -1689,6 +1813,7 @@ def _train_py() -> str:
                         early_stopping_patience,
                         gradient_clip_norm,
                         save_every_epoch,
+                        model_load_info,
                     )
                     epoch_losses.extend(cached_losses)
                     validation_history.extend(cached_history)
@@ -1787,6 +1912,7 @@ def _train_py() -> str:
                         "best_epoch": best_epoch,
                         "validation": validation_result,
                         "config": config,
+                        "model_load_info": model_load_info,
                     }
                     torch.save(checkpoint_payload, checkpoint_dir / "last_checkpoint.pt")
                     if save_every_epoch:
@@ -1850,9 +1976,12 @@ def _train_py() -> str:
                 "mixed_precision": amp_enabled,
                 "runtime_sec": round(time.time() - start, 4),
                 "real_data": dataloader is not None,
+                "model_load_info": model_load_info,
                 "config_summary": {
                     "rank": get_value(config, "rank", None),
                     "backbone": get_value(config, "backbone", "tiny_cnn"),
+                    "actual_model": model_load_info.get("actual_model"),
+                    "backbone_source": model_load_info.get("source"),
                     "loss": get_value(config, "loss", "cross_entropy_loss"),
                     "optimizer": get_value(config, "optimizer", "adamw"),
                     "finetune_strategy": get_value(config, "finetune_strategy", "head_only"),
