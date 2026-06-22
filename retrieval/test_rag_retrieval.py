@@ -86,6 +86,15 @@ class TestSmoke(unittest.TestCase):
                     self.assertGreaterEqual(r["score"], 0.0)
                     self.assertLessEqual(r["score"], 1.0)
 
+    def test_new_models_added_without_removing_existing_models(self):
+        expected = {
+            "dinov2", "dinov3",
+            "yolov8", "yolo26",
+            "clip_vit", "siglip2",
+            "sam3",
+        }
+        self.assertTrue(expected <= set(self.G.nodes))
+
 
 class TestBehavior(unittest.TestCase):
 
@@ -173,9 +182,9 @@ class TestBehavior(unittest.TestCase):
         self.assertIn("unet", self._backbones(results),
                       "UNet should appear when medical=True")
 
-    # ── Test 6: cross_modal → CLIP ranks first ────────────────────────────────
+    # ── Test 6: cross_modal → SigLIP2 ranks first ─────────────────────────────
 
-    def test_cross_modal_clip_top1(self):
+    def test_cross_modal_siglip2_top1(self):
         inp = _make_input(
             task_type="feature_extraction",
             data_size="medium",
@@ -184,8 +193,8 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0)
-        self.assertEqual(results[0]["backbone"], "clip_vit",
-                         f"Expected CLIP ViT at top, got {results[0]['backbone']}")
+        self.assertEqual(results[0]["backbone"], "siglip2",
+                         f"Expected SigLIP2 at top, got {results[0]['backbone']}")
 
     # ── Test 7: no cross_modal → CLIP excluded ────────────────────────────────
 
@@ -265,7 +274,7 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0, "zero_shot should return at least one result")
-        capable = {"dinov2", "clip_vit"}
+        capable = {"dinov2", "dinov3", "clip_vit", "siglip2", "sam3"}
         for r in results:
             self.assertIn(r["backbone"], capable,
                           f"{r['backbone']} lacks zero_shot capability but appeared in results")
@@ -281,10 +290,66 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0)
-        capable = {"dinov2", "clip_vit"}
+        capable = {"dinov2", "dinov3", "clip_vit", "siglip2", "sam3"}
         # 至少有一个 capable backbone 出现在结果里
         found = capable & {r["backbone"] for r in results}
         self.assertTrue(found, f"No few_shot-capable backbone in results: {self._backbones(results)}")
+
+    # ── Test 14: real-time detection → YOLO26 is available ───────────────────
+
+    def test_real_time_detection_includes_yolo26(self):
+        inp = _make_input(
+            task_type="object_detection",
+            data_size="medium",
+            priority="speed",
+            real_time=True,
+        )
+        results = self._run(inp)
+        self.assertEqual(results[0]["backbone"], "yolo26")
+        self.assertIn("yolo26", self._backbones(results))
+        yolo26 = next(r for r in results if r["backbone"] == "yolo26")
+        self.assertIn(yolo26["pretrained"], {"yolo26n_coco", "yolo26s_coco"})
+
+    # ── Test 15: DINOv3 appears for high-quality feature extraction ───────────
+
+    def test_feature_quality_includes_dinov3(self):
+        inp = _make_input(
+            task_type="feature_extraction",
+            data_size="large",
+            priority="accuracy",
+            few_shot=True,
+            description="extract dense visual features for retrieval and few-shot classification",
+        )
+        results = self._run(inp)
+        self.assertEqual(results[0]["backbone"], "dinov3")
+        self.assertIn("dinov3", self._backbones(results))
+
+    # ── Test 16: cross-modal retrieval includes SigLIP2 ──────────────────────
+
+    def test_cross_modal_includes_siglip2(self):
+        inp = _make_input(
+            task_type="feature_extraction",
+            data_size="medium",
+            priority="accuracy",
+            cross_modal=True,
+            description="image text retrieval with multilingual labels",
+        )
+        results = self._run(inp)
+        self.assertIn("siglip2", self._backbones(results))
+
+    # ── Test 17: promptable/open-vocabulary segmentation includes SAM3 ───────
+
+    def test_promptable_segmentation_includes_sam3(self):
+        inp = _make_input(
+            task_type="image_segmentation",
+            data_size="large",
+            priority="accuracy",
+            open_vocabulary=True,
+            text_prompt=True,
+            description="segment every object matching a text prompt in images and videos",
+        )
+        results = self._run(inp)
+        self.assertIn("sam3", self._backbones(results))
 
 
 class TestTaskList(unittest.TestCase):
