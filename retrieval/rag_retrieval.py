@@ -195,6 +195,29 @@ COMPONENTS = [
         ),
     },
     {
+        "id": "yolo26",
+        "name": "YOLO26",
+        "component_type": "backbone",
+        "task_type": ["object_detection", "image_segmentation"],
+        "data_size": ["small", "medium", "large"],
+        "complexity": "medium",
+        "finetune_recommended": True,
+        "scratch_viable_from": "medium",
+        "domain_transfer": "moderate",
+        "capabilities": ["real_time", "edge_deployment", "nms_free", "instance_segmentation"],
+        "tier": {
+            "object_detection":   "default",
+            "image_segmentation": "special_case",
+        },
+        "description": (
+            "YOLO26 real-time object detection and segmentation family with native "
+            "end-to-end NMS-free inference, fast speed, efficient deployment, and "
+            "task-specific segmentation heads. Good default for modern object detection, "
+            "traffic camera workloads, 30fps real-time inference, edge deployment, and "
+            "instance segmentation."
+        ),
+    },
+    {
         "id": "detr",
         "name": "DETR",
         "component_type": "backbone",
@@ -271,6 +294,26 @@ COMPONENTS = [
         ),
     },
     {
+        "id": "sam3",
+        "name": "SAM 3",
+        "component_type": "backbone",
+        "task_type": ["image_segmentation"],
+        "data_size": ["small", "medium", "large"],
+        "complexity": "high",
+        "finetune_recommended": False,
+        "scratch_viable_from": None,
+        "domain_transfer": "strong",
+        "capabilities": ["zero_shot", "few_shot", "open_vocabulary", "promptable", "video_tracking"],
+        "tier": {
+            "image_segmentation": "special_case",
+        },
+        "description": (
+            "Promptable Concept Segmentation foundation model. Segments all instances "
+            "of concepts specified by text prompts, image exemplars, points, boxes, "
+            "or masks, and supports video tracking workflows."
+        ),
+    },
+    {
         "id": "unet",
         "name": "U-Net",
         "component_type": "backbone",
@@ -312,6 +355,29 @@ COMPONENTS = [
         ),
     },
     {
+        "id": "dinov3",
+        "name": "DINOv3",
+        "component_type": "backbone",
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "data_size": ["small", "medium", "large"],
+        "complexity": "high",
+        "finetune_recommended": True,
+        "scratch_viable_from": None,
+        "domain_transfer": "strong",
+        "capabilities": ["zero_shot", "few_shot", "dense_features", "foundation_features"],
+        "tier": {
+            "feature_extraction": "default",
+            "classification":     "special_case",
+            "image_segmentation": "special_case",
+        },
+        "description": (
+            "Modern self-supervised vision foundation model producing high-quality dense "
+            "features across recognition, image retrieval, zero-shot transfer, few-shot "
+            "classification, and dense prediction tasks. Strong upgrade over DINOv2 when "
+            "feature quality is the main concern."
+        ),
+    },
+    {
         "id": "clip_vit",
         "name": "CLIP ViT",
         "component_type": "backbone",
@@ -329,6 +395,27 @@ COMPONENTS = [
         "description": (
             "Vision encoder from CLIP, trained on 400M image-text pairs. Language-aligned "
             "visual features. Good for cross-modal retrieval and open-vocabulary classification."
+        ),
+    },
+    {
+        "id": "siglip2",
+        "name": "SigLIP2",
+        "component_type": "backbone",
+        "task_type": ["feature_extraction", "classification"],
+        "data_size": ["small", "medium", "large"],
+        "complexity": "high",
+        "finetune_recommended": True,
+        "scratch_viable_from": None,
+        "domain_transfer": "strong",
+        "capabilities": ["zero_shot", "few_shot", "open_vocabulary", "cross_modal", "multilingual"],
+        "tier": {
+            "feature_extraction": "special_case",
+            "classification":     "special_case",
+        },
+        "description": (
+            "Modern image-text encoder with SigLIP-style contrastive training. Good for "
+            "cross-modal retrieval, multilingual labels, and open-vocabulary image "
+            "classification where CLIP-style alignment is required."
         ),
     },
 
@@ -547,6 +634,21 @@ COMPONENTS = [
         "description": "Mask2Former with Swin-Base backbone on COCO panoptic. Handles semantic/instance/panoptic.",
     },
     {
+        "id": "sam3_concept",
+        "name": "SAM 3 / Promptable Concept Segmentation",
+        "component_type": "pretrained_model",
+        "hf_id": "facebook/sam3",
+        "finetune_base": "sam3",
+        "pretrain_dataset": "SA-Co",
+        "params_M": 848,
+        "task_type": ["image_segmentation"],
+        "size_tier": "large",
+        "recommended_when": {"zero_shot": True, "open_vocabulary": True},
+        "freeze_viable": True,
+        "finetune_strategy": "head_only",
+        "description": "SAM 3 checkpoint for promptable open-vocabulary concept segmentation in images and videos.",
+    },
+    {
         "id": "dinov2_base",
         "name": "DINOv2-Base",
         "component_type": "pretrained_model",
@@ -577,6 +679,51 @@ COMPONENTS = [
         "description": "DINOv2-Large. Best feature quality at higher compute. Either full finetune (low backbone LR) or freeze + head.",
     },
     {
+        "id": "dinov3_small_lvd1689m",
+        "name": "DINOv3-S/16 / LVD-1689M",
+        "component_type": "pretrained_model",
+        "hf_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+        "finetune_base": "dinov3",
+        "pretrain_dataset": "LVD-1689M (self-supervised)",
+        "params_M": 21,
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "size_tier": "small",
+        "recommended_when": {"priority": "speed"},
+        "freeze_viable": True,
+        "finetune_strategy": "head_only",
+        "description": "DINOv3 ViT-S/16 distilled backbone. Compact general-purpose dense visual features.",
+    },
+    {
+        "id": "dinov3_base_lvd1689m",
+        "name": "DINOv3-B/16 / LVD-1689M",
+        "component_type": "pretrained_model",
+        "hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+        "finetune_base": "dinov3",
+        "pretrain_dataset": "LVD-1689M (self-supervised)",
+        "params_M": 86,
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "size_tier": "base",
+        "recommended_when": {},
+        "freeze_viable": True,
+        "finetune_strategy": "head_only",
+        "description": "DINOv3 ViT-B/16 backbone. Strong default for retrieval, few-shot classification, and dense features.",
+    },
+    {
+        "id": "dinov3_large_lvd1689m",
+        "name": "DINOv3-L/16 / LVD-1689M",
+        "component_type": "pretrained_model",
+        "hf_id": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        "finetune_base": "dinov3",
+        "pretrain_dataset": "LVD-1689M (self-supervised)",
+        "params_M": 300,
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "size_tier": "large",
+        "recommended_when": {"data_size": "large", "priority": "accuracy"},
+        "freeze_viable": True,
+        "finetune_strategy": "head_only",
+        "description": "DINOv3 ViT-L/16 backbone. Accuracy-oriented dense feature extractor for large datasets.",
+    },
+    {
         "id": "clip_vit_base_32",
         "name": "CLIP ViT-B/32",
         "component_type": "pretrained_model",
@@ -605,6 +752,36 @@ COMPONENTS = [
         "freeze_viable": True,
         "finetune_strategy": "head_only",
         "description": "CLIP ViT-L/14. Higher quality features than ViT-B/32. Use when feature quality matters more than speed.",
+    },
+    {
+        "id": "siglip2_base_224",
+        "name": "SigLIP2-Base/16 / 224",
+        "component_type": "pretrained_model",
+        "hf_id": "google/siglip2-base-patch16-224",
+        "finetune_base": "siglip2",
+        "pretrain_dataset": "web image-text pairs",
+        "params_M": 86,
+        "task_type": ["feature_extraction", "classification"],
+        "size_tier": "base",
+        "recommended_when": {"cross_modal": True},
+        "freeze_viable": True,
+        "finetune_strategy": "head_only",
+        "description": "SigLIP2 Base image-text encoder for cross-modal retrieval and open-vocabulary classification.",
+    },
+    {
+        "id": "siglip2_so400m_384",
+        "name": "SigLIP2-SO400M/14 / 384",
+        "component_type": "pretrained_model",
+        "hf_id": "google/siglip2-so400m-patch14-384",
+        "finetune_base": "siglip2",
+        "pretrain_dataset": "web image-text pairs",
+        "params_M": 400,
+        "task_type": ["feature_extraction", "classification"],
+        "size_tier": "large",
+        "recommended_when": {"cross_modal": True, "priority": "accuracy"},
+        "freeze_viable": True,
+        "finetune_strategy": "head_only",
+        "description": "SigLIP2 SO400M high-capacity image-text encoder for accuracy-oriented cross-modal retrieval.",
     },
 
     {
@@ -651,6 +828,134 @@ COMPONENTS = [
         "freeze_viable": False,
         "finetune_strategy": "full",
         "description": "YOLOv8-Large pretrained on COCO. Higher accuracy at the cost of speed; use when mAP matters.",
+    },
+    {
+        "id": "yolo26n_coco",
+        "name": "YOLO26-Nano / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26n.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 2.4,
+        "task_type": ["object_detection"],
+        "size_tier": "nano",
+        "recommended_when": {"priority": "speed"},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Nano pretrained on COCO. Fastest YOLO26 detector for edge or real-time deployment.",
+    },
+    {
+        "id": "yolo26s_coco",
+        "name": "YOLO26-Small / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26s.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 9.5,
+        "task_type": ["object_detection"],
+        "size_tier": "small",
+        "recommended_when": {"priority": "speed"},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Small pretrained on COCO. Speed-oriented detector with stronger accuracy than Nano.",
+    },
+    {
+        "id": "yolo26m_coco",
+        "name": "YOLO26-Medium / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26m.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 20.4,
+        "task_type": ["object_detection"],
+        "size_tier": "base",
+        "recommended_when": {},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Medium pretrained on COCO. Balanced default for modern object detection finetuning.",
+    },
+    {
+        "id": "yolo26l_coco",
+        "name": "YOLO26-Large / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26l.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 24.8,
+        "task_type": ["object_detection"],
+        "size_tier": "large",
+        "recommended_when": {"priority": "accuracy"},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Large pretrained on COCO. Accuracy-oriented detector while retaining real-time deployment support.",
+    },
+    {
+        "id": "yolo26n_seg_coco",
+        "name": "YOLO26-Nano-Seg / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26n-seg.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 2.4,
+        "task_type": ["image_segmentation"],
+        "size_tier": "nano",
+        "recommended_when": {"priority": "speed"},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Nano instance segmentation checkpoint for low-latency mask prediction.",
+    },
+    {
+        "id": "yolo26s_seg_coco",
+        "name": "YOLO26-Small-Seg / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26s-seg.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 9.5,
+        "task_type": ["image_segmentation"],
+        "size_tier": "small",
+        "recommended_when": {"priority": "speed"},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Small instance segmentation checkpoint for real-time mask prediction.",
+    },
+    {
+        "id": "yolo26m_seg_coco",
+        "name": "YOLO26-Medium-Seg / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26m-seg.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 20.4,
+        "task_type": ["image_segmentation"],
+        "size_tier": "base",
+        "recommended_when": {},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Medium instance segmentation checkpoint. Balanced default for COCO-style mask finetuning.",
+    },
+    {
+        "id": "yolo26l_seg_coco",
+        "name": "YOLO26-Large-Seg / COCO",
+        "component_type": "pretrained_model",
+        "hf_id": "yolo26l-seg.pt",
+        "finetune_base": "yolo26",
+        "pretrain_dataset": "COCO",
+        "params_M": 24.8,
+        "task_type": ["image_segmentation"],
+        "size_tier": "large",
+        "recommended_when": {"priority": "accuracy"},
+        "freeze_viable": False,
+        "finetune_strategy": "full",
+        "license": "AGPL-3.0-or-Enterprise",
+        "description": "YOLO26-Large instance segmentation checkpoint for accuracy-oriented mask prediction.",
     },
     {
         "id": "segformer_b0_ade",
@@ -908,6 +1213,22 @@ EDGES = [
     ("yolov8", "sgd_momentum",                 "compatible_with"),
     ("yolov8", "yolov8m_coco",               "has_pretrained"),
 
+    # yolo26
+    ("yolo26", "yolo26n_coco",                "has_pretrained"),
+    ("yolo26", "yolo26s_coco",                "has_pretrained"),
+    ("yolo26", "yolo26m_coco",                "has_pretrained"),
+    ("yolo26", "yolo26l_coco",                "has_pretrained"),
+    ("yolo26", "yolo26n_seg_coco",            "has_pretrained"),
+    ("yolo26", "yolo26s_seg_coco",            "has_pretrained"),
+    ("yolo26", "yolo26m_seg_coco",            "has_pretrained"),
+    ("yolo26", "yolo26l_seg_coco",            "has_pretrained"),
+    ("yolo26", "detection_head_anchor_free",  "compatible_with"),
+    ("yolo26", "semantic_seg_head",           "compatible_with"),
+    ("yolo26", "focal_loss",                  "compatible_with"),
+    ("yolo26", "bce_dice_loss",               "compatible_with"),
+    ("yolo26", "adam",                        "compatible_with"),
+    ("yolo26", "sgd_momentum",                "compatible_with"),
+
     # detr（head 和 loss 固定，不可替换）
     ("detr", "detection_head_transformer",     "requires"),
     ("detr", "hungarian_matching_loss",        "requires"),
@@ -937,6 +1258,14 @@ EDGES = [
     ("mask2former", "adamw",                   "compatible_with"),
     ("mask2former", "mask2former_swin_coco", "has_pretrained"),
 
+    # sam3
+    ("sam3", "sam3_concept",                  "has_pretrained"),
+    ("sam3", "semantic_seg_head",             "compatible_with"),
+    ("sam3", "panoptic_seg_head",             "compatible_with"),
+    ("sam3", "dice_loss",                     "compatible_with"),
+    ("sam3", "bce_dice_loss",                 "compatible_with"),
+    ("sam3", "adamw",                         "compatible_with"),
+
     # unet
     ("unet", "semantic_seg_head",              "compatible_with"),
     ("unet", "bce_dice_loss",                 "compatible_with"),
@@ -954,6 +1283,18 @@ EDGES = [
     ("dinov2", "dinov2_base",                 "has_pretrained"),
     ("dinov2", "dinov2_large",               "has_pretrained"),
 
+    # dinov3
+    ("dinov3", "feature_pooling_head",         "compatible_with"),
+    ("dinov3", "projection_head",              "compatible_with"),
+    ("dinov3", "classification_head",          "compatible_with"),
+    ("dinov3", "semantic_seg_head",            "compatible_with"),
+    ("dinov3", "infonce_loss",                 "compatible_with"),
+    ("dinov3", "cross_entropy_loss",           "compatible_with"),
+    ("dinov3", "adamw",                        "compatible_with"),
+    ("dinov3", "dinov3_small_lvd1689m",        "has_pretrained"),
+    ("dinov3", "dinov3_base_lvd1689m",         "has_pretrained"),
+    ("dinov3", "dinov3_large_lvd1689m",        "has_pretrained"),
+
     # clip_vit
     ("clip_vit", "feature_pooling_head",       "compatible_with"),
     ("clip_vit", "projection_head",            "compatible_with"),
@@ -963,6 +1304,16 @@ EDGES = [
     ("clip_vit", "adamw",                      "compatible_with"),
     ("clip_vit", "clip_vit_base_32",          "has_pretrained"),
     ("clip_vit", "clip_vit_large_14",        "has_pretrained"),
+
+    # siglip2
+    ("siglip2", "feature_pooling_head",        "compatible_with"),
+    ("siglip2", "projection_head",             "compatible_with"),
+    ("siglip2", "classification_head",         "compatible_with"),
+    ("siglip2", "infonce_loss",                "compatible_with"),
+    ("siglip2", "cross_entropy_loss",          "compatible_with"),
+    ("siglip2", "adamw",                       "compatible_with"),
+    ("siglip2", "siglip2_base_224",            "has_pretrained"),
+    ("siglip2", "siglip2_so400m_384",          "has_pretrained"),
 
     # ── alternative_to（双向）─────────────────────────────────────────────────
     ("swin_transformer", "convnext",           "alternative_to"),
@@ -975,14 +1326,26 @@ EDGES = [
     ("mobilenet_v3",     "efficientnet",       "alternative_to"),
     ("yolov8",           "rt_detr",            "alternative_to"),
     ("rt_detr",          "yolov8",             "alternative_to"),
+    ("yolo26",           "yolov8",             "alternative_to"),
+    ("yolov8",           "yolo26",             "alternative_to"),
+    ("yolo26",           "rt_detr",            "alternative_to"),
+    ("rt_detr",          "yolo26",             "alternative_to"),
     ("detr",             "rt_detr",            "alternative_to"),
     ("rt_detr",          "detr",               "alternative_to"),
     ("segformer",        "mask2former",        "alternative_to"),
     ("mask2former",      "segformer",          "alternative_to"),
     ("segformer",        "unet",               "alternative_to"),
     ("unet",             "segformer",          "alternative_to"),
+    ("sam3",             "mask2former",        "alternative_to"),
+    ("mask2former",      "sam3",               "alternative_to"),
+    ("sam3",             "segformer",          "alternative_to"),
+    ("segformer",        "sam3",               "alternative_to"),
     ("dinov2",           "clip_vit",           "alternative_to"),
     ("clip_vit",         "dinov2",             "alternative_to"),
+    ("dinov3",           "dinov2",             "alternative_to"),
+    ("dinov2",           "dinov3",             "alternative_to"),
+    ("siglip2",          "clip_vit",           "alternative_to"),
+    ("clip_vit",         "siglip2",            "alternative_to"),
     ("cross_entropy_loss","focal_loss",         "alternative_to"),
     ("focal_loss",       "cross_entropy_loss", "alternative_to"),
     ("dice_loss",        "bce_dice_loss",      "alternative_to"),
@@ -993,27 +1356,65 @@ EDGES = [
     ("dinov2_large",     "dinov2_base",        "alternative_to"),
     ("clip_vit_base_32", "clip_vit_large_14",  "alternative_to"),
     ("clip_vit_large_14","clip_vit_base_32",   "alternative_to"),
+    ("dinov3_small_lvd1689m", "dinov3_base_lvd1689m",  "alternative_to"),
+    ("dinov3_base_lvd1689m",  "dinov3_small_lvd1689m", "alternative_to"),
+    ("dinov3_base_lvd1689m",  "dinov3_large_lvd1689m", "alternative_to"),
+    ("dinov3_large_lvd1689m", "dinov3_base_lvd1689m",  "alternative_to"),
+    ("siglip2_base_224",      "siglip2_so400m_384",    "alternative_to"),
+    ("siglip2_so400m_384",    "siglip2_base_224",      "alternative_to"),
+    ("yolo26n_coco",          "yolo26s_coco",           "alternative_to"),
+    ("yolo26s_coco",          "yolo26m_coco",           "alternative_to"),
+    ("yolo26m_coco",          "yolo26l_coco",           "alternative_to"),
+    ("yolo26n_seg_coco",      "yolo26s_seg_coco",       "alternative_to"),
+    ("yolo26s_seg_coco",      "yolo26m_seg_coco",       "alternative_to"),
+    ("yolo26m_seg_coco",      "yolo26l_seg_coco",       "alternative_to"),
 
     # ── preferred_when ────────────────────────────────────────────────────────
     ("yolov8",          "rt_detr",             "preferred_when"),
+    ("yolo26",          "yolov8",              "preferred_when"),
+    ("yolo26",          "rt_detr",             "preferred_when"),
+    ("yolo26",          "detr",                "preferred_when"),
+    ("yolo26",          "resnet",              "preferred_when"),
     ("unet",            "segformer",           "preferred_when"),
+    ("sam3",            "mask2former",         "preferred_when"),
     ("focal_loss",      "cross_entropy_loss",  "preferred_when"),
     ("mobilenet_v3",    "efficientnet",        "preferred_when"),
     ("dinov2",          "clip_vit",            "preferred_when"),
+    ("dinov3",          "dinov2",              "preferred_when"),
+    ("dinov3",          "clip_vit",            "preferred_when"),
     ("clip_vit",        "dinov2",              "preferred_when"),
+    ("siglip2",         "clip_vit",            "preferred_when"),
+    ("siglip2",         "dinov2",              "preferred_when"),
+    ("siglip2",         "dinov3",              "preferred_when"),
+    ("siglip2",         "vit",                 "preferred_when"),
     ("swin_large_in22k","swin_base_in22k",     "preferred_when"),
     ("dinov2_large",    "dinov2_base",         "preferred_when"),
+    ("dinov3_large_lvd1689m", "dinov3_base_lvd1689m", "preferred_when"),
+    ("siglip2_so400m_384",    "siglip2_base_224",     "preferred_when"),
 ]
 
 EDGE_CONDITIONS = {
     ("yolov8",           "rt_detr"):          {"condition": {"all": ["real_time=True"]}},
+    ("yolo26",           "yolov8"):           {"condition": {"any": ["real_time=True", "edge_deployment=True", "speed_priority=True"]}},
+    ("yolo26",           "rt_detr"):          {"condition": {"any": ["real_time=True", "edge_deployment=True", "speed_priority=True"]}},
+    ("yolo26",           "detr"):             {"condition": {"any": ["real_time=True", "edge_deployment=True", "speed_priority=True"]}},
+    ("yolo26",           "resnet"):           {"condition": {"any": ["real_time=True", "edge_deployment=True", "speed_priority=True"]}},
     ("unet",             "segformer"):        {"condition": {"any": ["data_size=small", "medical=True"]}},
+    ("sam3",             "mask2former"):      {"condition": {"any": ["open_vocabulary=True", "text_prompt=True", "visual_prompt=True", "promptable=True", "video=True", "zero_shot=True", "few_shot=True"]}},
     ("focal_loss",       "cross_entropy_loss"):{"condition": {"all": ["class_imbalance=True"]}},
     ("mobilenet_v3",     "efficientnet"):     {"condition": {"all": ["edge_deployment=True"]}},
     ("dinov2",           "clip_vit"):         {"condition": {"all": ["no_text_modality=True"]}},
+    ("dinov3",           "dinov2"):           {"condition": {"any": ["feature_quality_priority=True", "few_shot=True", "zero_shot=True"]}},
+    ("dinov3",           "clip_vit"):         {"condition": {"any": ["feature_quality_priority=True", "few_shot=True", "zero_shot=True"]}},
     ("clip_vit",         "dinov2"):           {"condition": {"all": ["cross_modal=True"]}},
+    ("siglip2",          "clip_vit"):         {"condition": {"all": ["cross_modal=True"]}},
+    ("siglip2",          "dinov2"):           {"condition": {"all": ["cross_modal=True"]}},
+    ("siglip2",          "dinov3"):           {"condition": {"all": ["cross_modal=True"]}},
+    ("siglip2",          "vit"):              {"condition": {"all": ["cross_modal=True"]}},
     ("swin_large_in22k", "swin_base_in22k"):  {"condition": {"all": ["large_data=True", "high_accuracy_priority=True"]}},
     ("dinov2_large",     "dinov2_base"):      {"condition": {"all": ["feature_quality_priority=True"]}},
+    ("dinov3_large_lvd1689m", "dinov3_base_lvd1689m"): {"condition": {"all": ["feature_quality_priority=True"]}},
+    ("siglip2_so400m_384",    "siglip2_base_224"):     {"condition": {"all": ["feature_quality_priority=True", "cross_modal=True"]}},
 }
 
 
@@ -1112,22 +1513,28 @@ def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collect
     collection = client.get_or_create_collection("cv_backbones", embedding_function=ef)
 
     backbones = [c for c in COMPONENTS if c["component_type"] == "backbone"]
+    existing_ids = set(collection.get()["ids"])
+    new_count = sum(1 for b in backbones if b["id"] not in existing_ids)
 
     # upsert 而非 add：description 修改后旧 embedding 会被覆盖刷新
-    collection.upsert(
-        ids=[b["id"] for b in backbones],
-        documents=[b["description"] for b in backbones],
-        metadatas=[
-            {
-                "task_type":            json.dumps(b["task_type"]),
-                "data_size":            json.dumps(b["data_size"]),
-                "complexity":           b["complexity"],
-                "finetune_recommended": str(b["finetune_recommended"]),
-            }
-            for b in backbones
-        ],
-    )
-    print(f"[Index] Upserted {len(backbones)} backbone entries.")
+    if backbones:
+        collection.upsert(
+            ids=[b["id"] for b in backbones],
+            documents=[b["description"] for b in backbones],
+            metadatas=[
+                {
+                    "task_type":            json.dumps(b["task_type"]),
+                    "data_size":            json.dumps(b["data_size"]),
+                    "complexity":           b["complexity"],
+                    "finetune_recommended": str(b["finetune_recommended"]),
+                }
+                for b in backbones
+            ],
+        )
+    if new_count:
+        print(f"[Index] Added {new_count} backbone entries and refreshed {len(backbones)} total entries.")
+    else:
+        print(f"[Index] Refreshed {len(backbones)} backbone entries.")
 
     return collection
 
@@ -1148,8 +1555,14 @@ def _matches_condition(condition: dict, input_json: dict) -> bool:
         "medical=True":                  c.get("medical", False),
         "zero_shot=True":                c.get("zero_shot", False),
         "few_shot=True":                 c.get("few_shot", False),
+        "open_vocabulary=True":          c.get("open_vocabulary", False),
+        "text_prompt=True":              c.get("text_prompt", False),
+        "visual_prompt=True":            c.get("visual_prompt", False),
+        "promptable=True":               c.get("promptable", False),
+        "video=True":                    c.get("video", False),
         "data_size=small":               input_json.get("data_size") == "small",
         "large_data=True":               input_json.get("data_size") == "large",
+        "speed_priority=True":           input_json.get("priority") == "speed",
         "high_accuracy_priority=True":   input_json.get("priority") == "accuracy",
         "feature_quality_priority=True": input_json.get("priority") == "accuracy",
     }
@@ -1183,6 +1596,11 @@ def _input_to_query_text(input_json: dict) -> str:
     if c.get("medical"):          flags.append("medical imaging domain")
     if c.get("zero_shot"):        flags.append("zero-shot prediction without labeled training data")
     if c.get("few_shot"):         flags.append("few-shot learning from very few labeled samples")
+    if c.get("open_vocabulary"):  flags.append("open-vocabulary recognition")
+    if c.get("text_prompt"):      flags.append("text-prompted prediction")
+    if c.get("visual_prompt"):    flags.append("visual prompt or exemplar input")
+    if c.get("promptable"):       flags.append("promptable interaction")
+    if c.get("video"):            flags.append("video tracking")
     if flags:
         parts.append(", ".join(flags))
 
@@ -1325,6 +1743,7 @@ _SPECIAL_CASE_REQUIRES: dict[str, tuple[str, ...]] = {
     "mobilenet_v3": ("edge_deployment",),
     "unet":         ("medical",),
     "clip_vit":     ("cross_modal", "zero_shot"),
+    "siglip2":      ("cross_modal", "zero_shot"),
 }
 
 
@@ -1556,6 +1975,13 @@ def _filter_by_tier(
                     result.append((backbone_id, checkpoint_id))
             elif backbone_id == "yolov8" and task_type == "image_segmentation":
                 if c.get("real_time") or c.get("edge_deployment"):
+                    result.append((backbone_id, checkpoint_id))
+            elif backbone_id == "sam3":
+                prompt_signals = (
+                    "open_vocabulary", "text_prompt", "visual_prompt",
+                    "promptable", "video", "zero_shot", "few_shot",
+                )
+                if any(c.get(k) for k in prompt_signals):
                     result.append((backbone_id, checkpoint_id))
             else:
                 # 宽松特殊：无严格约束要求，保留为备选
