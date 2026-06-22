@@ -64,6 +64,26 @@ def test_build_training_specs_handles_older_candidate_shape():
     assert spec.image_size == 128
 
 
+def test_build_training_specs_supports_partial_finetune():
+    spec = build_training_specs(
+        [
+            {
+                "model_config": {
+                    "task_type": "classification",
+                    "backbone": "dinov3",
+                    "finetune_strategy": "partial",
+                    "freeze_backbone": True,
+                    "unfreeze_last_n_blocks": "4",
+                }
+            }
+        ]
+    )[0]
+
+    assert spec.finetune_strategy == "partial"
+    assert spec.freeze_backbone is False
+    assert spec.unfreeze_last_n_blocks == 4
+
+
 def test_build_training_specs_extracts_structured_tasks():
     candidates = [
         {

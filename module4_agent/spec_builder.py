@@ -95,7 +95,7 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
             finetune_strategy = "head_only" if has_pretrained else "full"
         else:
             finetune_strategy = str(raw_strategy).lower()
-        if finetune_strategy not in {"head_only", "full", "either"}:
+        if finetune_strategy not in {"head_only", "partial", "full", "either"}:
             finetune_strategy = "head_only" if has_pretrained else "full"
 
         freeze_backbone = _safe_bool(
@@ -104,8 +104,18 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
         )
         if finetune_strategy == "head_only":
             freeze_backbone = True
+        elif finetune_strategy == "partial":
+            freeze_backbone = False
         elif finetune_strategy == "full" and "freeze_backbone" not in merged:
             freeze_backbone = False
+
+        unfreeze_last_n_blocks = _safe_int(
+            merged.get("unfreeze_last_n_blocks")
+            or merged.get("unfreeze_last_n_layers")
+            or merged.get("unfreeze_last_k")
+            or candidate.get("unfreeze_last_n_blocks"),
+            default=2 if finetune_strategy == "partial" else 0,
+        )
 
         backbone = (
             merged.get("backbone")
@@ -149,6 +159,7 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
             optimizer=str(merged.get("optimizer") or defaults["optimizer"]),
             finetune_strategy=finetune_strategy,
             freeze_backbone=freeze_backbone,
+            unfreeze_last_n_blocks=unfreeze_last_n_blocks,
             scratch_viable=_safe_bool(merged.get("scratch_viable"), default=True),
             params_M=_safe_optional_float(merged.get("params_M")),
             tasks=list(candidate.get("tasks") or []),
@@ -243,6 +254,10 @@ def _extract_structured_task_fields(tasks: Any) -> dict[str, Any]:
             extracted["finetune_strategy"] = item.get("strategy")
             extracted["freeze_backbone"] = item.get("freeze_backbone")
             extracted["scratch_viable"] = item.get("scratch_viable")
+            for key in ("unfreeze_last_n_blocks", "unfreeze_last_n_layers", "unfreeze_last_k"):
+                if item.get(key) is not None:
+                    extracted["unfreeze_last_n_blocks"] = item.get(key)
+                    break
         elif action == "configure_head":
             extracted["head"] = item.get("type") or item.get("name")
         elif action == "configure_loss":
