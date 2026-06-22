@@ -51,6 +51,7 @@ class TrainingSpec:
     optimizer: str = "adamw"
     finetune_strategy: str = "head_only"
     freeze_backbone: bool = True
+    unfreeze_last_n_blocks: int = 0
     scratch_viable: bool = True
     params_M: float | None = None
     tasks: list[Any] = field(default_factory=list)

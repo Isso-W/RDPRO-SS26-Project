@@ -190,7 +190,7 @@ def _check_finetune_strategy(
     errors: list[str],
     output_dir: Path | None,
 ) -> None:
-    needs_check = any(spec.finetune_strategy in {"head_only", "full"} for spec in specs)
+    needs_check = any(spec.finetune_strategy in {"head_only", "partial", "full"} for spec in specs)
     if not needs_check:
         return
 
@@ -203,8 +203,15 @@ def _check_finetune_strategy(
     )
     has_helper_freeze = (
         "apply_freeze" in model_py
-        and "param.requires_grad = False" in model_utils_py
-        and "\"backbone\" in param_name" in model_utils_py
+        and (
+            "param.requires_grad = False" in model_utils_py
+            or "param.requires_grad = requires_grad" in model_utils_py
+            or "_set_backbone_requires_grad" in model_utils_py
+        )
+        and (
+            "\"backbone\" in param_name" in model_utils_py
+            or "_is_backbone_parameter_name" in model_utils_py
+        )
     )
     if any(spec.finetune_strategy == "head_only" for spec in specs) and (
         not has_inline_freeze
@@ -216,6 +223,12 @@ def _check_finetune_strategy(
         and "strategy in (\"full\", \"either\")" not in model_utils_py
     ):
         errors.append("full finetune strategy is not explicitly handled.")
+    if any(spec.finetune_strategy == "partial" for spec in specs) and (
+        "strategy == \"partial\"" not in model_utils_py
+        or "unfreeze_last_n_blocks" not in model_utils_py
+        or "_unfreeze_last_blocks" not in model_utils_py
+    ):
+        errors.append("partial finetune strategy is not explicitly handled.")
 
 
 def _check_smoke_metrics(smoke_result: SmokeResult, specs: list[TrainingSpec], errors: list[str]) -> None:

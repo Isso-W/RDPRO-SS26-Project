@@ -234,6 +234,72 @@ def test_transformer_backbone_uses_grouped_lr(tmp_path, monkeypatch):
         os.environ.update(env_snapshot)
 
 
+def test_partial_finetune_unfreezes_last_blocks(tmp_path, monkeypatch):
+    """partial finetune freezes early backbone blocks and trains the tail blocks."""
+    pytest = __import__("pytest")
+    torch = pytest.importorskip("torch")
+    import importlib
+    import os
+    import sys
+
+    import torch.nn as nn
+
+    env_snapshot = dict(os.environ)
+    generated = generate_files(_specs(), llm_provider="none")
+    for name, content in generated.files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    for mod in ("model_utils", "train", "model", "smoke_data", "utils"):
+        sys.modules.pop(mod, None)
+    model_utils = importlib.import_module("model_utils")
+    train = importlib.import_module("train")
+
+    class _Backbone(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.blocks = nn.ModuleList([nn.Linear(4, 4) for _ in range(3)])
+
+        def forward(self, x):
+            for block in self.blocks:
+                x = block(x)
+            return x
+
+    class _Model(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.backbone = _Backbone()
+            self.head = nn.Linear(4, 2)
+
+    try:
+        model = _Model()
+        model_utils.apply_freeze(
+            model,
+            {
+                "finetune_strategy": "partial",
+                "unfreeze_last_n_blocks": 1,
+                "train_norm_layers": False,
+            },
+        )
+
+        assert all(not p.requires_grad for p in model.backbone.blocks[0].parameters())
+        assert all(not p.requires_grad for p in model.backbone.blocks[1].parameters())
+        assert all(p.requires_grad for p in model.backbone.blocks[2].parameters())
+        assert all(p.requires_grad for p in model.head.parameters())
+        assert train._backbone_is_frozen(model) is False
+
+        opt = train._build_optimizer(model, {"backbone": "dinov3", "learning_rate": 1e-3})
+        assert len(opt.param_groups) == 2
+        lrs = sorted(group["lr"] for group in opt.param_groups)
+        assert abs(lrs[0] - 1e-5) < 1e-9 and abs(lrs[1] - 1e-3) < 1e-9
+        assert getattr(model, "_unfreeze_last_n_blocks") == 1
+        assert getattr(model, "_partial_unfrozen_params") > 0
+    finally:
+        for mod in ("model_utils", "train", "model", "smoke_data", "utils"):
+            sys.modules.pop(mod, None)
+        os.environ.clear()
+        os.environ.update(env_snapshot)
+
+
 def test_feedback_is_embedded_into_generated_readme():
     generated = generate_files(_specs(), feedback="Smoke test failed.", llm_provider="none")
 

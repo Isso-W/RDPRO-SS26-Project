@@ -231,6 +231,7 @@ def _utils_py() -> str:
                 "loss": config.get("loss", ""),
                 "optimizer": config.get("optimizer", ""),
                 "finetune_strategy": config.get("finetune_strategy", ""),
+                "unfreeze_last_n_blocks": config.get("unfreeze_last_n_blocks", 0),
             }
         '''
     ).lstrip()
@@ -557,23 +558,140 @@ def _model_utils_py() -> str:
             return extractor, channels
 
 
+        def _is_backbone_parameter_name(param_name: str) -> bool:
+            return (
+                "backbone" in param_name
+                or param_name.startswith("features")
+                or param_name.startswith("layers")
+            )
+
+
+        def _set_backbone_requires_grad(model: nn.Module, requires_grad: bool) -> int:
+            changed = 0
+            for param_name, param in model.named_parameters():
+                if _is_backbone_parameter_name(param_name):
+                    if param.requires_grad != requires_grad:
+                        changed += 1
+                    param.requires_grad = requires_grad
+            return changed
+
+
+        def _resolve_module_path(root: nn.Module, path: str):
+            current = root
+            for part in path.split("."):
+                if not hasattr(current, part):
+                    return None
+                current = getattr(current, part)
+            return current
+
+
+        def _iter_block_containers(model: nn.Module):
+            roots = []
+            backbone = getattr(model, "backbone", None)
+            if isinstance(backbone, nn.Module):
+                roots.append(backbone)
+            roots.append(model)
+            paths = (
+                "model.encoder.layer",
+                "model.encoder.layers",
+                "model.encoder.blocks",
+                "model.blocks",
+                "model.layers",
+                "encoder.layer",
+                "encoder.layers",
+                "encoder.blocks",
+                "blocks",
+                "layers",
+                "features",
+                "net",
+            )
+            seen: set[int] = set()
+            for root in roots:
+                for path in paths:
+                    container = _resolve_module_path(root, path)
+                    if isinstance(container, (nn.ModuleList, nn.Sequential)) and len(container) > 0:
+                        key = id(container)
+                        if key not in seen:
+                            seen.add(key)
+                            yield container
+
+
+        def _unfreeze_module(module: nn.Module) -> int:
+            changed = 0
+            for param in module.parameters():
+                if not param.requires_grad:
+                    changed += 1
+                param.requires_grad = True
+            return changed
+
+
+        def _unfreeze_last_blocks(model: nn.Module, last_n: int) -> int:
+            if last_n <= 0:
+                return 0
+            for container in _iter_block_containers(model):
+                blocks = list(container.children())
+                changed = 0
+                for block in blocks[-last_n:]:
+                    changed += _unfreeze_module(block)
+                if changed > 0:
+                    return changed
+            return 0
+
+
+        def _unfreeze_norm_layers(model: nn.Module) -> int:
+            norm_types = (
+                nn.BatchNorm1d,
+                nn.BatchNorm2d,
+                nn.BatchNorm3d,
+                nn.GroupNorm,
+                nn.InstanceNorm1d,
+                nn.InstanceNorm2d,
+                nn.InstanceNorm3d,
+                nn.LayerNorm,
+                nn.LocalResponseNorm,
+            )
+            changed = 0
+            for module_name, module in model.named_modules():
+                if not _is_backbone_parameter_name(module_name):
+                    continue
+                if isinstance(module, norm_types):
+                    changed += _unfreeze_module(module)
+            return changed
+
+
         def apply_freeze(model: nn.Module, config: dict[str, Any] | None) -> None:
             """Freeze backbone parameters based on finetune_strategy config."""
             config = config or {}
             strategy = str(get_value(config, "finetune_strategy", "head_only")).lower()
+            frozen = 0
+            unfrozen = 0
+            last_n = 0
             # head_only means "freeze backbone, train head" by definition — it must not be
             # overridden by a stray freeze_backbone=false in the config.
             if strategy == "head_only":
-                freeze = True
+                frozen = _set_backbone_requires_grad(model, False)
+            elif strategy == "partial":
+                frozen = _set_backbone_requires_grad(model, False)
+                last_n = max(0, as_int(get_value(config, "unfreeze_last_n_blocks", 2), 2))
+                unfrozen += _unfreeze_last_blocks(model, last_n)
+                if as_bool(get_value(config, "train_norm_layers", True), True):
+                    unfrozen += _unfreeze_norm_layers(model)
+                if last_n > 0 and unfrozen == 0:
+                    print(
+                        "[model_utils] partial finetune could not find block containers; "
+                        "unfreezing the full backbone instead.",
+                        file=sys.stderr,
+                    )
+                    unfrozen += _set_backbone_requires_grad(model, True)
             elif strategy in ("full", "either"):
-                freeze = False
+                _set_backbone_requires_grad(model, True)
             else:
                 freeze = as_bool(get_value(config, "freeze_backbone", False), False)
-
-            if freeze:
-                for param_name, param in model.named_parameters():
-                    if "backbone" in param_name or "features" in param_name or "layers" in param_name:
-                        param.requires_grad = False
+                if freeze:
+                    frozen = _set_backbone_requires_grad(model, False)
+            model._frozen_backbone_params = frozen
+            model._partial_unfrozen_params = unfrozen
+            model._unfreeze_last_n_blocks = last_n
         '''
     ).lstrip()
 
@@ -707,23 +825,66 @@ def _model_py() -> str:
                 return F.normalize(embeddings, dim=1)
 
 
+        def _set_backbone_requires_grad(model: nn.Module, requires_grad: bool) -> int:
+            changed = 0
+            for name, parameter in model.named_parameters():
+                if "backbone" in name:
+                    if parameter.requires_grad != requires_grad:
+                        changed += 1
+                    parameter.requires_grad = requires_grad
+            return changed
+
+
+        def _unfreeze_last_backbone_blocks(model: nn.Module, last_n: int) -> int:
+            if last_n <= 0:
+                return 0
+            backbone = getattr(model, "backbone", None)
+            if not isinstance(backbone, nn.Module):
+                return 0
+            containers = []
+            for attr in ("blocks", "layers", "features", "net"):
+                candidate = getattr(backbone, attr, None)
+                if isinstance(candidate, (nn.ModuleList, nn.Sequential)) and len(candidate) > 0:
+                    containers.append(candidate)
+            if not containers:
+                children = list(backbone.children())
+                if children:
+                    containers.append(nn.Sequential(*children))
+            changed = 0
+            if containers:
+                for block in list(containers[0].children())[-last_n:]:
+                    for parameter in block.parameters():
+                        if not parameter.requires_grad:
+                            changed += 1
+                        parameter.requires_grad = True
+            return changed
+
+
         def _apply_finetune_strategy(model: nn.Module, config: dict[str, Any] | None) -> nn.Module:
             strategy = str(get_value(config, "finetune_strategy", "head_only")).lower()
-            freeze_backbone = as_bool(
-                get_value(config, "freeze_backbone", strategy == "head_only"),
-                strategy == "head_only",
-            )
-            if strategy == "full":
-                freeze_backbone = False
-            elif strategy == "either":
-                freeze_backbone = False
             frozen = 0
-            if freeze_backbone:
-                for name, parameter in model.named_parameters():
-                    if "backbone" in name:
-                        parameter.requires_grad = False
-                        frozen += 1
+            unfrozen = 0
+            last_n = 0
+            if strategy == "head_only":
+                frozen = _set_backbone_requires_grad(model, False)
+            elif strategy == "partial":
+                frozen = _set_backbone_requires_grad(model, False)
+                last_n = max(0, as_int(get_value(config, "unfreeze_last_n_blocks", 2), 2))
+                unfrozen = _unfreeze_last_backbone_blocks(model, last_n)
+                if last_n > 0 and unfrozen == 0:
+                    unfrozen = _set_backbone_requires_grad(model, True)
+            elif strategy in ("full", "either"):
+                _set_backbone_requires_grad(model, True)
+            else:
+                freeze_backbone = as_bool(
+                    get_value(config, "freeze_backbone", False),
+                    False,
+                )
+                if freeze_backbone:
+                    frozen = _set_backbone_requires_grad(model, False)
             model._frozen_backbone_params = frozen
+            model._partial_unfrozen_params = unfrozen
+            model._unfreeze_last_n_blocks = last_n
             return model
 
 
@@ -1903,7 +2064,9 @@ def _train_py() -> str:
                     "loss": get_value(config, "loss", "cross_entropy_loss"),
                     "optimizer": get_value(config, "optimizer", "adamw"),
                     "finetune_strategy": get_value(config, "finetune_strategy", "head_only"),
+                    "unfreeze_last_n_blocks": int(getattr(model, "_unfreeze_last_n_blocks", 0)),
                     "frozen_backbone_params": int(getattr(model, "_frozen_backbone_params", 0)),
+                    "partial_unfrozen_params": int(getattr(model, "_partial_unfrozen_params", 0)),
                 },
             }
             return model, summary
