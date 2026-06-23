@@ -260,6 +260,21 @@ class TestBehavior(unittest.TestCase):
             if r["backbone"] == "dinov2" and r["pretrained"] is not None:
                 self.assertEqual(r["finetune_strategy"], "head_only")
 
+    def test_dinov3_classification_uses_partial_finetune(self):
+        inp = _make_input(
+            task_type="classification",
+            data_size="medium",
+            priority="accuracy",
+            description="fine-grained visual classification where feature quality matters",
+        )
+        for r in self._run(inp):
+            if r["backbone"] == "dinov3" and r["pretrained"] is not None:
+                self.assertEqual(r["finetune_strategy"], "partial")
+                self.assertIn(r["unfreeze_last_n_blocks"], {2, 4})
+                self.assertTrue(r["train_norm_layers"])
+                return
+        self.fail("DINOv3 recommendation not found")
+
     # ── Test 10: class_imbalance → focal_loss selected ────────────────────────
 
     def test_class_imbalance_uses_focal_loss(self):
@@ -342,6 +357,7 @@ class TestBehavior(unittest.TestCase):
         results = self._run(inp)
         self.assertEqual(results[0]["backbone"], "dinov3")
         self.assertIn("dinov3", self._backbones(results))
+        self.assertEqual(results[0]["finetune_strategy"], "head_only")
 
     # ── Test 16: cross-modal retrieval includes SigLIP2 ──────────────────────
 

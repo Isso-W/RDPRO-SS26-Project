@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any
 
 from .schemas import SUPPORTED_TASK_TYPES, TrainingSpec
@@ -115,6 +116,10 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
             or candidate.get("unfreeze_last_n_blocks"),
             default=2 if finetune_strategy == "partial" else 0,
         )
+        train_norm_layers = _safe_bool(
+            merged.get("train_norm_layers"),
+            default=(finetune_strategy == "partial"),
+        )
 
         backbone = (
             merged.get("backbone")
@@ -159,6 +164,9 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
             finetune_strategy=finetune_strategy,
             freeze_backbone=freeze_backbone,
             unfreeze_last_n_blocks=unfreeze_last_n_blocks,
+            train_norm_layers=train_norm_layers,
+            strategy_ablation_group=str(merged.get("strategy_ablation_group") or ""),
+            strategy_ablation_variant=str(merged.get("strategy_ablation_variant") or ""),
             scratch_viable=_safe_bool(merged.get("scratch_viable"), default=True),
             params_M=_safe_optional_float(merged.get("params_M")),
             tasks=list(candidate.get("tasks") or []),
@@ -204,7 +212,83 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
             raw_model_config=model_config,
         )
         specs.append(spec)
-    return specs
+    return _expand_strategy_ablations(specs)
+
+
+def _expand_strategy_ablations(specs: Sequence[TrainingSpec]) -> list[TrainingSpec]:
+    """Add lightweight strategy variants for backbones whose best unfreeze depth is data-sensitive."""
+
+    expanded: list[TrainingSpec] = []
+    added_variant = False
+    for spec in specs:
+        if not spec.strategy_ablation_group and _should_auto_ablate_strategy(spec):
+            group = f"rank{spec.rank}_{_slug(spec.backbone)}_strategy"
+            base_variant = f"partial_last{max(1, spec.unfreeze_last_n_blocks or 2)}"
+            spec = _replace_with_model_config(
+                spec,
+                strategy_ablation_group=group,
+                strategy_ablation_variant=base_variant,
+            )
+        expanded.append(spec)
+
+        if not _should_auto_ablate_strategy(spec):
+            continue
+        existing_depths = {
+            item.unfreeze_last_n_blocks
+            for item in expanded
+            if item.strategy_ablation_group == spec.strategy_ablation_group
+        }
+        next_rank = max((item.rank for item in expanded), default=spec.rank)
+        for depth in (2, 4):
+            if depth in existing_depths:
+                continue
+            next_rank += 1
+            expanded.append(
+                _replace_with_model_config(
+                    spec,
+                    rank=next_rank,
+                    finetune_strategy="partial",
+                    freeze_backbone=False,
+                    unfreeze_last_n_blocks=depth,
+                    train_norm_layers=True,
+                    strategy_ablation_variant=f"partial_last{depth}",
+                )
+            )
+            added_variant = True
+            existing_depths.add(depth)
+    if added_variant:
+        return [replace(item, rank=index) for index, item in enumerate(expanded, start=1)]
+    return expanded
+
+
+def _should_auto_ablate_strategy(spec: TrainingSpec) -> bool:
+    if str(spec.raw_model_config.get("auto_strategy_ablation", "true")).lower() in {"0", "false", "no", "off"}:
+        return False
+    return (
+        spec.task_type == "classification"
+        and spec.backbone.lower() == "dinov3"
+        and spec.finetune_strategy == "partial"
+    )
+
+
+def _replace_with_model_config(spec: TrainingSpec, **changes: Any) -> TrainingSpec:
+    raw_model_config = dict(spec.raw_model_config)
+    for key, value in changes.items():
+        if key in {
+            "finetune_strategy",
+            "freeze_backbone",
+            "unfreeze_last_n_blocks",
+            "train_norm_layers",
+            "strategy_ablation_group",
+            "strategy_ablation_variant",
+        }:
+            raw_model_config[key] = value
+    return replace(spec, raw_model_config=raw_model_config, **changes)
+
+
+def _slug(value: str) -> str:
+    text = str(value or "item").lower()
+    return "".join(ch if ch.isalnum() else "_" for ch in text).strip("_") or "item"
 
 
 def specs_to_configs(specs: Sequence[TrainingSpec]) -> list[dict[str, Any]]:
@@ -242,6 +326,8 @@ def _extract_structured_task_fields(tasks: Any) -> dict[str, Any]:
                 if item.get(key) is not None:
                     extracted["unfreeze_last_n_blocks"] = item.get(key)
                     break
+            if item.get("train_norm_layers") is not None:
+                extracted["train_norm_layers"] = item.get("train_norm_layers")
         elif action == "configure_head":
             extracted["head"] = item.get("type") or item.get("name")
         elif action == "configure_loss":

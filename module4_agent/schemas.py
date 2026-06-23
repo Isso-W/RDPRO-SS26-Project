@@ -52,6 +52,9 @@ class TrainingSpec:
     finetune_strategy: str = "head_only"
     freeze_backbone: bool = True
     unfreeze_last_n_blocks: int = 0
+    train_norm_layers: bool = True
+    strategy_ablation_group: str = ""
+    strategy_ablation_variant: str = ""
     scratch_viable: bool = True
     params_M: float | None = None
     tasks: list[Any] = field(default_factory=list)
