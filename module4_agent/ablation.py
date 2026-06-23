@@ -13,6 +13,7 @@ CONTROLLED_FIELDS = (
     "learning_rate",
     "augmentation",
     "finetune_strategy",
+    "unfreeze_last_n_blocks",
     "loss",
     "backbone",
     "checkpoint",
@@ -48,6 +49,10 @@ def training_spec_summary(spec: TrainingSpec) -> dict[str, Any]:
         "optimizer": spec.optimizer,
         "finetune_strategy": spec.finetune_strategy,
         "freeze_backbone": spec.freeze_backbone,
+        "unfreeze_last_n_blocks": spec.unfreeze_last_n_blocks,
+        "train_norm_layers": spec.train_norm_layers,
+        "strategy_ablation_group": spec.strategy_ablation_group,
+        "strategy_ablation_variant": spec.strategy_ablation_variant,
         "learning_rate": spec.learning_rate,
         "augmentation": spec.augmentation,
         "data_size": spec.data_size,
@@ -79,6 +84,8 @@ def diff_controlled_fields(
                 before_summary.get("freeze_backbone"),
                 after_summary.get("freeze_backbone"),
             )
+    if "finetune_strategy" in changes:
+        changes.pop("unfreeze_last_n_blocks", None)
     return changes
 
 
@@ -100,44 +107,62 @@ def generate_ablation_variants(base_spec: TrainingSpec) -> list[AblationVariant]
 
     optimizer = _optimizer_variant(base_spec)
     if optimizer and optimizer != base_spec.optimizer:
-        candidates.append(("optimizer", optimizer, replace(base_spec, optimizer=optimizer)))
+        candidates.append(("optimizer", optimizer, _replace_with_model_config(base_spec, optimizer=optimizer)))
 
     learning_rate = _learning_rate_variant(base_spec.learning_rate)
     if learning_rate != base_spec.learning_rate:
-        candidates.append(("learning_rate", learning_rate, replace(base_spec, learning_rate=learning_rate)))
+        candidates.append(("learning_rate", learning_rate, _replace_with_model_config(base_spec, learning_rate=learning_rate)))
 
     augmentation = _augmentation_variant(base_spec.augmentation)
     if augmentation != base_spec.augmentation:
-        candidates.append(("augmentation", augmentation, replace(base_spec, augmentation=augmentation)))
+        candidates.append(("augmentation", augmentation, _replace_with_model_config(base_spec, augmentation=augmentation)))
     augmentation_removal = _augmentation_removal_variant(base_spec.augmentation)
     if augmentation_removal != base_spec.augmentation:
-        candidates.append(("augmentation", augmentation_removal, replace(base_spec, augmentation=augmentation_removal)))
+        candidates.append(("augmentation", augmentation_removal, _replace_with_model_config(base_spec, augmentation=augmentation_removal)))
 
     finetune_strategy = _finetune_variant(base_spec)
     if finetune_strategy and finetune_strategy != base_spec.finetune_strategy:
+        unfreeze_last_n_blocks = 2 if finetune_strategy == "partial" else 0
         candidates.append(
             (
                 "finetune_strategy",
                 finetune_strategy,
-                replace(
+                _replace_with_model_config(
                     base_spec,
                     finetune_strategy=finetune_strategy,
                     freeze_backbone=(finetune_strategy == "head_only"),
+                    unfreeze_last_n_blocks=unfreeze_last_n_blocks,
+                    train_norm_layers=(finetune_strategy == "partial"),
+                ),
+            )
+        )
+    unfreeze_last_n_blocks = _unfreeze_depth_variant(base_spec)
+    if unfreeze_last_n_blocks and unfreeze_last_n_blocks != base_spec.unfreeze_last_n_blocks:
+        candidates.append(
+            (
+                "unfreeze_last_n_blocks",
+                unfreeze_last_n_blocks,
+                _replace_with_model_config(
+                    base_spec,
+                    finetune_strategy="partial",
+                    freeze_backbone=False,
+                    unfreeze_last_n_blocks=unfreeze_last_n_blocks,
+                    train_norm_layers=True,
                 ),
             )
         )
 
     loss = _loss_variant(base_spec)
     if loss and loss != base_spec.loss:
-        candidates.append(("loss", loss, replace(base_spec, loss=loss)))
+        candidates.append(("loss", loss, _replace_with_model_config(base_spec, loss=loss)))
 
     alternative_backbone = _alternative_backbone(base_spec)
     if alternative_backbone and alternative_backbone != base_spec.backbone:
-        candidates.append(("backbone", alternative_backbone, replace(base_spec, backbone=alternative_backbone)))
+        candidates.append(("backbone", alternative_backbone, _replace_with_model_config(base_spec, backbone=alternative_backbone)))
 
     alternative_checkpoint = _alternative_checkpoint(base_spec)
     if alternative_checkpoint and alternative_checkpoint != base_spec.checkpoint:
-        candidates.append(("checkpoint", alternative_checkpoint, replace(base_spec, checkpoint=alternative_checkpoint)))
+        candidates.append(("checkpoint", alternative_checkpoint, _replace_with_model_config(base_spec, checkpoint=alternative_checkpoint)))
 
     variants: list[AblationVariant] = []
     base_id = spec_id(base_spec)
@@ -196,8 +221,16 @@ def _finetune_variant(spec: TrainingSpec) -> str | None:
     if spec.task_type == "object_detection":
         return None if spec.finetune_strategy == "full" else "full"
     if spec.finetune_strategy == "full":
-        return "head_only"
+        return "partial" if _is_transformer_backbone(spec.backbone) else "head_only"
+    if spec.finetune_strategy == "head_only" and _is_transformer_backbone(spec.backbone):
+        return "partial"
     return "full"
+
+
+def _unfreeze_depth_variant(spec: TrainingSpec) -> int | None:
+    if spec.finetune_strategy != "partial" or not _is_transformer_backbone(spec.backbone):
+        return None
+    return 4 if spec.unfreeze_last_n_blocks <= 2 else 2
 
 
 def _loss_variant(spec: TrainingSpec) -> str | None:
@@ -249,6 +282,30 @@ def _alternative_value(item: Any, *, keys: tuple[str, ...]) -> str | None:
             if value:
                 return str(value)
     return None
+
+
+def _is_transformer_backbone(backbone: str) -> bool:
+    name = str(backbone or "").lower()
+    return any(token in name for token in ("vit", "swin", "dino", "clip", "deit", "beit", "eva", "siglip"))
+
+
+def _replace_with_model_config(spec: TrainingSpec, **changes: Any) -> TrainingSpec:
+    raw_model_config = dict(spec.raw_model_config)
+    for key, value in changes.items():
+        if key in {
+            "optimizer",
+            "learning_rate",
+            "augmentation",
+            "finetune_strategy",
+            "freeze_backbone",
+            "unfreeze_last_n_blocks",
+            "train_norm_layers",
+            "loss",
+            "backbone",
+            "checkpoint",
+        }:
+            raw_model_config[key] = value
+    return replace(spec, raw_model_config=raw_model_config, **changes)
 
 
 def _slug(value: str) -> str:

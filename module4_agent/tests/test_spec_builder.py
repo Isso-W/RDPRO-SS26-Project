@@ -65,7 +65,7 @@ def test_build_training_specs_handles_older_candidate_shape():
 
 
 def test_build_training_specs_supports_partial_finetune():
-    spec = build_training_specs(
+    specs = build_training_specs(
         [
             {
                 "model_config": {
@@ -77,11 +77,15 @@ def test_build_training_specs_supports_partial_finetune():
                 }
             }
         ]
-    )[0]
+    )
+    spec = specs[0]
 
     assert spec.finetune_strategy == "partial"
     assert spec.freeze_backbone is False
     assert spec.unfreeze_last_n_blocks == 4
+    assert spec.train_norm_layers is True
+    assert {item.strategy_ablation_variant for item in specs} == {"partial_last4", "partial_last2"}
+    assert {item.unfreeze_last_n_blocks for item in specs} == {2, 4}
 
 
 def test_build_training_specs_extracts_structured_tasks():

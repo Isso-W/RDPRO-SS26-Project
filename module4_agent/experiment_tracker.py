@@ -77,6 +77,8 @@ def _experiment_row(result: ExperimentResult) -> dict[str, Any]:
         "loss": config.get("loss"),
         "optimizer": config.get("optimizer"),
         "finetune_strategy": config.get("finetune_strategy"),
+        "unfreeze_last_n_blocks": config.get("unfreeze_last_n_blocks"),
+        "strategy_ablation_variant": config.get("strategy_ablation_variant"),
         "learning_rate": config.get("learning_rate"),
         "augmentation": config.get("augmentation"),
         "modified_component": result.modified_component,

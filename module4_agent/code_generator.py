@@ -242,6 +242,9 @@ def _utils_py() -> str:
                 "optimizer": config.get("optimizer", ""),
                 "finetune_strategy": config.get("finetune_strategy", ""),
                 "unfreeze_last_n_blocks": config.get("unfreeze_last_n_blocks", 0),
+                "train_norm_layers": config.get("train_norm_layers", True),
+                "strategy_ablation_group": config.get("strategy_ablation_group", ""),
+                "strategy_ablation_variant": config.get("strategy_ablation_variant", ""),
             }
         '''
     ).lstrip()
@@ -870,6 +873,34 @@ def _model_py() -> str:
             return changed
 
 
+        def _unfreeze_module(module: nn.Module) -> int:
+            changed = 0
+            for parameter in module.parameters():
+                if not parameter.requires_grad:
+                    changed += 1
+                parameter.requires_grad = True
+            return changed
+
+
+        def _unfreeze_backbone_norm_layers(model: nn.Module) -> int:
+            norm_types = (
+                nn.BatchNorm1d,
+                nn.BatchNorm2d,
+                nn.BatchNorm3d,
+                nn.GroupNorm,
+                nn.InstanceNorm1d,
+                nn.InstanceNorm2d,
+                nn.InstanceNorm3d,
+                nn.LayerNorm,
+                nn.LocalResponseNorm,
+            )
+            changed = 0
+            for module_name, module in model.named_modules():
+                if "backbone" in module_name and isinstance(module, norm_types):
+                    changed += _unfreeze_module(module)
+            return changed
+
+
         def _apply_finetune_strategy(model: nn.Module, config: dict[str, Any] | None) -> nn.Module:
             strategy = str(get_value(config, "finetune_strategy", "head_only")).lower()
             frozen = 0
@@ -881,6 +912,8 @@ def _model_py() -> str:
                 frozen = _set_backbone_requires_grad(model, False)
                 last_n = max(0, as_int(get_value(config, "unfreeze_last_n_blocks", 2), 2))
                 unfrozen = _unfreeze_last_backbone_blocks(model, last_n)
+                if as_bool(get_value(config, "train_norm_layers", True), True):
+                    unfrozen += _unfreeze_backbone_norm_layers(model)
                 if last_n > 0 and unfrozen == 0:
                     unfrozen = _set_backbone_requires_grad(model, True)
             elif strategy in ("full", "either"):
@@ -1579,8 +1612,40 @@ def _train_py() -> str:
             )
 
 
-        def _log_model_load_info(model_load_info: dict[str, Any]) -> None:
+        def _parameter_breakdown(model: torch.nn.Module) -> dict[str, int]:
+            breakdown = {
+                "total": 0,
+                "trainable": 0,
+                "backbone_total": 0,
+                "backbone_trainable": 0,
+                "head_total": 0,
+                "head_trainable": 0,
+                "other_total": 0,
+                "other_trainable": 0,
+            }
+            for name, parameter in model.named_parameters():
+                count = int(parameter.numel())
+                trainable = count if parameter.requires_grad else 0
+                if name.startswith("backbone"):
+                    prefix = "backbone"
+                elif name.startswith("head"):
+                    prefix = "head"
+                else:
+                    prefix = "other"
+                breakdown["total"] += count
+                breakdown["trainable"] += trainable
+                breakdown[f"{prefix}_total"] += count
+                breakdown[f"{prefix}_trainable"] += trainable
+            return breakdown
+
+
+        def _log_model_load_info(
+            model: torch.nn.Module,
+            model_load_info: dict[str, Any],
+            config: dict[str, Any],
+        ) -> dict[str, int]:
             """Print the actual constructed backbone, not just the requested config name."""
+            param_breakdown = _parameter_breakdown(model)
             print(
                 "[train] requested_backbone="
                 f"{model_load_info.get('requested_backbone') or '<none>'} "
@@ -1593,8 +1658,19 @@ def _train_py() -> str:
             )
             print(
                 "[train] params "
-                f"total={model_load_info.get('total_params', 0)} "
-                f"trainable={model_load_info.get('trainable_params', 0)}",
+                f"total={param_breakdown['total']} "
+                f"trainable={param_breakdown['trainable']} "
+                f"backbone_trainable={param_breakdown['backbone_trainable']} "
+                f"head_trainable={param_breakdown['head_trainable']} "
+                f"other_trainable={param_breakdown['other_trainable']}",
+                file=sys.stderr,
+            )
+            print(
+                "[train] finetune "
+                f"strategy={get_value(config, 'finetune_strategy', 'head_only')} "
+                f"unfreeze_last_n_blocks={get_value(config, 'unfreeze_last_n_blocks', 0)} "
+                f"frozen_backbone_param_tensors={int(getattr(model, '_frozen_backbone_params', 0))} "
+                f"partial_unfrozen_param_tensors={int(getattr(model, '_partial_unfrozen_params', 0))}",
                 file=sys.stderr,
             )
             if model_load_info.get("fallback_reason"):
@@ -1602,6 +1678,7 @@ def _train_py() -> str:
                     f"[train] backbone_fallback_reason={model_load_info['fallback_reason']}",
                     file=sys.stderr,
                 )
+            return param_breakdown
 
 
         def _checkpoint_matches_current_model(
@@ -1871,7 +1948,7 @@ def _train_py() -> str:
             offline_smoke = as_bool(get_value(config, "offline_smoke", True), True)
             model = build_model(config)
             model_load_info = backbone_load_info(model, config)
-            _log_model_load_info(model_load_info)
+            param_breakdown = _log_model_load_info(model, model_load_info, config)
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if device.type == "cuda":
                 torch.backends.cudnn.benchmark = True
@@ -2164,6 +2241,7 @@ def _train_py() -> str:
                 "runtime_sec": round(time.time() - start, 4),
                 "real_data": dataloader is not None,
                 "model_load_info": model_load_info,
+                "param_breakdown": param_breakdown,
                 "config_summary": {
                     "rank": get_value(config, "rank", None),
                     "backbone": get_value(config, "backbone", "tiny_cnn"),
@@ -2175,6 +2253,9 @@ def _train_py() -> str:
                     "unfreeze_last_n_blocks": int(getattr(model, "_unfreeze_last_n_blocks", 0)),
                     "frozen_backbone_params": int(getattr(model, "_frozen_backbone_params", 0)),
                     "partial_unfrozen_params": int(getattr(model, "_partial_unfrozen_params", 0)),
+                    "trainable_params": int(param_breakdown.get("trainable", 0)),
+                    "backbone_trainable_params": int(param_breakdown.get("backbone_trainable", 0)),
+                    "head_trainable_params": int(param_breakdown.get("head_trainable", 0)),
                 },
             }
             return model, summary
@@ -2551,6 +2632,7 @@ def _run_py(first_config_json: str) -> str:
 
         import argparse
         import json
+        from pathlib import Path
         from typing import Any
 
         from evaluate import evaluate
@@ -2613,6 +2695,7 @@ def _run_experiments_py(configs_json: str) -> str:
 
         import argparse
         import json
+        from pathlib import Path
         from typing import Any
 
         from evaluate import evaluate
@@ -2623,8 +2706,45 @@ def _run_experiments_py(configs_json: str) -> str:
         DEFAULT_CONFIGS = json.loads(__DEFAULT_CONFIGS_JSON__)
 
 
+        def _metric_direction(metric_name: str | None) -> str:
+            name = str(metric_name or "").lower()
+            if any(token in name for token in ("loss", "error", "rmse", "mae")):
+                return "min"
+            return "max"
+
+
+        def _select_best_index(rows: list[dict[str, Any]]) -> int | None:
+            best_index = None
+            best_value = None
+            best_direction = "max"
+            for index, row in enumerate(rows):
+                if row.get("status") != "success":
+                    continue
+                value = row.get("metric_value")
+                if value is None:
+                    continue
+                try:
+                    value = float(value)
+                except (TypeError, ValueError):
+                    continue
+                direction = _metric_direction(str(row.get("metric_name", "")))
+                if best_index is None:
+                    best_index = index
+                    best_value = value
+                    best_direction = direction
+                    continue
+                if direction != best_direction:
+                    direction = best_direction
+                improved = value < best_value if direction == "min" else value > best_value
+                if improved:
+                    best_index = index
+                    best_value = value
+            return best_index
+
+
         def run_all(configs: list[dict[str, Any]], seed: int = 123, epochs: int | None = None) -> list[dict[str, Any]]:
             rows = []
+            normalized_configs = []
             for index, config in enumerate(configs, start=1):
                 set_seed(seed)
                 offline_smoke = as_bool(get_value(config, "offline_smoke", True), True)
@@ -2632,6 +2752,7 @@ def _run_experiments_py(configs_json: str) -> str:
                 default_ep = 1 if offline_smoke else as_int(get_value(config, "recommended_epochs", recipe_epochs), 10)
                 ep = epochs if epochs is not None else default_ep
                 ms = 1 if offline_smoke else 0
+                normalized_configs.append(config)
                 model, train_result = train_model(config, epochs=ep, max_steps=ms)
                 eval_result = evaluate(model, config)
                 row = compact_config_summary(config, rank_default=index)
@@ -2643,6 +2764,14 @@ def _run_experiments_py(configs_json: str) -> str:
                     }
                 )
                 rows.append(row)
+            best_index = _select_best_index(rows)
+            if best_index is not None:
+                for index, row in enumerate(rows):
+                    row["selected_best"] = index == best_index
+                Path("best_config.json").write_text(
+                    json.dumps(normalized_configs[best_index], indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
             return rows
 
 
@@ -2678,6 +2807,8 @@ def _readme_generated_md(
     candidate_lines = "\n".join(
         f"- rank {spec.rank}: {spec.task_type}, backbone={spec.backbone}, "
         f"loss={spec.loss}, optimizer={spec.optimizer}, finetune={spec.finetune_strategy}"
+        f"{' last' + str(spec.unfreeze_last_n_blocks) if spec.finetune_strategy == 'partial' else ''}"
+        f"{' (' + spec.strategy_ablation_variant + ')' if spec.strategy_ablation_variant else ''}"
         for spec in specs
     )
     return dedent(

@@ -196,6 +196,7 @@ def test_generated_scripts_accept_raw_module3_input(tmp_path):
     rows = json.loads(command.stdout)
 
     assert command.success
+    assert (output / "best_config.json").exists()
     assert len(rows) == 4
     assert {row["task_type"] for row in rows} == {
         "classification",

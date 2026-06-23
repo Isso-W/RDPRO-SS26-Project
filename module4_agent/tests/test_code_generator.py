@@ -122,6 +122,8 @@ def test_run_experiments_embeds_and_sweeps_all_candidates():
     assert "from typing import Any" in content
     assert "for index, config in enumerate(configs" in content
     assert "model, train_result = train_model" in content
+    assert "_select_best_index" in content
+    assert "best_config.json" in content
 
 
 def test_run_uses_trained_model_for_evaluation():
@@ -288,17 +290,19 @@ def test_partial_finetune_unfreezes_last_blocks(tmp_path, monkeypatch):
     for mod in ("model_utils", "train", "model", "smoke_data", "utils"):
         sys.modules.pop(mod, None)
     model_utils = importlib.import_module("model_utils")
+    model_module = importlib.import_module("model")
     train = importlib.import_module("train")
 
     class _Backbone(nn.Module):
         def __init__(self):
             super().__init__()
             self.blocks = nn.ModuleList([nn.Linear(4, 4) for _ in range(3)])
+            self.norm = nn.LayerNorm(4)
 
         def forward(self, x):
             for block in self.blocks:
                 x = block(x)
-            return x
+            return self.norm(x)
 
     class _Model(nn.Module):
         def __init__(self):
@@ -320,8 +324,22 @@ def test_partial_finetune_unfreezes_last_blocks(tmp_path, monkeypatch):
         assert all(not p.requires_grad for p in model.backbone.blocks[0].parameters())
         assert all(not p.requires_grad for p in model.backbone.blocks[1].parameters())
         assert all(p.requires_grad for p in model.backbone.blocks[2].parameters())
+        assert all(not p.requires_grad for p in model.backbone.norm.parameters())
         assert all(p.requires_grad for p in model.head.parameters())
         assert train._backbone_is_frozen(model) is False
+
+        model_with_norm = _Model()
+        model_module._apply_finetune_strategy(
+            model_with_norm,
+            {
+                "finetune_strategy": "partial",
+                "unfreeze_last_n_blocks": 0,
+                "train_norm_layers": True,
+            },
+        )
+        assert all(not p.requires_grad for block in model_with_norm.backbone.blocks for p in block.parameters())
+        assert all(p.requires_grad for p in model_with_norm.backbone.norm.parameters())
+        assert all(p.requires_grad for p in model_with_norm.head.parameters())
 
         opt = train._build_optimizer(model, {"backbone": "dinov3", "learning_rate": 1e-3})
         assert len(opt.param_groups) == 2

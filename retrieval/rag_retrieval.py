@@ -421,7 +421,8 @@ COMPONENTS = [
 
     # ── Pretrained Model Checkpoints（HuggingFace）────────────────────────────
     # freeze_viable: 冻结 backbone 只训 head 是否可行
-    # finetune_strategy: "full" 全量更新 | "head_only" 推荐冻结骨干 | "either" 两种均可
+    # finetune_strategy: "full" 全量更新 | "partial" 解冻尾部层 |
+    #                    "head_only" 推荐冻结骨干 | "either" 两种均可
 
     {
         "id": "resnet50_imagenet",
@@ -690,8 +691,10 @@ COMPONENTS = [
         "size_tier": "small",
         "recommended_when": {"priority": "speed"},
         "freeze_viable": True,
-        "finetune_strategy": "head_only",
-        "description": "DINOv3 ViT-S/16 distilled backbone. Compact general-purpose dense visual features.",
+        "finetune_strategy": "partial",
+        "unfreeze_last_n_blocks": 4,
+        "train_norm_layers": True,
+        "description": "DINOv3 ViT-S/16 distilled backbone. Compact features; partial tail-block finetuning is the supervised-classification default.",
     },
     {
         "id": "dinov3_base_lvd1689m",
@@ -705,8 +708,10 @@ COMPONENTS = [
         "size_tier": "base",
         "recommended_when": {},
         "freeze_viable": True,
-        "finetune_strategy": "head_only",
-        "description": "DINOv3 ViT-B/16 backbone. Strong default for retrieval, few-shot classification, and dense features.",
+        "finetune_strategy": "partial",
+        "unfreeze_last_n_blocks": 4,
+        "train_norm_layers": True,
+        "description": "DINOv3 ViT-B/16 backbone. Strong dense features; partial tail-block finetuning is the supervised-classification default.",
     },
     {
         "id": "dinov3_large_lvd1689m",
@@ -720,8 +725,10 @@ COMPONENTS = [
         "size_tier": "large",
         "recommended_when": {"data_size": "large", "priority": "accuracy"},
         "freeze_viable": True,
-        "finetune_strategy": "head_only",
-        "description": "DINOv3 ViT-L/16 backbone. Accuracy-oriented dense feature extractor for large datasets.",
+        "finetune_strategy": "partial",
+        "unfreeze_last_n_blocks": 4,
+        "train_norm_layers": True,
+        "description": "DINOv3 ViT-L/16 backbone. Accuracy-oriented dense feature extractor; partial tail-block finetuning is the supervised-classification default.",
     },
     {
         "id": "clip_vit_base_32",
@@ -2013,10 +2020,14 @@ def _recommend_training(
 
     finetune_strategy = None
     freeze_viable = False
+    unfreeze_last_n_blocks = 0
+    train_norm_layers = False
     if checkpoint_id:
         cp = graph.nodes[checkpoint_id]
         finetune_strategy = cp.get("finetune_strategy")
         freeze_viable = cp.get("freeze_viable", False)
+        unfreeze_last_n_blocks = int(cp.get("unfreeze_last_n_blocks", 0) or 0)
+        train_norm_layers = bool(cp.get("train_norm_layers", False))
 
     # Resolve "either" by data/task context: full finetune needs enough data and is for
     # quality; freeze (head_only) avoids catastrophic overfitting on tiny/few-shot data and
@@ -2028,11 +2039,24 @@ def _recommend_training(
             finetune_strategy = "head_only"
         else:
             finetune_strategy = "full"
+    elif finetune_strategy == "partial":
+        task_type = input_json.get("task_type", "classification")
+        constraints = input_json.get("constraints", {})
+        if task_type == "feature_extraction":
+            finetune_strategy = "head_only"
+            unfreeze_last_n_blocks = 0
+            train_norm_layers = False
+        elif constraints.get("few_shot") or data_size == "small":
+            unfreeze_last_n_blocks = min(unfreeze_last_n_blocks or 2, 2)
+        else:
+            unfreeze_last_n_blocks = unfreeze_last_n_blocks or 4
 
     return {
         "scratch_viable":   scratch_viable,
         "finetune_strategy": finetune_strategy,
         "freeze_viable":    freeze_viable,
+        "unfreeze_last_n_blocks": unfreeze_last_n_blocks,
+        "train_norm_layers": train_norm_layers,
     }
 
 
@@ -2111,6 +2135,8 @@ def retrieve_top3_hybrid(
             "pretrained":        checkpoint,
             "scratch_viable":    training["scratch_viable"],
             "finetune_strategy": training["finetune_strategy"],
+            "unfreeze_last_n_blocks": training.get("unfreeze_last_n_blocks", 0),
+            "train_norm_layers":  training.get("train_norm_layers", False),
             "freeze_viable":     training["freeze_viable"],
             "alt_backbones":     alt_backbones,
             "score": round(final_scores[backbone_id], 3),
@@ -2192,6 +2218,8 @@ def build_task_list(
     strategy      = result.get("finetune_strategy")
     freeze        = result.get("freeze_viable", False)
     scratch       = result.get("scratch_viable", False)
+    last_n        = int(result.get("unfreeze_last_n_blocks", 0) or 0)
+    train_norm    = bool(result.get("train_norm_layers", False))
     alternatives  = result.get("alt_backbones", [])
 
     def _name(nid):
@@ -2225,6 +2253,8 @@ def build_task_list(
             "strategy":        strategy,
             "freeze_backbone": strategy == "head_only",
             "scratch_viable":  scratch,
+            "unfreeze_last_n_blocks": last_n,
+            "train_norm_layers": train_norm,
         })
 
         if head_id:
@@ -2275,6 +2305,7 @@ def build_task_list(
 
         strategy_desc = {
             "full":      "Full finetune: update all backbone and head weights",
+            "partial":   f"Partial finetune: update head, norm layers, and the last {last_n or 2} backbone blocks",
             "head_only": "Head-only finetune: freeze backbone, train head only",
             "either":    "Either full finetune or freeze backbone + train head is viable",
         }.get(strategy, f"Finetune strategy: {strategy}")
@@ -2313,6 +2344,8 @@ def build_task_list(
             "optimizer":         optimizer_id,
             "finetune_strategy": strategy,
             "freeze_backbone":   strategy == "head_only",
+            "unfreeze_last_n_blocks": last_n,
+            "train_norm_layers": train_norm,
             "scratch_viable":    scratch,
         })
         recipe_input = dict(input_json or {})
@@ -2379,6 +2412,7 @@ def print_results(input_json: dict, results: list[dict], graph: nx.DiGraph) -> N
             p = graph.nodes[pid]
             strategy_label = {
                 "full":      "full finetune",
+                "partial":   f"partial finetune last {r.get('unfreeze_last_n_blocks') or 2} blocks",
                 "head_only": "freeze backbone, train head only",
                 "either":    "full finetune or freeze backbone",
             }.get(r.get("finetune_strategy", ""), r.get("finetune_strategy", ""))
