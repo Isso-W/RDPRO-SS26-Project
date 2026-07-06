@@ -2185,6 +2185,17 @@ def _attach_recipe(
 ) -> None:
     try:
         from recipe.layer import build_recipe
+    except ModuleNotFoundError:
+        import sys
+        from pathlib import Path
+
+        repo_root = Path(__file__).resolve().parents[1]
+        if str(repo_root) not in sys.path:
+            sys.path.insert(0, str(repo_root))
+        try:
+            from recipe.layer import build_recipe
+        except Exception:
+            return
     except Exception:
         return
     facts = {

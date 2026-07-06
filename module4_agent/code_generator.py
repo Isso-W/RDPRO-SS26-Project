@@ -700,7 +700,7 @@ def _model_utils_py() -> str:
                 _set_backbone_requires_grad(model, True)
             else:
                 freeze = as_bool(get_value(config, "freeze_backbone", False), False)
-            if freeze:
+                if freeze:
                     frozen = _set_backbone_requires_grad(model, False)
             model._frozen_backbone_params = frozen
             model._partial_unfrozen_params = unfrozen
@@ -840,8 +840,8 @@ def _model_py() -> str:
 
         def _set_backbone_requires_grad(model: nn.Module, requires_grad: bool) -> int:
             changed = 0
-                for name, parameter in model.named_parameters():
-                    if "backbone" in name:
+            for name, parameter in model.named_parameters():
+                if "backbone" in name:
                     if parameter.requires_grad != requires_grad:
                         changed += 1
                     parameter.requires_grad = requires_grad
@@ -2012,16 +2012,16 @@ def _train_py() -> str:
                 if resume_checkpoint and Path(resume_checkpoint).exists():
                     checkpoint = torch.load(resume_checkpoint, map_location=device)
                     if _checkpoint_matches_current_model(checkpoint, model_load_info):
-                    model.load_state_dict(checkpoint["model_state_dict"])
-                    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-                    if scheduler is not None and checkpoint.get("scheduler_state_dict"):
-                        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-                    if checkpoint.get("scaler_state_dict"):
-                        scaler.load_state_dict(checkpoint["scaler_state_dict"])
-                    start_epoch = int(checkpoint.get("epoch", 0))
-                    best_metric = checkpoint.get("best_metric")
-                    best_epoch = int(checkpoint.get("best_epoch", 0))
-                    print(f"[train] Resuming from {resume_checkpoint} at epoch {start_epoch + 1}.")
+                        model.load_state_dict(checkpoint["model_state_dict"])
+                        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+                        if scheduler is not None and checkpoint.get("scheduler_state_dict"):
+                            scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+                        if checkpoint.get("scaler_state_dict"):
+                            scaler.load_state_dict(checkpoint["scaler_state_dict"])
+                        start_epoch = int(checkpoint.get("epoch", 0))
+                        best_metric = checkpoint.get("best_metric")
+                        best_epoch = int(checkpoint.get("best_epoch", 0))
+                        print(f"[train] Resuming from {resume_checkpoint} at epoch {start_epoch + 1}.")
 
                 metric_name = str(
                     get_value(config, "evaluation_metric", "accuracy") or "accuracy"
