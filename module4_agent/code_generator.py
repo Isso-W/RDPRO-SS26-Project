@@ -889,6 +889,38 @@ def _train_py() -> str:
             return train_indices, validation_indices
 
 
+        def _fold_split_indices(frame, image_column, fold_file, fold_index):
+            """外部注入的 paired 折划分：按样本 id 定 val（其余 train），带完整性校验。
+
+            fold_file JSON: {"folds": [[val_id, ...], ...], ...}（每折 = 该折 val 的 id 列表）。
+            两臂引用同一 fold_file + 同一 fold_index → val 集完全一致（paired 保证）。
+            """
+            import json as _json
+            with open(fold_file, "r", encoding="utf-8") as _fh:
+                spec = _json.load(_fh)
+            folds = spec["folds"]
+            if not 0 <= fold_index < len(folds):
+                raise ValueError(f"fold_index {fold_index} out of range 0..{len(folds) - 1}")
+            all_ids = [str(v) for v in frame[image_column].tolist()]
+            id_set = set(all_ids)
+            seen: set = set()
+            union: set = set()
+            for one in folds:
+                fs = {str(x) for x in one}
+                if seen & fs:
+                    raise ValueError("fold_file 有交集：同一 id 出现在多折")
+                seen |= fs
+                union |= fs
+            if union != id_set:
+                raise ValueError(
+                    f"fold_file 与 CSV id 不一致：缺 {len(id_set - union)} 多 {len(union - id_set)}"
+                )
+            val_ids = {str(x) for x in folds[fold_index]}
+            train_indices = [i for i, x in enumerate(all_ids) if x not in val_ids]
+            validation_indices = [i for i, x in enumerate(all_ids) if x in val_ids]
+            return train_indices, validation_indices
+
+
         def _build_local_dataloader(config: dict[str, Any], split: str, batch_size: int, deterministic: bool = False):
             train_csv = str(get_value(config, "train_csv", "") or "").strip()
             image_dir = str(get_value(config, "image_dir", "") or "").strip()
@@ -924,11 +956,19 @@ def _train_py() -> str:
                 unique_labels = sorted(set(label_values), key=lambda value: str(value))
                 label_to_index = {value: index for index, value in enumerate(unique_labels)}
                 encoded_labels = [label_to_index[value] for value in label_values]
-                train_indices, validation_indices = _split_indices(
-                    encoded_labels,
-                    validation_fraction=validation_fraction,
-                    seed=seed,
-                )
+                fold_file = str(get_value(config, "fold_file", "") or "").strip()
+                fold_index = get_value(config, "fold_index", None)
+                if fold_file and fold_index is not None:
+                    # 外部 paired 折划分（旁路内部 val_split）
+                    train_indices, validation_indices = _fold_split_indices(
+                        frame, image_column, fold_file, int(fold_index)
+                    )
+                else:
+                    train_indices, validation_indices = _split_indices(
+                        encoded_labels,
+                        validation_fraction=validation_fraction,
+                        seed=seed,
+                    )
                 selected_indices = train_indices if split == "train" else validation_indices
                 if max_samples > 0:
                     selected_indices = selected_indices[:max_samples]
@@ -1901,6 +1941,15 @@ def _evaluate_py() -> str:
                         )
                 except (ImportError, ValueError) as exc:
                     print(f"[evaluate] Could not compute {requested_metric}: {exc}; using accuracy.")
+                export_path = str(get_value(config, "export_preds_path", "") or "").strip()
+                if export_path:
+                    # 导出 val 预测供离线算指标 bundle（macro_f1 / roc_auc / pr_auc）
+                    import json as _json
+                    with open(export_path, "w", encoding="utf-8") as _fh:
+                        _json.dump(
+                            {"y_true": labels.tolist(), "y_prob": probabilities.tolist()},
+                            _fh,
+                        )
                 return {
                     "metric_name": metric_name,
                     "metric_value": metric_value,
