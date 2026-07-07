@@ -1701,12 +1701,16 @@ def retrieve_top3_hybrid(
 # 6. Module 4 接口 — 任务清单生成
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") -> dict:
+def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured",
+                    input_json: dict | None = None) -> dict:
     """
     将单条 retrieve_top3_hybrid 结果转换为 Module 4 可消费的任务清单。
 
     fmt="structured" — 结构化 JSON，适合确定性代码模板填充
     fmt="nl"         — 自然语言任务列表 + 元数据，适合 LLM agent prompt
+
+    input_json 传入时（fmt="nl"），调用 recipe 层把 image_size/lr/epochs/
+    augmentation 并进 model_config（带 provenance）。缺省则不产 recipe（向后兼容）。
     """
     backbone_id   = result["backbone"]
     checkpoint_id = result.get("pretrained")
@@ -1827,6 +1831,23 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "scratch_viable":    scratch,
         })
 
+        # recipe 层：并进推荐级超参（惰性 import——避免 cwd=retrieval 时找不到包）
+        if input_json is not None:
+            from recipe import build_recipe
+            backbone_facts = dict(graph.nodes.get(backbone_id, {}))
+            if checkpoint_id:
+                backbone_facts.update(graph.nodes.get(checkpoint_id, {}))
+            recipe, recipe_prov = build_recipe(
+                model_config, input_json, backbone_facts,
+                input_json.get("data_stats"))
+            model_config["recipe"] = recipe
+            model_config["recipe_provenance"] = recipe_prov
+            # image_size/lr/epochs 直接生效（Module 4 模板已读这些顶层键）；
+            # augmentation 三维的消费需 Module 4 模板改动（recipe_layer_plan §6），暂缓。
+            model_config.setdefault("image_size", recipe["image_size"])
+            model_config.setdefault("learning_rate", recipe["learning_rate"])
+            model_config.setdefault("recommended_epochs", recipe["epochs"])
+
         return {
             "format":       "nl",
             "model_config": model_config,
@@ -1842,11 +1863,15 @@ def build_all_task_lists(
     results: list[dict],
     graph: nx.DiGraph,
     fmt: str = "structured",
+    input_json: dict | None = None,
 ) -> list[dict]:
-    """Top 3 结果全部转换为任务清单，rank 字段标注排名。"""
+    """Top 3 结果全部转换为任务清单，rank 字段标注排名。
+
+    input_json 透传给 build_task_list 以产出 recipe（缺省则不产，向后兼容）。
+    """
     out = []
     for rank, result in enumerate(results, 1):
-        tl = build_task_list(result, graph, fmt=fmt)
+        tl = build_task_list(result, graph, fmt=fmt, input_json=input_json)
         tl["rank"]  = rank
         tl["score"] = result.get("score")
         out.append(tl)

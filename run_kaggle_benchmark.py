@@ -55,7 +55,7 @@ def prepare_project(
     recommendations = retrieve_top3_hybrid(m3_input, graph, col)
     print_results(m3_input, recommendations, graph)
 
-    task_lists = build_all_task_lists(recommendations, graph, fmt="nl")
+    task_lists = build_all_task_lists(recommendations, graph, fmt="nl", input_json=m3_input)
 
     from pipeline import derive_recommended_epochs
 
