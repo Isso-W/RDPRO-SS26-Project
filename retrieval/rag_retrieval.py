@@ -1281,16 +1281,32 @@ def _select_components(
         chosen = candidates[0]  # default: 第一个兼容项
 
         if ctype == "loss":
-            # 类别不平衡 → 优先 focal_loss
-            if c.get("class_imbalance") and "focal_loss" in candidates:
+            # Phase B：preferred_when 边消费（候选间两两偏好，条件匹配则胜者上位）。
+            # backbone 打分只用边的源+条件；此处是候选内选择，目标有意义。
+            # candidates 顺序即遍历顺序，首个命中者胜（与 candidates[0] 的确定性一致）。
+            edge_pick = None
+            for cand in candidates:
+                for succ in graph.successors(cand):
+                    e = graph[cand][succ]
+                    if (e.get("relation") == "preferred_when"
+                            and succ in candidates
+                            and _matches_condition(e.get("condition", {}), input_json)):
+                        edge_pick = cand
+                        break
+                if edge_pick:
+                    break
+
+            if edge_pick is not None:
+                chosen = edge_pick
+            # 以下硬编码规则作为 fallback 保留：覆盖边尚未表达的情形（bce_dice、
+            # hungarian）；等挖掘产出的边补齐后再另行清理。
+            elif c.get("class_imbalance") and "focal_loss" in candidates:
                 chosen = "focal_loss"
-            # 分割任务 → 优先 dice_loss，二值场景用 bce_dice
             elif task_type == "image_segmentation":
                 if c.get("class_imbalance") and "bce_dice_loss" in candidates:
                     chosen = "bce_dice_loss"
                 elif "dice_loss" in candidates:
                     chosen = "dice_loss"
-            # DETR 系 → hungarian_matching_loss
             elif backbone_id in ("detr", "rt_detr") and "hungarian_matching_loss" in candidates:
                 chosen = "hungarian_matching_loss"
 

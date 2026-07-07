@@ -446,5 +446,34 @@ class TestTaskList(unittest.TestCase):
             self.assertIsNotNone(tl["score"])
 
 
+class TestPhaseBLossEdges(unittest.TestCase):
+    """Phase B：_select_components 消费 loss 节点间的 preferred_when 边。"""
+
+    def _loss_for(self, graph, constraints):
+        from rag_retrieval import _select_components
+        q = _make_input(task_type="classification", **constraints)
+        return _select_components("resnet", "classification", q, graph)["loss"]
+
+    def test_edge_path_fires_distinctly_from_hardcoded(self):
+        # 硬要求：证明边路径确实活着，而非硬编码 fallback。
+        # medical 下硬编码给 cross_entropy；加一条合成边 focal→CE(medical) 后应翻成
+        # focal —— focal 只可能来自边，据此证明死边已激活。
+        base = self._loss_for(build_graph(), {"medical": True})
+        self.assertEqual(base, "cross_entropy_loss")  # 无边时的默认/硬编码结果
+
+        g = build_graph()
+        g.add_edge("focal_loss", "cross_entropy_loss",
+                   relation="preferred_when", condition={"any": ["medical=True"]})
+        self.assertEqual(self._loss_for(g, {"medical": True}), "focal_loss")
+
+    def test_class_imbalance_picks_focal_via_edge(self):
+        # 现实 KB 边 focal→CE(class_imbalance) 现在经 Phase B 生效
+        self.assertEqual(self._loss_for(build_graph(), {"class_imbalance": True}),
+                         "focal_loss")
+
+    def test_no_imbalance_falls_back_to_cross_entropy(self):
+        self.assertEqual(self._loss_for(build_graph(), {}), "cross_entropy_loss")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
