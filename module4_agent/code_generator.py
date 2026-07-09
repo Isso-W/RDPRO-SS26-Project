@@ -2827,12 +2827,19 @@ def _run_experiments_py(configs_json: str) -> str:
         def main() -> None:
             parser = argparse.ArgumentParser(description="Sweep all Module 3 candidate configs.")
             parser.add_argument("--input", default="configs.json", help="JSON file with one or more configs.")
+            parser.add_argument("--output", default=None, help="Optional path for the sweep result JSON.")
             parser.add_argument("--seed", type=int, default=123)
             parser.add_argument("--epochs", type=int, default=None,
                                 help="Training epochs per candidate (default: 1 smoke / 10 real).")
             args = parser.parse_args()
             rows = run_all(load_configs(args.input, DEFAULT_CONFIGS), seed=args.seed, epochs=args.epochs)
-            print(json.dumps(rows, indent=2, sort_keys=True))
+            result_json = json.dumps(rows, indent=2, sort_keys=True)
+            if args.output:
+                output_path = Path(args.output)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(result_json + "\\n", encoding="utf-8")
+                print(f"Wrote sweep results to {output_path}")
+            print(result_json)
 
 
         if __name__ == "__main__":
