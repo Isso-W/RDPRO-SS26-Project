@@ -16,6 +16,8 @@
     "model_config": {
       "backbone": "dinov3",
       "batch_size": 8,
+      "class_imbalance": true,
+      "class_weight_power": 0.5,
       "early_stopping_patience": 4,
       "eval_batch_size": 16,
       "evaluation_metric": "roc_auc",
@@ -64,7 +66,7 @@
         "learning_rate": 0.0001
       },
       "recipe_provenance": {
-        "augmentation": "tier[data_size=small→heavy]; invariance[domain_signal_missing]; schedule[small→taper_last_20pct]",
+        "augmentation": "tier[data_size=small\u2192heavy]; invariance[domain_signal_missing]; schedule[small\u2192taper_last_20pct]",
         "epochs": "epochs_table[small,finetune]",
         "image_size": "family_default=224",
         "learning_rate": "lr_base[cnn,finetune]"
@@ -83,9 +85,7 @@
         ]
       },
       "unfreeze_last_n_blocks": 2,
-      "class_imbalance": true,
-      "use_class_weights": true,
-      "class_weight_power": 0.5
+      "use_class_weights": true
     },
     "num_classes": 4,
     "offline_smoke": false,
@@ -109,16 +109,7 @@
     "train_norm_layers": true,
     "tta": false,
     "unfreeze_last_n_blocks": 2,
-    "use_pretrained": true,
-    "label_columns": [
-      "healthy",
-      "multiple_diseases",
-      "rust",
-      "scab"
-    ],
-    "evaluation_metric": "roc_auc",
-    "use_class_weights": true,
-    "class_weight_power": 0.5
+    "use_pretrained": true
   },
   {
     "alternatives": [],
@@ -137,6 +128,8 @@
     "model_config": {
       "backbone": "dinov3",
       "batch_size": 8,
+      "class_imbalance": true,
+      "class_weight_power": 0.5,
       "early_stopping_patience": 4,
       "eval_batch_size": 16,
       "evaluation_metric": "roc_auc",
@@ -185,7 +178,7 @@
         "learning_rate": 0.0001
       },
       "recipe_provenance": {
-        "augmentation": "tier[data_size=small→heavy]; invariance[domain_signal_missing]; schedule[small→taper_last_20pct]",
+        "augmentation": "tier[data_size=small\u2192heavy]; invariance[domain_signal_missing]; schedule[small\u2192taper_last_20pct]",
         "epochs": "epochs_table[small,finetune]",
         "image_size": "family_default=224",
         "learning_rate": "lr_base[cnn,finetune]"
@@ -204,9 +197,7 @@
         ]
       },
       "unfreeze_last_n_blocks": 4,
-      "class_imbalance": true,
-      "use_class_weights": true,
-      "class_weight_power": 0.5
+      "use_class_weights": true
     },
     "num_classes": 4,
     "offline_smoke": false,
@@ -230,16 +221,7 @@
     "train_norm_layers": true,
     "tta": false,
     "unfreeze_last_n_blocks": 4,
-    "use_pretrained": true,
-    "label_columns": [
-      "healthy",
-      "multiple_diseases",
-      "rust",
-      "scab"
-    ],
-    "evaluation_metric": "roc_auc",
-    "use_class_weights": true,
-    "class_weight_power": 0.5
+    "use_pretrained": true
   },
   {
     "alternatives": [
@@ -260,6 +242,8 @@
     "model_config": {
       "backbone": "dinov2",
       "batch_size": 8,
+      "class_imbalance": true,
+      "class_weight_power": 0.5,
       "early_stopping_patience": 4,
       "eval_batch_size": 16,
       "evaluation_metric": "roc_auc",
@@ -308,7 +292,7 @@
         "learning_rate": 0.001
       },
       "recipe_provenance": {
-        "augmentation": "tier[data_size=small→heavy | head_only→medium]; invariance[domain_signal_missing]; schedule[small→taper_last_20pct]",
+        "augmentation": "tier[data_size=small\u2192heavy | head_only\u2192medium]; invariance[domain_signal_missing]; schedule[small\u2192taper_last_20pct]",
         "epochs": "epochs_table[small,head_only]",
         "image_size": "family_default=224 | ok/14",
         "learning_rate": "lr_base[transformer,head_only]"
@@ -325,9 +309,7 @@
         ]
       },
       "unfreeze_last_n_blocks": 0,
-      "class_imbalance": true,
-      "use_class_weights": true,
-      "class_weight_power": 0.5
+      "use_class_weights": true
     },
     "num_classes": 4,
     "offline_smoke": false,
@@ -351,16 +333,7 @@
     "train_norm_layers": false,
     "tta": false,
     "unfreeze_last_n_blocks": 0,
-    "use_pretrained": true,
-    "label_columns": [
-      "healthy",
-      "multiple_diseases",
-      "rust",
-      "scab"
-    ],
-    "evaluation_metric": "roc_auc",
-    "use_class_weights": true,
-    "class_weight_power": 0.5
+    "use_pretrained": true
   },
   {
     "alternatives": [
@@ -382,6 +355,8 @@
     "model_config": {
       "backbone": "swin_transformer",
       "batch_size": 8,
+      "class_imbalance": true,
+      "class_weight_power": 0.5,
       "early_stopping_patience": 4,
       "eval_batch_size": 16,
       "evaluation_metric": "roc_auc",
@@ -430,7 +405,7 @@
         "learning_rate": 3e-05
       },
       "recipe_provenance": {
-        "augmentation": "tier[data_size=small→heavy]; invariance[domain_signal_missing]; schedule[small→taper_last_20pct]",
+        "augmentation": "tier[data_size=small\u2192heavy]; invariance[domain_signal_missing]; schedule[small\u2192taper_last_20pct]",
         "epochs": "epochs_table[small,finetune]",
         "image_size": "family_default=224 | ok/32",
         "learning_rate": "lr_base[transformer,finetune]"
@@ -447,9 +422,7 @@
         ]
       },
       "unfreeze_last_n_blocks": 0,
-      "class_imbalance": true,
-      "use_class_weights": true,
-      "class_weight_power": 0.5
+      "use_class_weights": true
     },
     "num_classes": 4,
     "offline_smoke": false,
@@ -473,15 +446,6 @@
     "train_norm_layers": false,
     "tta": false,
     "unfreeze_last_n_blocks": 0,
-    "use_pretrained": true,
-    "label_columns": [
-      "healthy",
-      "multiple_diseases",
-      "rust",
-      "scab"
-    ],
-    "evaluation_metric": "roc_auc",
-    "use_class_weights": true,
-    "class_weight_power": 0.5
+    "use_pretrained": true
   }
 ]

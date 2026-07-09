@@ -80,7 +80,14 @@ def _make_stratified_folds(
     return output
 
 
-def _patch_config_item(item: dict, info: dict, fold_file: Path, args: argparse.Namespace) -> None:
+def _patch_config_item(
+    item: dict,
+    info: dict,
+    fold_file: Path,
+    args: argparse.Namespace,
+    candidate_index: int,
+) -> None:
+    candidate_dir = f"candidate_{candidate_index}/fold_{args.fold_index}"
     patch = {
         "train_csv": info["train_csv"],
         "image_dir": info["image_dir"],
@@ -98,6 +105,8 @@ def _patch_config_item(item: dict, info: dict, fold_file: Path, args: argparse.N
         "image_size": args.image_size,
         "use_class_weights": True,
         "class_weight_power": args.class_weight_power,
+        "checkpoint_dir": str(MODULE4_DIR / "checkpoints" / candidate_dir),
+        "export_preds_path": str(MODULE4_DIR / "outputs" / candidate_dir / "legacy_val_predictions.json"),
     }
     for key, value in patch.items():
         item[key] = value
@@ -114,9 +123,9 @@ def _patch_configs(config_path: Path, info: dict, fold_file: Path, args: argpars
     if not isinstance(configs, list) or not configs:
         raise ValueError(f"Expected a non-empty config list in {config_path}")
 
-    for item in configs:
+    for candidate_index, item in enumerate(configs, start=1):
         if isinstance(item, dict):
-            _patch_config_item(item, info, fold_file, args)
+            _patch_config_item(item, info, fold_file, args, candidate_index)
 
     config_path.write_text(json.dumps(configs, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -140,6 +149,16 @@ def main() -> int:
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--train", action="store_true", help="Train the first config after preparation.")
     parser.add_argument("--train-all", action="store_true", help="Train every generated candidate config.")
+    parser.add_argument("--train-producers", action="store_true",
+                        help="Train candidate producers and export OOF/test probability artifacts.")
+    parser.add_argument("--consume-ensemble", action="store_true",
+                        help="Blend producer artifacts and write the final ensemble submission.")
+    parser.add_argument("--candidates", default="all",
+                        help="Producer candidate indexes, e.g. '1,3', or 'all'.")
+    parser.add_argument("--artifact-root", default=str(EXPERIMENT_ROOT / "producer_artifacts"))
+    parser.add_argument("--ensemble-dir", default=str(EXPERIMENT_ROOT / "ensembles" / "final_blend"))
+    parser.add_argument("--predict-batch-size", type=int, default=0)
+    parser.add_argument("--weight-grid-step", type=float, default=0.05)
     parser.add_argument("--make-submission", action="store_true", help="Write submission.csv after training.")
     parser.add_argument("--submit", action="store_true", help="Submit submission.csv to Kaggle.")
     parser.add_argument("--log-memory", action="store_true", help="Log public score to OutcomeMemory when available.")
@@ -175,7 +194,63 @@ def main() -> int:
             MODULE4_DIR,
         )
 
-    if args.make_submission or args.submit:
+    if args.train_producers:
+        producer_cmd = [
+            sys.executable,
+            "producer.py",
+            "--input",
+            "configs.json",
+            "--artifact-root",
+            args.artifact_root,
+            "--candidates",
+            args.candidates,
+            "--fold-index",
+            str(args.fold_index),
+            "--seed",
+            str(args.seed),
+            "--epochs",
+            str(args.epochs),
+        ]
+        if args.predict_batch_size > 0:
+            producer_cmd.extend(["--predict-batch-size", str(args.predict_batch_size)])
+        if info.get("sample_submission"):
+            producer_cmd.extend(["--sample-submission", info["sample_submission"]])
+        if info.get("test_dir") or info.get("image_dir"):
+            producer_cmd.extend(["--test-dir", info.get("test_dir") or info["image_dir"]])
+        _run(producer_cmd, MODULE4_DIR)
+
+    if args.consume_ensemble:
+        if not info.get("sample_submission"):
+            raise FileNotFoundError("sample_submission.csv is required for ensemble submission.")
+        consumer_cmd = [
+            sys.executable,
+            "consumer.py",
+            "--artifact-root",
+            args.artifact_root,
+            "--output-dir",
+            args.ensemble_dir,
+            "--sample-submission",
+            info["sample_submission"],
+            "--label-columns",
+            ",".join(LABEL_COLUMNS),
+            "--weight-grid-step",
+            str(args.weight_grid_step),
+            "--benchmark-key",
+            COMPETITION,
+            "--competition",
+            COMPETITION,
+            "--receipt-out",
+            str(EXPERIMENT_ROOT / "ensemble_submission_receipt.json"),
+            "--run-manifest",
+            str(EXPERIMENT_ROOT / "kaggle_run_manifest.json"),
+        ]
+        if args.submit:
+            consumer_cmd.append("--submit")
+        if args.log_memory:
+            consumer_cmd.append("--log-memory")
+        _run(consumer_cmd, MODULE4_DIR)
+
+    if (args.make_submission or args.submit) and not args.consume_ensemble:
         submit_cmd = [
             sys.executable,
             "kaggle_submit.py",

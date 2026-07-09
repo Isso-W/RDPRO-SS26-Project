@@ -62,8 +62,6 @@ def mean_column_auc(
 ) -> dict[str, Any]:
     """Compute Plant Pathology-style mean per-column ROC AUC."""
 
-    from sklearn.metrics import roc_auc_score
-
     true_values = np.asarray(y_true, dtype=float)
     prob_values = np.asarray(y_prob, dtype=float)
     per_column: dict[str, float] = {}
@@ -73,7 +71,7 @@ def mean_column_auc(
         if len(np.unique(column_true)) < 2:
             skipped.append(label)
             continue
-        per_column[label] = float(roc_auc_score(column_true, prob_values[:, index]))
+        per_column[label] = _binary_auc(column_true, prob_values[:, index])
     mean_auc = float(np.mean(list(per_column.values()))) if per_column else None
     return {
         "metric_name": "mean_column_auc",
@@ -81,6 +79,34 @@ def mean_column_auc(
         "per_column_auc": per_column,
         "skipped_columns": skipped,
     }
+
+
+def _binary_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
+    """Binary ROC AUC with average ranks, used to avoid a hard sklearn runtime dependency."""
+
+    y_true = np.asarray(y_true, dtype=float)
+    y_score = np.asarray(y_score, dtype=float)
+    positives = y_true == 1.0
+    pos_count = int(positives.sum())
+    neg_count = int(len(y_true) - pos_count)
+    if pos_count == 0 or neg_count == 0:
+        raise ValueError("AUC requires both positive and negative examples")
+
+    order = np.argsort(y_score, kind="mergesort")
+    sorted_scores = y_score[order]
+    ranks = np.empty(len(y_score), dtype=float)
+    start = 0
+    while start < len(sorted_scores):
+        end = start + 1
+        while end < len(sorted_scores) and sorted_scores[end] == sorted_scores[start]:
+            end += 1
+        average_rank = (start + 1 + end) / 2.0
+        ranks[order[start:end]] = average_rank
+        start = end
+
+    positive_rank_sum = float(ranks[positives].sum())
+    auc = (positive_rank_sum - (pos_count * (pos_count + 1) / 2.0)) / (pos_count * neg_count)
+    return float(auc)
 
 
 def clipped_probabilities(values: np.ndarray) -> np.ndarray:

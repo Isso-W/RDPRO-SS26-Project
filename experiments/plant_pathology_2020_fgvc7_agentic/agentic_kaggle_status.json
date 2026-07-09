@@ -6,9 +6,12 @@
     "module4_code/configs.json",
     "module4_code/run.py",
     "module4_code/run_experiments.py",
+    "module4_code/producer.py",
+    "module4_code/consumer.py",
+    "module4_code/ensemble_artifacts.py",
     "kaggle_run_manifest.json",
     "colab_prepare_train.py",
     "COLAB_RUNBOOK.md"
   ],
-  "next_command": "python experiments/plant_pathology_2020_fgvc7_agentic/colab_prepare_train.py --train --epochs 5"
+  "next_command": "for f in 0 1 2 3 4; do python experiments/plant_pathology_2020_fgvc7_agentic/colab_prepare_train.py --fold-index \"$f\" --train-producers --epochs 5; done && python experiments/plant_pathology_2020_fgvc7_agentic/colab_prepare_train.py --consume-ensemble --submit --log-memory"
 }

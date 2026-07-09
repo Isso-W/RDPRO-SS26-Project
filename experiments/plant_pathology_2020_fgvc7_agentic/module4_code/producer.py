@@ -57,6 +57,17 @@ def _label_order(frame: pd.DataFrame, label_column: str, configured: list[str]) 
     return training_order
 
 
+def _resolved_label_columns(config: dict[str, Any]) -> list[str]:
+    configured = list(get_value(config, "label_columns", DEFAULT_LABEL_COLUMNS) or DEFAULT_LABEL_COLUMNS)
+    train_csv = Path(str(get_value(config, "train_csv", "") or "")).expanduser()
+    label_column = str(get_value(config, "label_column", "label") or "label")
+    if train_csv.exists():
+        frame = pd.read_csv(train_csv)
+        if label_column in frame.columns:
+            return _label_order(frame, label_column, configured)
+    return configured
+
+
 def _image_path(
     image_id: str,
     *,
@@ -258,7 +269,7 @@ def _write_test_probs(
     test_dir: Path | None,
     batch_size: int,
 ) -> dict[str, Any]:
-    label_columns = list(get_value(config, "label_columns", DEFAULT_LABEL_COLUMNS) or DEFAULT_LABEL_COLUMNS)
+    label_columns = _resolved_label_columns(config)
     base_dir = test_dir or Path(str(get_value(config, "image_dir", "") or "")).expanduser()
     if not base_dir.exists():
         raise FileNotFoundError(f"test image directory does not exist: {base_dir}")
@@ -344,6 +355,18 @@ def run_producers(args: argparse.Namespace) -> list[dict[str, Any]]:
         write_json(run_dir / "config.json", config)
         print(f"[producer] training {candidate_id(index)} fold={fold_index} -> {run_dir}")
         model, train_result = train_model(config, epochs=epochs, max_steps=0, save_dir=str(checkpoint_dir))
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        best_checkpoint = checkpoint_dir / "best_model.pt"
+        if not best_checkpoint.exists():
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "config": config,
+                    "train": train_result,
+                    "fallback_saved_by": "producer.py",
+                },
+                best_checkpoint,
+            )
         predict_batch_size = args.predict_batch_size or as_int(
             get_value(config, "eval_batch_size", get_value(config, "batch_size", 16)),
             16,
@@ -366,16 +389,15 @@ def run_producers(args: argparse.Namespace) -> list[dict[str, Any]]:
                 test_dir=test_dir,
                 batch_size=predict_batch_size,
             )
+        label_columns = _resolved_label_columns(config)
         manifest = {
             "schema_version": ARTIFACT_SCHEMA_VERSION,
             "created_at": now_iso(),
             "candidate_index": index,
             "candidate_id": candidate_id(index),
             "fold_index": fold_index,
-            "label_columns": list(get_value(config, "label_columns", DEFAULT_LABEL_COLUMNS) or DEFAULT_LABEL_COLUMNS),
-            "prediction_columns": probability_columns(
-                list(get_value(config, "label_columns", DEFAULT_LABEL_COLUMNS) or DEFAULT_LABEL_COLUMNS)
-            ),
+            "label_columns": label_columns,
+            "prediction_columns": probability_columns(label_columns),
             "config_summary": compact_config_summary(config, rank_default=index),
             "paths": {
                 "run_dir": str(run_dir),

@@ -21,8 +21,17 @@ Typical use (e.g. on Colab):
 
 from __future__ import annotations
 
+import os
 import zipfile
 from pathlib import Path
+
+
+def _kaggle_credential_hint() -> str:
+    return (
+        "Configure Kaggle credentials with KAGGLE_API_TOKEN, ~/.kaggle/access_token, "
+        "or legacy ~/.kaggle/kaggle.json / KAGGLE_USERNAME + KAGGLE_KEY. "
+        "In Colab, a KAGGLE_API_TOKEN secret is enough for recent kaggle package versions."
+    )
 
 
 def _authenticate():
@@ -34,7 +43,34 @@ def _authenticate():
             "The 'kaggle' package is not installed. Run: pip install kaggle"
         ) from exc
     api = KaggleApi()
-    api.authenticate()  # reads ~/.kaggle/kaggle.json or KAGGLE_USERNAME / KAGGLE_KEY
+    try:
+        api.authenticate()  # reads KAGGLE_API_TOKEN/access_token or legacy username/key credentials
+    except SystemExit as exc:  # pragma: no cover - kaggle package may call exit(1)
+        kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
+        access_token = Path.home() / ".kaggle" / "access_token"
+        has_env_token = bool(os.getenv("KAGGLE_API_TOKEN"))
+        has_env_pair = bool(os.getenv("KAGGLE_USERNAME") and os.getenv("KAGGLE_KEY"))
+        raise RuntimeError(
+            "Kaggle authentication failed. "
+            f"{_kaggle_credential_hint()} "
+            f"Observed access_token exists={access_token.exists()}, "
+            f"kaggle.json exists={kaggle_json.exists()}, "
+            f"KAGGLE_API_TOKEN configured={has_env_token}, "
+            f"KAGGLE_USERNAME/KAGGLE_KEY configured={has_env_pair}."
+        ) from exc
+    except Exception as exc:  # pragma: no cover - depends on local Kaggle setup
+        kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
+        access_token = Path.home() / ".kaggle" / "access_token"
+        has_env_token = bool(os.getenv("KAGGLE_API_TOKEN"))
+        has_env_pair = bool(os.getenv("KAGGLE_USERNAME") and os.getenv("KAGGLE_KEY"))
+        raise RuntimeError(
+            "Kaggle authentication failed. "
+            f"{_kaggle_credential_hint()} "
+            f"Observed access_token exists={access_token.exists()}, "
+            f"kaggle.json exists={kaggle_json.exists()}, "
+            f"KAGGLE_API_TOKEN configured={has_env_token}, "
+            f"KAGGLE_USERNAME/KAGGLE_KEY configured={has_env_pair}."
+        ) from exc
     return api
 
 
@@ -64,7 +100,15 @@ def download_competition(competition: str, dest_dir: str | Path, force: bool = F
 
     api = _authenticate()
     print(f"[kaggle] Downloading competition '{competition}' -> {dest} ...")
-    api.competition_download_files(competition, path=str(dest), force=force, quiet=False)
+    try:
+        api.competition_download_files(competition, path=str(dest), force=force, quiet=False)
+    except Exception as exc:  # pragma: no cover - depends on Kaggle service/account state
+        raise RuntimeError(
+            f"Kaggle download failed for competition {competition!r}. "
+            f"{_kaggle_credential_hint()} Also confirm that you accepted the competition "
+            f"rules at https://www.kaggle.com/c/{competition}/rules and that the "
+            f"competition files are still downloadable. Original error: {exc}"
+        ) from exc
     _extract_all_zips(dest)
     print(f"[kaggle] Done. Extracted under {dest}")
     return dest
