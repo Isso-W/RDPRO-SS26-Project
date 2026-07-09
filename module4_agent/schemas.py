@@ -26,6 +26,7 @@ ALLOWED_REFINEMENT_FIELDS = {
     "loss",
     "checkpoint",
     "backbone",
+    "tta",
 }
 
 
@@ -67,6 +68,7 @@ class TrainingSpec:
     num_classes: int = 3
     embedding_dim: int = 32
     image_size: int = 224
+    tta: bool = False
     offline_smoke: bool = True
     use_pretrained: bool = False
     raw_model_config: dict[str, Any] = field(default_factory=dict)

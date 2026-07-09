@@ -201,7 +201,9 @@ info = ingest_benchmark("cassava", data_root="/content/drive/MyDrive/Jiaozi/kagg
 ```
 
 Available Kaggle keys in the catalog: `cassava`, `state_farm`, `siim_isic`,
-`diabetic_retinopathy`. (HuggingFace-sourced keys like `cifar10` use the
+`diabetic_retinopathy`, `plant_pathology_2020`. The shorthand
+`plant-pathology-2020-fgv` is accepted and maps to Kaggle's
+`plant-pathology-2020-fgvc7` competition slug. (HuggingFace-sourced keys like `cifar10` use the
 `pipeline --dataset` path instead and raise here.)
 
 ### End to end: select → train → predict → submit

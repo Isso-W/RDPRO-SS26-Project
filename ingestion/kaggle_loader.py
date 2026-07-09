@@ -4,7 +4,8 @@ Entry point for using real Kaggle competition datasets (and their hidden test se
 in the Jiaozi pipeline. Downloads + extracts a competition, then locates the train
 CSV and image directory so the result plugs straight into Module 4's local CSV
 dataloader (`_build_local_dataloader`, which already reads `train_csv` / `image_dir` /
-`image_column` / `label_column`).
+`image_column` / `label_column`). Competitions with one-hot target columns are
+materialized to a small derived CSV with a single label column for training.
 
 Credentials (one of):
   - `~/.kaggle/kaggle.json` containing {"username": ..., "key": ...}, or
@@ -80,6 +81,36 @@ def _locate(root: Path, globs: list[str], *, want_dir: bool) -> Path | None:
     return None
 
 
+def _materialize_label_csv(
+    train_csv: Path,
+    label_column: str,
+    label_columns: list[str] | None,
+) -> Path:
+    """Return a CSV with a single label column, deriving it from one-hot columns if needed."""
+    if not label_columns:
+        return train_csv
+
+    import pandas as pd
+
+    frame = pd.read_csv(train_csv)
+    missing = [column for column in label_columns if column not in frame.columns]
+    if missing:
+        raise ValueError(
+            f"label_columns {missing!r} not found in {train_csv}; "
+            f"available columns: {list(frame.columns)}"
+        )
+
+    labels = frame[label_columns].astype(float).idxmax(axis=1)
+    if label_column in frame.columns and frame[label_column].astype(str).tolist() == labels.astype(str).tolist():
+        return train_csv
+
+    derived = train_csv.with_name(f"{train_csv.stem}__jiaozi_labels.csv")
+    frame[label_column] = labels
+    frame.to_csv(derived, index=False)
+    print(f"[kaggle] materialized one-hot labels -> {derived} ({label_column})")
+    return derived
+
+
 def ingest_benchmark(
     benchmark_key: str,
     data_root: str | Path,
@@ -112,8 +143,16 @@ def ingest_benchmark(
             f"({benchmark.get('image_dir_globs')}) under {dest}.\nFirst entries: {available}"
         )
 
+    label_columns = benchmark.get("label_columns")
+    label_column = benchmark.get("label_column") or ("__jiaozi_label" if label_columns else "label")
+    train_csv = _materialize_label_csv(train_csv, label_column, label_columns)
+
     # Best-effort test-set discovery (hidden labels — used for prediction + submission).
-    test_dir = _locate(dest, ["**/test_images", "**/test"], want_dir=True)
+    test_dir = _locate(
+        dest,
+        benchmark.get("test_dir_globs", ["**/test_images", "**/test"]),
+        want_dir=True,
+    )
     sample_submission = _locate(dest, ["**/sample_submission.csv"], want_dir=False)
 
     info = {
@@ -122,7 +161,8 @@ def ingest_benchmark(
         "train_csv": str(train_csv),
         "image_dir": str(image_dir),
         "image_column": benchmark.get("image_column", "image"),
-        "label_column": benchmark.get("label_column", "label"),
+        "label_column": label_column,
+        "label_columns": list(label_columns or []),
         "image_path_template": benchmark.get("image_path_template", "{image}"),
         "image_extension": benchmark.get("image_extension", ""),
         "num_classes": benchmark.get("num_classes"),

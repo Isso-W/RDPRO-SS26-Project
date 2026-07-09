@@ -73,9 +73,13 @@ def test_ablation_variants_modify_one_component_only():
 
     assert variants
     components = {variant.modified_component for variant in variants}
-    assert {"optimizer", "learning_rate", "augmentation", "finetune_strategy", "loss", "backbone"}.issubset(
+    assert {"optimizer", "learning_rate", "augmentation", "finetune_strategy", "tta", "loss", "backbone"}.issubset(
         components
     )
+    tta_values = {
+        variant.modified_value for variant in variants if variant.modified_component == "tta"
+    }
+    assert tta_values == {True}
     augmentation_values = {
         variant.modified_value for variant in variants if variant.modified_component == "augmentation"
     }
@@ -84,6 +88,18 @@ def test_ablation_variants_modify_one_component_only():
         changes = diff_controlled_fields(spec, variant.training_spec)
         assert len(changes) == 1
         assert variant.modified_component in changes
+
+
+def test_tta_diff_is_a_single_controlled_change():
+    spec = _classification_specs()[0]
+    variant = next(
+        item for item in generate_ablation_variants(spec) if item.modified_component == "tta"
+    )
+
+    changes = diff_controlled_fields(spec, variant.training_spec)
+
+    assert changes == {"tta": (False, True)}
+    assert variant.training_spec.raw_model_config["tta"] is True
 
 
 def test_freeze_backbone_only_change_is_not_reported_as_finetune_strategy():

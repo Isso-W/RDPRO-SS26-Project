@@ -74,6 +74,25 @@ BENCHMARKS: dict[str, dict[str, Any]] = {
         "image_path_template": "{image}",
         "image_extension": ".jpeg",
     },
+    "plant_pathology_2020": {
+        "name": "Plant Pathology 2020 - FGVC7",
+        "source": "kaggle",
+        "competition": "plant-pathology-2020-fgvc7",
+        "query": "Classify apple leaf images as healthy, multiple diseases, rust, or scab.",
+        "metric": "categorical_accuracy",
+        "num_classes": 4,
+        "baseline": 0.965,
+        "backbone": "efficientnet_b0",
+        "loss": "cross_entropy_loss",
+        "csv_globs": ["**/train.csv"],
+        "image_dir_globs": ["**/images", "**/train_images", "**/train"],
+        "test_dir_globs": ["**/test_images", "**/test", "**/images"],
+        "image_column": "image_id",
+        "label_column": "__jiaozi_label",
+        "label_columns": ["healthy", "multiple_diseases", "rust", "scab"],
+        "image_path_template": "{image}",
+        "image_extension": ".jpg",
+    },
     "cifar10": {
         "name": "CIFAR-10",
         "source": "huggingface",
@@ -176,9 +195,17 @@ BENCHMARKS: dict[str, dict[str, Any]] = {
     },
 }
 
+ALIASES = {
+    "plant-pathology-2020-fgv": "plant_pathology_2020",
+    "plant-pathology-2020-fgvc7": "plant_pathology_2020",
+    "plant_pathology": "plant_pathology_2020",
+    "plant_pathology_fgvc7": "plant_pathology_2020",
+}
+
 
 def get_benchmark(key: str) -> dict[str, Any]:
+    key = ALIASES.get(key, key)
     if key not in BENCHMARKS:
-        choices = ", ".join(sorted(BENCHMARKS))
+        choices = ", ".join(sorted([*BENCHMARKS, *ALIASES]))
         raise KeyError(f"Unknown benchmark {key!r}. Available: {choices}")
     return dict(BENCHMARKS[key])

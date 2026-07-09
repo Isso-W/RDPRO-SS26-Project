@@ -132,6 +132,11 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
         class_imbalance_value = merged.get("class_imbalance")
         if class_imbalance_value is None:
             class_imbalance_value = constraints.get("class_imbalance")
+        tta_value = merged.get("tta")
+        if tta_value is None:
+            tta_value = candidate.get("tta")
+        if tta_value is None:
+            tta_value = constraints.get("tta")
         checkpoint = (
             merged.get("checkpoint")
             or merged.get("checkpoint_id")
@@ -200,6 +205,7 @@ def build_training_specs(candidates: Sequence[Mapping[str, Any]]) -> list[Traini
                 or candidate.get("default_input_size"),
                 default=224,
             ),
+            tta=_safe_bool(tta_value, default=False),
             offline_smoke=_safe_bool(merged.get("offline_smoke"), default=True),
             use_pretrained=_safe_bool(
                 merged.get("use_pretrained"),

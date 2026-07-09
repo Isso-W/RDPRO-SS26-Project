@@ -69,7 +69,12 @@ def load_model(project_dir: str | Path):
 
 
 def predict_directory(model, transform, device, image_dir: str | Path, batch_size: int = 64):
-    """Run inference over every image in image_dir. Returns [(filename, class_index)]."""
+    """Run inference over every image in image_dir.
+
+    Returns [(filename, class_index, probabilities)] where probabilities is a
+    softmax list for classification outputs. Older callers that only use the
+    first two tuple positions remain compatible.
+    """
     import torch
     from PIL import Image
 
@@ -77,7 +82,7 @@ def predict_directory(model, transform, device, image_dir: str | Path, batch_siz
     if not files:
         raise FileNotFoundError(f"No images found under {image_dir}")
 
-    results: list[tuple[str, int]] = []
+    results: list[tuple[str, int, list[float]]] = []
     batch: list = []
     names: list[str] = []
 
@@ -87,8 +92,9 @@ def predict_directory(model, transform, device, image_dir: str | Path, batch_siz
         x = torch.stack(batch).to(device)
         with torch.no_grad():
             logits = model(x)
-        for name, idx in zip(names, logits.argmax(dim=1).cpu().tolist()):
-            results.append((name, int(idx)))
+        probs = torch.softmax(logits, dim=1).cpu()
+        for name, idx, prob in zip(names, probs.argmax(dim=1).tolist(), probs.tolist()):
+            results.append((name, int(idx), [float(value) for value in prob]))
 
     for path in files:
         image = Image.open(path).convert("RGB")
@@ -114,23 +120,54 @@ def index_to_label_map(train_csv: str | Path, label_column: str) -> dict:
     return {index: value for index, value in enumerate(unique)}
 
 
-def write_submission(predictions, index_to_label, sample_submission, out_path):
+def write_submission(predictions, index_to_label, sample_submission, out_path, label_columns=None):
     """Fill the sample_submission with predictions, matching ids by filename or stem."""
     import pandas as pd
 
     sample = pd.read_csv(sample_submission)
     columns = list(sample.columns)
     id_column, target_column = columns[0], columns[-1]
+    one_hot_columns = [column for column in (label_columns or []) if column in sample.columns]
 
     by_key: dict[str, object] = {}
-    for filename, index in predictions:
+    probabilities_by_key: dict[str, list[float]] = {}
+    for item in predictions:
+        filename, index = item[0], item[1]
+        probabilities = item[2] if len(item) > 2 else None
         label = index_to_label.get(index, index)
         by_key[filename] = label
         by_key[Path(filename).stem] = label
+        if probabilities is not None:
+            probabilities_by_key[filename] = probabilities
+            probabilities_by_key[Path(filename).stem] = probabilities
 
     def _lookup(raw_id):
         key = str(raw_id)
         return by_key.get(key, by_key.get(Path(key).stem))
+
+    if one_hot_columns:
+        missing = 0
+        for position, raw_id in enumerate(sample[id_column].tolist()):
+            key = str(raw_id)
+            value = by_key.get(key, by_key.get(Path(key).stem))
+            probabilities = probabilities_by_key.get(key, probabilities_by_key.get(Path(key).stem))
+            if value is None and probabilities is None:
+                missing += 1
+                continue
+            if probabilities is not None:
+                for index, probability in enumerate(probabilities):
+                    label = str(index_to_label.get(index, index))
+                    if label in one_hot_columns:
+                        sample.at[position, label] = probability
+            else:
+                label = str(value)
+                for column in one_hot_columns:
+                    sample.at[position, column] = 1.0 if column == label else 0.0
+        sample.to_csv(out_path, index=False)
+        if missing:
+            print(f"[submit] WARNING: {missing} sample ids had no matching prediction (kept sample defaults).")
+        print(f"[submit] Wrote {out_path}  (id='{id_column}', targets={one_hot_columns})")
+        return out_path
 
     filled = []
     missing = 0
@@ -186,7 +223,7 @@ def predict_and_submit(
         raise FileNotFoundError(
             f"No sample_submission.csv found for {benchmark_key!r}; cannot format a submission."
         )
-    write_submission(predictions, idx_to_label, sample, out_path)
+    write_submission(predictions, idx_to_label, sample, out_path, label_columns=info.get("label_columns"))
 
     if do_submit:
         submit(info["competition"], out_path, message or f"Jiaozi {benchmark_key} submission")

@@ -12,8 +12,44 @@ Key files:
 - `retrieval/test_rag_retrieval.py` — Module 3 test suite (smoke, behavior, task list, zero_shot)
 - `retrieval/test_golden.py` — golden "query → expected recommendation" regression suite; run after any KB or scoring change (both suites need `cwd=retrieval/`)
 - `module4_agent/` — Module 4: code-generation agent (spec_builder → code_generator / llm_codegen → reviewer → smoke harness → refinement)
+- `recommender/` — accumulating, explainable ranking layer on top of Module 3 (outcome memory + recipe); opt-in via `pipeline.py --use-recommender`
 - `docs/MODULE3_API.md` — API reference for Module 4, includes Module 2→3 interface alignment section
 - `docs/report_module3.md` — mid-term report material for Module 3
+
+> Untracked top-level dirs (`agents/`, `mcp_server/`, `cv_autodl_agent/`, `autopipeline/`, `knowledge/`, `knowledge_base/`) are experimental scratch — not part of the active pipeline. Confirm before treating them as canonical.
+
+## Commands
+
+Use **one** Python interpreter consistently for install and tests. On this macOS setup that is `/usr/bin/python3` (the README and test harness assume it); a `.venv/` also exists. Install deps with `/usr/bin/python3 -m pip install -r requirements.txt`.
+
+```bash
+# Full pipeline (Module 1→2→3→4); --module4-no-smoke skips code-gen smoke run
+/usr/bin/python3 pipeline.py --query "classify images on a small dataset" \
+  --dataset uoft-cs/cifar10 --fmt nl --module4-output generated_pipeline --module4-no-smoke
+
+# Module 4 directly (offline template fallback, no checkpoint download)
+M4_LLM_PROVIDER=none /usr/bin/python3 -m module4_agent \
+  --input module4_agent/examples/sample_m3_output.json --output generated/ --no-smoke
+
+# Real run that trains and feeds the recommender's outcome memory
+/usr/bin/python3 run_and_log.py --dataset dpdl-benchmark/cassava --query "..." --epochs 12
+```
+
+Tests (Module 3 suites **must** run from `cwd=retrieval/`; set `PYTHONPYCACHEPREFIX` to avoid polluting the tree):
+
+```bash
+/usr/bin/python3 -m unittest test_pipeline.py -v                 # pipeline + Module 2→3 mapping
+cd retrieval && PYTHONPYCACHEPREFIX=/private/tmp/jiaozi-pycache \
+  /usr/bin/python3 -m unittest test_rag_retrieval.py -v          # Module 3 behavior
+cd retrieval && PYTHONPYCACHEPREFIX=/private/tmp/jiaozi-pycache \
+  /usr/bin/python3 -m unittest test_golden.py -v                 # golden regression (run after any KB/scoring change)
+/usr/bin/python3 -m pytest module4_agent/tests -q                # Module 4
+/usr/bin/python3 -m pytest recommender/test_recommender.py -q    # recommender layer
+```
+
+Run a single test: `/usr/bin/python3 -m pytest module4_agent/tests/test_spec_builder.py::TestName::test_case -q`.
+
+LLM config lives in `.env` (copy from `.env.example`). Module 1 always needs an LLM provider for NL parsing; Module 4 falls back to deterministic templates when `M4_LLM_PROVIDER=none`.
 
 ## Module 3 Architecture
 
@@ -83,6 +119,18 @@ A `preferred_when` edge from A → B means "prefer A over B when condition holds
 - `fmt="nl"` — natural language task list + `model_config` metadata dict
 
 See `docs/MODULE3_API.md` for full field reference and Module 2→3 alignment questions.
+
+## Recommender Layer (`recommender/`)
+
+An opt-in layer that re-ranks Module 3's shortlist using a persistent **outcome memory** — the thing a per-task black-box agent structurally can't do. Wired into `pipeline.py` behind `use_recommender=True` (CLI `--use-recommender`); off by default.
+
+- `OutcomeMemory` (`outcome_memory.py`) — append-only JSONL store (default `recommender/outcomes.jsonl`) of `(dataset fingerprint, config, achieved metric)` records.
+- `dataset_fingerprint` (`fingerprint.py`) — characterizes a dataset; `fingerprint_distance` measures similarity for memory lookup.
+- `rank_candidates` / `recommend` (`ranker.py`) — for each candidate, predicts its metric as a similarity-weighted average over past runs of the **same backbone** on **similar datasets**; candidates with a track record outrank cold-start ones (which keep KB-heuristic order). Every pick carries a human-readable rationale.
+- `recommend_recipe` (`recipe.py`) — v0 rule-based training hyperparameters (lr / image_size / augmentation / early stopping) from hard backbone constraints + finetuning conventions. Only emits keys the generated training code consumes today. `use_llm=True` is reserved for a future LLM proposer floored by these rules.
+- `logme_score` (`logme.py`) — transferability heuristic.
+
+`run_and_log.py` is the loop that makes the memory grow: it runs the full pipeline with real training, parses the run summary, and appends the outcome — so recommendations improve the more it runs.
 
 ## Input Schema (updated 2026-05-28)
 

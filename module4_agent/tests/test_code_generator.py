@@ -112,6 +112,18 @@ def test_run_uses_trained_model_for_evaluation():
     assert "early_stopping_patience" in generated.files["train.py"]
 
 
+def test_generated_classification_tta_is_available():
+    generated = generate_files(_specs(), llm_provider="none")
+    expected_switch = 'as_bool(get_value(config, "tta", False), False)'
+
+    for filename in ("train.py", "evaluate.py", "infer.py"):
+        content = generated.files[filename]
+        assert "torch.flip" in content
+        assert "tta" in content
+        assert expected_switch in content
+        assert "def _classification_logits" in content
+
+
 def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):
     """A frozen backbone should trigger extract-once + train-head-on-cache."""
     torch = __import__("pytest").importorskip("torch")

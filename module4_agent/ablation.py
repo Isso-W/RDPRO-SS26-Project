@@ -14,6 +14,7 @@ CONTROLLED_FIELDS = (
     "augmentation",
     "finetune_strategy",
     "unfreeze_last_n_blocks",
+    "tta",
     "loss",
     "backbone",
     "checkpoint",
@@ -55,6 +56,7 @@ def training_spec_summary(spec: TrainingSpec) -> dict[str, Any]:
         "strategy_ablation_variant": spec.strategy_ablation_variant,
         "learning_rate": spec.learning_rate,
         "augmentation": spec.augmentation,
+        "tta": spec.tta,
         "data_size": spec.data_size,
         "class_imbalance": spec.class_imbalance,
     }
@@ -119,6 +121,8 @@ def generate_ablation_variants(base_spec: TrainingSpec) -> list[AblationVariant]
     augmentation_removal = _augmentation_removal_variant(base_spec.augmentation)
     if augmentation_removal != base_spec.augmentation:
         candidates.append(("augmentation", augmentation_removal, _replace_with_model_config(base_spec, augmentation=augmentation_removal)))
+    if base_spec.task_type == "classification" and not base_spec.tta:
+        candidates.append(("tta", True, _replace_with_model_config(base_spec, tta=True)))
 
     finetune_strategy = _finetune_variant(base_spec)
     if finetune_strategy and finetune_strategy != base_spec.finetune_strategy:
@@ -303,6 +307,7 @@ def _replace_with_model_config(spec: TrainingSpec, **changes: Any) -> TrainingSp
             "loss",
             "backbone",
             "checkpoint",
+            "tta",
         }:
             raw_model_config[key] = value
     return replace(spec, raw_model_config=raw_model_config, **changes)

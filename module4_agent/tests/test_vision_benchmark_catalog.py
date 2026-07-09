@@ -7,11 +7,12 @@ def test_catalog_contains_requested_competitions_and_ten_extra_datasets():
         "state_farm",
         "siim_isic",
         "diabetic_retinopathy",
+        "plant_pathology_2020",
     }
 
-    assert len(BENCHMARKS) == 14
+    assert len(BENCHMARKS) == 15
     assert requested.issubset(BENCHMARKS)
-    assert sum(item["source"] == "kaggle" for item in BENCHMARKS.values()) == 4
+    assert sum(item["source"] == "kaggle" for item in BENCHMARKS.values()) == 5
     assert sum(item["source"] == "huggingface" for item in BENCHMARKS.values()) == 10
 
 
@@ -32,3 +33,9 @@ def test_catalog_entries_have_runnable_source_metadata():
         else:
             assert item["dataset_id"]
         assert get_benchmark(key) == item
+
+
+def test_catalog_accepts_plant_pathology_slug_alias():
+    benchmark = get_benchmark("plant-pathology-2020-fgv")
+    assert benchmark["competition"] == "plant-pathology-2020-fgvc7"
+    assert benchmark["label_columns"] == ["healthy", "multiple_diseases", "rust", "scab"]

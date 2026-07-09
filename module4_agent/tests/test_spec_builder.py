@@ -45,6 +45,44 @@ def test_build_training_specs_preserves_model_config_fields():
     assert spec.checkpoint == "google/efficientnet-b0"
 
 
+def test_build_training_specs_preserves_model_config_tta():
+    spec = build_training_specs(
+        [
+            {
+                "model_config": {
+                    "task_type": "classification",
+                    "tta": True,
+                }
+            }
+        ]
+    )[0]
+
+    assert spec.tta is True
+    assert spec.to_config()["tta"] is True
+
+
+def test_build_training_specs_reads_top_level_and_constraint_tta():
+    top_level_spec = build_training_specs(
+        [
+            {
+                "model_config": {"task_type": "classification"},
+                "tta": "true",
+            }
+        ]
+    )[0]
+    constraint_spec = build_training_specs(
+        [
+            {
+                "model_config": {"task_type": "classification"},
+                "constraints": {"tta": 1},
+            }
+        ]
+    )[0]
+
+    assert top_level_spec.tta is True
+    assert constraint_spec.tta is True
+
+
 def test_build_training_specs_handles_older_candidate_shape():
     candidates = [
         {

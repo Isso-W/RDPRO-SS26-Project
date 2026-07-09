@@ -235,6 +235,7 @@ def _utils_py() -> str:
                 "train_norm_layers": config.get("train_norm_layers", True),
                 "strategy_ablation_group": config.get("strategy_ablation_group", ""),
                 "strategy_ablation_variant": config.get("strategy_ablation_variant", ""),
+                "tta": config.get("tta", False),
             }
         '''
     ).lstrip()
@@ -1457,6 +1458,18 @@ def _train_py() -> str:
             }
 
 
+        def _classification_logits(
+            model: torch.nn.Module,
+            x: torch.Tensor,
+            config: dict[str, Any] | None,
+        ) -> torch.Tensor:
+            logits = model(x)
+            if as_bool(get_value(config, "tta", False), False):
+                flipped_logits = model(torch.flip(x, dims=[3]))
+                logits = (logits + flipped_logits) / 2.0
+            return logits
+
+
         def _classification_validation(
             model: torch.nn.Module,
             dataloader,
@@ -1471,7 +1484,7 @@ def _train_py() -> str:
                 for x, target in dataloader:
                     x = x.to(device, non_blocking=True)
                     target = target.to(device, non_blocking=True)
-                    logits = model(x)
+                    logits = _classification_logits(model, x, config)
                     probs = torch.softmax(logits, dim=1)
                     predictions.append(probs.argmax(dim=1).cpu())
                     labels.append(target.cpu())
@@ -2233,6 +2246,18 @@ def _evaluate_py() -> str:
             return {"total": total, "trainable": trainable}
 
 
+        def _classification_logits(
+            model: torch.nn.Module,
+            x: torch.Tensor,
+            config: dict[str, Any] | None,
+        ) -> torch.Tensor:
+            logits = model(x)
+            if as_bool(get_value(config, "tta", False), False):
+                flipped_logits = model(torch.flip(x, dims=[3]))
+                logits = (logits + flipped_logits) / 2.0
+            return logits
+
+
         def _eval_on_dataloader(model: torch.nn.Module, dataloader, config: dict[str, Any]) -> dict[str, Any]:
             """Evaluate on a full DataLoader (real data path)."""
             task = task_type(config)
@@ -2249,7 +2274,7 @@ def _evaluate_py() -> str:
                     if isinstance(target, torch.Tensor):
                         target = target.to(device, non_blocking=True)
                     if task == "classification":
-                        logits = model(x)
+                        logits = _classification_logits(model, x, config)
                         probabilities = torch.softmax(logits, dim=1)
                         preds = probabilities.argmax(dim=1)
                         all_preds.append(preds)
@@ -2364,7 +2389,7 @@ def _evaluate_py() -> str:
                 ]
             model.eval()
             with torch.no_grad():
-                output = model(x)
+                output = _classification_logits(model, x, config) if task == "classification" else model(x)
 
             result: dict[str, Any] = {"params": _count_params(model)}
 
@@ -2436,7 +2461,19 @@ def _infer_py() -> str:
 
         from model import build_model
         from smoke_data import synthetic_image
-        from utils import task_type
+        from utils import as_bool, get_value, task_type
+
+
+        def _classification_logits(
+            model: torch.nn.Module,
+            image: torch.Tensor,
+            config: dict[str, Any] | None,
+        ) -> torch.Tensor:
+            logits = model(image)
+            if as_bool(get_value(config, "tta", False), False):
+                flipped_logits = model(torch.flip(image, dims=[3]))
+                logits = (logits + flipped_logits) / 2.0
+            return logits
 
 
         def predict(weights_path: str | None = None, image: torch.Tensor | None = None, config: dict[str, Any] | None = None, model: torch.nn.Module | None = None) -> dict[str, Any]:
@@ -2459,7 +2496,7 @@ def _infer_py() -> str:
             image = image.to(device)
 
             with torch.no_grad():
-                output = model(image)
+                output = _classification_logits(model, image, config) if task == "classification" else model(image)
 
             if task == "classification":
                 probs = output.softmax(dim=1)
