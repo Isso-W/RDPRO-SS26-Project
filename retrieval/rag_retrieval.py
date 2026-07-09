@@ -997,7 +997,9 @@ EDGES = [
     # ── preferred_when ────────────────────────────────────────────────────────
     ("yolov8",          "rt_detr",             "preferred_when"),
     ("unet",            "segformer",           "preferred_when"),
-    ("focal_loss",      "cross_entropy_loss",  "preferred_when"),
+    # ab_loss_imbalance 2026-07: cassava paired 5-fold CE +0.0075±0.0023 macro-F1 over
+    # focal（单台，极端不平衡未测）+ 挖掘共识 0.71 → 翻向 CE 优先。trial 分支，待 siim 补测。
+    ("cross_entropy_loss", "focal_loss",       "preferred_when"),
     ("mobilenet_v3",    "efficientnet",        "preferred_when"),
     ("dinov2",          "clip_vit",            "preferred_when"),
     ("clip_vit",        "dinov2",              "preferred_when"),
@@ -1008,7 +1010,7 @@ EDGES = [
 EDGE_CONDITIONS = {
     ("yolov8",           "rt_detr"):          {"condition": {"all": ["real_time=True"]}},
     ("unet",             "segformer"):        {"condition": {"any": ["data_size=small", "medical=True"]}},
-    ("focal_loss",       "cross_entropy_loss"):{"condition": {"all": ["class_imbalance=True"]}},
+    ("cross_entropy_loss", "focal_loss"):     {"condition": {"all": ["class_imbalance=True"]}},
     ("mobilenet_v3",     "efficientnet"):     {"condition": {"all": ["edge_deployment=True"]}},
     ("dinov2",           "clip_vit"):         {"condition": {"all": ["no_text_modality=True"]}},
     ("clip_vit",         "dinov2"):           {"condition": {"all": ["cross_modal=True"]}},
@@ -1298,10 +1300,9 @@ def _select_components(
 
             if edge_pick is not None:
                 chosen = edge_pick
-            # 以下硬编码规则作为 fallback 保留：覆盖边尚未表达的情形（bce_dice、
-            # hungarian）；等挖掘产出的边补齐后再另行清理。
-            elif c.get("class_imbalance") and "focal_loss" in candidates:
-                chosen = "focal_loss"
+            # ab_loss_imbalance 2026-07：原硬编码 class_imbalance→focal 已删——CE 优先
+            # 现由翻向的边（cross_entropy_loss→focal_loss, class_imbalance）表达；
+            # 其余硬编码 fallback 保留（bce_dice、hungarian，边尚未表达）。
             elif task_type == "image_segmentation":
                 if c.get("class_imbalance") and "bce_dice_loss" in candidates:
                     chosen = "bce_dice_loss"

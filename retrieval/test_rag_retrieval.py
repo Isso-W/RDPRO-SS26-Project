@@ -251,9 +251,9 @@ class TestBehavior(unittest.TestCase):
             if r["backbone"] == "dinov2" and r["pretrained"] is not None:
                 self.assertEqual(r["finetune_strategy"], "head_only")
 
-    # ── Test 10: class_imbalance → focal_loss selected ────────────────────────
+    # ── Test 10: class_imbalance → cross_entropy_loss（ab_loss_imbalance 翻向）──
 
-    def test_class_imbalance_uses_focal_loss(self):
+    def test_class_imbalance_uses_cross_entropy_loss(self):
         inp = _make_input(
             task_type="classification",
             data_size="medium",
@@ -263,8 +263,8 @@ class TestBehavior(unittest.TestCase):
         results = self._run(inp)
         self.assertGreater(len(results), 0)
         top = results[0]
-        self.assertEqual(top["loss"], "focal_loss",
-                         f"Expected focal_loss with class_imbalance, got {top['loss']}")
+        self.assertEqual(top["loss"], "cross_entropy_loss",
+                         f"Expected cross_entropy_loss with class_imbalance, got {top['loss']}")
 
     # ── Test 11: invalid task_type → empty list ────────────────────────────────
 
@@ -466,10 +466,11 @@ class TestPhaseBLossEdges(unittest.TestCase):
                    relation="preferred_when", condition={"any": ["medical=True"]})
         self.assertEqual(self._loss_for(g, {"medical": True}), "focal_loss")
 
-    def test_class_imbalance_picks_focal_via_edge(self):
-        # 现实 KB 边 focal→CE(class_imbalance) 现在经 Phase B 生效
+    def test_class_imbalance_picks_cross_entropy_via_edge(self):
+        # ab_loss_imbalance 翻向后：边 cross_entropy_loss→focal_loss(class_imbalance)
+        # 经 Phase B 生效，class_imbalance 现在选 CE
         self.assertEqual(self._loss_for(build_graph(), {"class_imbalance": True}),
-                         "focal_loss")
+                         "cross_entropy_loss")
 
     def test_no_imbalance_falls_back_to_cross_entropy(self):
         self.assertEqual(self._loss_for(build_graph(), {}), "cross_entropy_loss")
