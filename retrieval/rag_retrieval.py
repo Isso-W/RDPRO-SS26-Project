@@ -312,6 +312,29 @@ COMPONENTS = [
         ),
     },
     {
+        "id": "dinov3",
+        "name": "DINOv3",
+        "component_type": "backbone",
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "data_size": ["small", "medium", "large"],
+        "complexity": "high",
+        "finetune_recommended": True,
+        "scratch_viable_from": None,
+        "domain_transfer": "strong",
+        "capabilities": ["zero_shot", "few_shot", "dense_features", "foundation_features"],
+        "tier": {
+            "feature_extraction": "default",
+            "classification":     "special_case",
+            "image_segmentation": "special_case",
+        },
+        "description": (
+            "Modern self-supervised vision foundation model producing high-quality dense "
+            "features across recognition, image retrieval, zero-shot transfer, few-shot "
+            "classification, and dense prediction. A stronger upgrade over DINOv2 when "
+            "feature quality is the main concern."
+        ),
+    },
+    {
         "id": "clip_vit",
         "name": "CLIP ViT",
         "component_type": "backbone",
@@ -575,6 +598,51 @@ COMPONENTS = [
         "freeze_viable": True,
         "finetune_strategy": "either",
         "description": "DINOv2-Large. Best feature quality at higher compute. Either full finetune (low backbone LR) or freeze + head.",
+    },
+    {
+        "id": "dinov3_small_lvd1689m",
+        "name": "DINOv3-S/16 / LVD-1689M",
+        "component_type": "pretrained_model",
+        "hf_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+        "finetune_base": "dinov3",
+        "pretrain_dataset": "LVD-1689M (self-supervised)",
+        "params_M": 21,
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "size_tier": "small",
+        "recommended_when": {"priority": "speed"},
+        "freeze_viable": True,
+        "finetune_strategy": "either",
+        "description": "DINOv3 ViT-S/16 distilled backbone. Compact dense features; freeze + head for cheap extraction or full finetune with low backbone LR.",
+    },
+    {
+        "id": "dinov3_base_lvd1689m",
+        "name": "DINOv3-B/16 / LVD-1689M",
+        "component_type": "pretrained_model",
+        "hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+        "finetune_base": "dinov3",
+        "pretrain_dataset": "LVD-1689M (self-supervised)",
+        "params_M": 86,
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "size_tier": "base",
+        "recommended_when": {},
+        "freeze_viable": True,
+        "finetune_strategy": "either",
+        "description": "DINOv3 ViT-B/16 backbone. Strong dense features; freeze + head or full finetune with low backbone LR. Strong default for retrieval and few-shot classification.",
+    },
+    {
+        "id": "dinov3_large_lvd1689m",
+        "name": "DINOv3-L/16 / LVD-1689M",
+        "component_type": "pretrained_model",
+        "hf_id": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        "finetune_base": "dinov3",
+        "pretrain_dataset": "LVD-1689M (self-supervised)",
+        "params_M": 300,
+        "task_type": ["feature_extraction", "classification", "image_segmentation"],
+        "size_tier": "large",
+        "recommended_when": {"data_size": "large", "priority": "accuracy"},
+        "freeze_viable": True,
+        "finetune_strategy": "either",
+        "description": "DINOv3 ViT-L/16 backbone. Accuracy-oriented dense feature extractor for large datasets.",
     },
     {
         "id": "clip_vit_base_32",
@@ -954,6 +1022,18 @@ EDGES = [
     ("dinov2", "dinov2_base",                 "has_pretrained"),
     ("dinov2", "dinov2_large",               "has_pretrained"),
 
+    # dinov3
+    ("dinov3", "feature_pooling_head",         "compatible_with"),
+    ("dinov3", "projection_head",              "compatible_with"),
+    ("dinov3", "classification_head",          "compatible_with"),
+    ("dinov3", "semantic_seg_head",            "compatible_with"),
+    ("dinov3", "infonce_loss",                 "compatible_with"),
+    ("dinov3", "cross_entropy_loss",           "compatible_with"),
+    ("dinov3", "adamw",                        "compatible_with"),
+    ("dinov3", "dinov3_small_lvd1689m",        "has_pretrained"),
+    ("dinov3", "dinov3_base_lvd1689m",         "has_pretrained"),
+    ("dinov3", "dinov3_large_lvd1689m",        "has_pretrained"),
+
     # clip_vit
     ("clip_vit", "feature_pooling_head",       "compatible_with"),
     ("clip_vit", "projection_head",            "compatible_with"),
@@ -983,6 +1063,8 @@ EDGES = [
     ("unet",             "segformer",          "alternative_to"),
     ("dinov2",           "clip_vit",           "alternative_to"),
     ("clip_vit",         "dinov2",             "alternative_to"),
+    ("dinov3",           "dinov2",             "alternative_to"),
+    ("dinov2",           "dinov3",             "alternative_to"),
     ("cross_entropy_loss","focal_loss",         "alternative_to"),
     ("focal_loss",       "cross_entropy_loss", "alternative_to"),
     ("dice_loss",        "bce_dice_loss",      "alternative_to"),
@@ -991,6 +1073,8 @@ EDGES = [
     ("swin_large_in22k", "swin_base_in22k",    "alternative_to"),
     ("dinov2_base",      "dinov2_large",       "alternative_to"),
     ("dinov2_large",     "dinov2_base",        "alternative_to"),
+    ("dinov3_base_lvd1689m",  "dinov3_large_lvd1689m", "alternative_to"),
+    ("dinov3_large_lvd1689m", "dinov3_base_lvd1689m",  "alternative_to"),
     ("clip_vit_base_32", "clip_vit_large_14",  "alternative_to"),
     ("clip_vit_large_14","clip_vit_base_32",   "alternative_to"),
 
@@ -1005,6 +1089,7 @@ EDGES = [
     ("clip_vit",        "dinov2",              "preferred_when"),
     ("swin_large_in22k","swin_base_in22k",     "preferred_when"),
     ("dinov2_large",    "dinov2_base",         "preferred_when"),
+    ("dinov3",          "dinov2",              "preferred_when"),
 ]
 
 EDGE_CONDITIONS = {
@@ -1016,6 +1101,7 @@ EDGE_CONDITIONS = {
     ("clip_vit",         "dinov2"):           {"condition": {"all": ["cross_modal=True"]}},
     ("swin_large_in22k", "swin_base_in22k"):  {"condition": {"all": ["large_data=True", "high_accuracy_priority=True"]}},
     ("dinov2_large",     "dinov2_base"):      {"condition": {"all": ["feature_quality_priority=True"]}},
+    ("dinov3",           "dinov2"):           {"condition": {"any": ["feature_quality_priority=True", "few_shot=True", "zero_shot=True"]}},
 }
 
 
@@ -1351,6 +1437,9 @@ _CHECKPOINT_FLOPS_G = {
     "convnext_large_in22k":      34.4,
     "dinov2_base":               23.0,
     "dinov2_large":              81.0,
+    "dinov3_small_lvd1689m":     4.7,
+    "dinov3_base_lvd1689m":      17.6,
+    "dinov3_large_lvd1689m":     61.6,
     "clip_vit_base_32":          4.4,
     "clip_vit_large_14":         80.8,
 }

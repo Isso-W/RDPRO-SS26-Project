@@ -284,7 +284,7 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0, "zero_shot should return at least one result")
-        capable = {"dinov2", "clip_vit"}
+        capable = {"dinov2", "dinov3", "clip_vit"}
         for r in results:
             self.assertIn(r["backbone"], capable,
                           f"{r['backbone']} lacks zero_shot capability but appeared in results")
@@ -300,10 +300,27 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0)
-        capable = {"dinov2", "clip_vit"}
+        capable = {"dinov2", "dinov3", "clip_vit"}
         # 至少有一个 capable backbone 出现在结果里
         found = capable & {r["backbone"] for r in results}
         self.assertTrue(found, f"No few_shot-capable backbone in results: {self._backbones(results)}")
+
+    # ── Test 14: DINOv3 surfaces for feature-quality and resolves its checkpoint ─
+
+    def test_dinov3_available_for_feature_quality(self):
+        inp = _make_input(
+            task_type="feature_extraction",
+            data_size="medium",
+            priority="accuracy",
+            few_shot=True,
+        )
+        results = self._run(inp)
+        d3 = [r for r in results if r["backbone"] == "dinov3"]
+        self.assertTrue(d3, f"dinov3 should surface for feature-quality: {self._backbones(results)}")
+        self.assertTrue(
+            str(d3[0].get("pretrained") or "").startswith("dinov3_"),
+            f"expected a dinov3 LVD-1689M checkpoint, got {d3[0].get('pretrained')}",
+        )
 
 
 class TestBudget(unittest.TestCase):
