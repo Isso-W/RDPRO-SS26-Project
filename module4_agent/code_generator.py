@@ -1072,16 +1072,88 @@ def _train_py() -> str:
             return F.cross_entropy(output, target)
 
 
+        def _augmentation_recipe(config: dict[str, Any]):
+            """Return the structured recipe augmentation {tier, invariance, schedule} or None.
+
+            Module 3's recipe layer emits this under model_config["recipe"]; the generated
+            config lifts "recipe" to the top level. Falls back to a top-level "augmentation"
+            dict if one is present. A legacy string augmentation (or nothing) → None.
+            """
+            recipe = get_value(config, "recipe", None)
+            aug = recipe.get("augmentation") if isinstance(recipe, dict) else None
+            if aug is None:
+                candidate = get_value(config, "augmentation", None)
+                if isinstance(candidate, dict):
+                    aug = candidate
+            return aug if isinstance(aug, dict) else None
+
+
+        def _augmentation_schedule(config: dict[str, Any]) -> str:
+            aug = _augmentation_recipe(config)
+            return str((aug or {}).get("schedule", "") or "").lower()
+
+
         def _build_image_transform(config: dict[str, Any], split: str):
             from torchvision import transforms
 
             image_size = as_int(get_value(config, "image_size", 224), 224)
-            augmentation = str(get_value(config, "augmentation", "basic") or "basic").lower()
             normalize = transforms.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225],
             )
-            if split == "train" and augmentation in {"strong", "competition", "advanced"}:
+
+            if split != "train":
+                resize_size = max(image_size, round(image_size * 1.1))
+                return transforms.Compose([
+                    transforms.Resize((resize_size, resize_size)),
+                    transforms.CenterCrop(image_size),
+                    transforms.ToTensor(),
+                    normalize,
+                ])
+
+            # Structured recipe augmentation (Module 3 recipe layer) wins when present: the
+            # pipeline is assembled op-by-op from the invariance mask, so grayscale /
+            # document / fine-grained / domain vetoes are honored. RandAugment is
+            # deliberately NOT used — it bundles color + rotation + shear that would bypass
+            # those vetoes; tier controls intensity via crop range + RandomErasing instead.
+            recipe_aug = _augmentation_recipe(config)
+            if recipe_aug is not None:
+                tier = str(recipe_aug.get("tier", "medium")).lower()
+                invariance = recipe_aug.get("invariance") or {}
+                if tier == "none":
+                    return transforms.Compose([
+                        transforms.Resize((image_size, image_size)),
+                        transforms.ToTensor(),
+                        normalize,
+                    ])
+                crop_min = as_float(invariance.get("crop_scale_min", 0.65), 0.65)
+                crop_min = min(max(crop_min, 0.05), 1.0)
+                ops = [transforms.RandomResizedCrop(
+                    image_size,
+                    scale=(crop_min, 1.0),
+                    ratio=(0.75, 1.3333333333),
+                )]
+                if as_bool(invariance.get("hflip", False), False):
+                    ops.append(transforms.RandomHorizontalFlip())
+                if as_bool(invariance.get("vflip", False), False):
+                    ops.append(transforms.RandomVerticalFlip())
+                if as_bool(invariance.get("rot90", False), False):
+                    ops.append(transforms.RandomRotation(180))   # orientation-free domain
+                if as_bool(invariance.get("color", False), False):
+                    ops.append(transforms.ColorJitter(
+                        brightness=0.2, contrast=0.2, saturation=0.2, hue=0.05,
+                    ))
+                ops.append(transforms.ToTensor())
+                ops.append(normalize)
+                if tier == "heavy":
+                    ops.append(transforms.RandomErasing(
+                        p=0.25, scale=(0.02, 0.15), ratio=(0.3, 3.3),
+                    ))
+                return transforms.Compose(ops)
+
+            # Legacy string augmentation (backward compatible).
+            augmentation = str(get_value(config, "augmentation", "basic") or "basic").lower()
+            if augmentation in {"strong", "competition", "advanced"}:
                 return transforms.Compose([
                     transforms.RandomResizedCrop(
                         image_size,
@@ -1105,17 +1177,9 @@ def _train_py() -> str:
                         ratio=(0.3, 3.3),
                     ),
                 ])
-            if split == "train":
-                return transforms.Compose([
-                    transforms.Resize((image_size, image_size)),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.ToTensor(),
-                    normalize,
-                ])
-            resize_size = max(image_size, round(image_size * 1.1))
             return transforms.Compose([
-                transforms.Resize((resize_size, resize_size)),
-                transforms.CenterCrop(image_size),
+                transforms.Resize((image_size, image_size)),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 normalize,
             ])
@@ -1159,6 +1223,38 @@ def _train_py() -> str:
             return train_indices, validation_indices
 
 
+        def _fold_split_indices(frame, image_column, fold_file, fold_index):
+            """外部注入的 paired 折划分：按样本 id 定 val（其余 train），带完整性校验。
+
+            fold_file JSON: {"folds": [[val_id, ...], ...], ...}（每折 = 该折 val 的 id 列表）。
+            两臂引用同一 fold_file + 同一 fold_index → val 集完全一致（paired 保证）。
+            """
+            import json as _json
+            with open(fold_file, "r", encoding="utf-8") as _fh:
+                spec = _json.load(_fh)
+            folds = spec["folds"]
+            if not 0 <= fold_index < len(folds):
+                raise ValueError(f"fold_index {fold_index} out of range 0..{len(folds) - 1}")
+            all_ids = [str(v) for v in frame[image_column].tolist()]
+            id_set = set(all_ids)
+            seen: set = set()
+            union: set = set()
+            for one in folds:
+                fs = {str(x) for x in one}
+                if seen & fs:
+                    raise ValueError("fold_file 有交集：同一 id 出现在多折")
+                seen |= fs
+                union |= fs
+            if union != id_set:
+                raise ValueError(
+                    f"fold_file 与 CSV id 不一致：缺 {len(id_set - union)} 多 {len(union - id_set)}"
+                )
+            val_ids = {str(x) for x in folds[fold_index]}
+            train_indices = [i for i, x in enumerate(all_ids) if x not in val_ids]
+            validation_indices = [i for i, x in enumerate(all_ids) if x in val_ids]
+            return train_indices, validation_indices
+
+
         def _build_local_dataloader(config: dict[str, Any], split: str, batch_size: int, deterministic: bool = False):
             train_csv = str(get_value(config, "train_csv", "") or "").strip()
             image_dir = str(get_value(config, "image_dir", "") or "").strip()
@@ -1194,11 +1290,19 @@ def _train_py() -> str:
                 unique_labels = sorted(set(label_values), key=lambda value: str(value))
                 label_to_index = {value: index for index, value in enumerate(unique_labels)}
                 encoded_labels = [label_to_index[value] for value in label_values]
-                train_indices, validation_indices = _split_indices(
-                    encoded_labels,
-                    validation_fraction=validation_fraction,
-                    seed=seed,
-                )
+                fold_file = str(get_value(config, "fold_file", "") or "").strip()
+                fold_index = get_value(config, "fold_index", None)
+                if fold_file and fold_index is not None:
+                    # 外部 paired 折划分（旁路内部 val_split）
+                    train_indices, validation_indices = _fold_split_indices(
+                        frame, image_column, fold_file, int(fold_index)
+                    )
+                else:
+                    train_indices, validation_indices = _split_indices(
+                        encoded_labels,
+                        validation_fraction=validation_fraction,
+                        seed=seed,
+                    )
                 selected_indices = train_indices if split == "train" else validation_indices
                 if max_samples > 0:
                     selected_indices = selected_indices[:max_samples]
@@ -1946,6 +2050,17 @@ def _train_py() -> str:
                     False,
                 )
 
+                # Augmentation taper (recipe schedule): swap the train loader to the
+                # eval (no-augmentation) transform for the final 20% of epochs so the
+                # model settles on the clean data distribution. Frozen-head path below
+                # is already augmentation-free, so this only affects full finetuning.
+                aug_schedule = _augmentation_schedule(config)
+                _taper_at = int(0.8 * max(1, int(epochs)))
+                taper_start_epoch = (
+                    _taper_at if aug_schedule == "taper_last_20pct" and _taper_at >= 1 else None
+                )
+                tapered = False
+
                 # Frozen backbone + classification/feature_extraction → extract features once
                 # and train only the head on the cached vectors (≈ one data pass instead of N).
                 ran_cached = False
@@ -1992,6 +2107,15 @@ def _train_py() -> str:
                 for epoch in (
                     range(start_epoch, max(1, int(epochs))) if not ran_cached else range(0)
                 ):
+                    if taper_start_epoch is not None and not tapered and epoch >= taper_start_epoch:
+                        print(
+                            f"[train] Augmentation taper: switching to eval-style "
+                            f"preprocessing for the final epochs (from epoch {epoch + 1})."
+                        )
+                        dataloader = _build_dataloader(
+                            config, split="train", batch_size=batch_size, deterministic=True
+                        )
+                        tapered = True
                     epoch_loss = 0.0
                     batch_count = 0
                     for x, target in dataloader:
@@ -2325,6 +2449,15 @@ def _evaluate_py() -> str:
                         )
                 except (ImportError, ValueError) as exc:
                     print(f"[evaluate] Could not compute {requested_metric}: {exc}; using accuracy.")
+                export_path = str(get_value(config, "export_preds_path", "") or "").strip()
+                if export_path:
+                    # 导出 val 预测供离线算指标 bundle（macro_f1 / roc_auc / pr_auc）
+                    import json as _json
+                    with open(export_path, "w", encoding="utf-8") as _fh:
+                        _json.dump(
+                            {"y_true": labels.tolist(), "y_prob": probabilities.tolist()},
+                            _fh,
+                        )
                 return {
                     "metric_name": metric_name,
                     "metric_value": metric_value,

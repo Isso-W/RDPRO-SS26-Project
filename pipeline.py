@@ -68,32 +68,39 @@ def derive_data_size(
     return by_total
 
 
-_RECOMMENDED_EPOCHS = {
-    ("small",  "head_only"): 25,
-    ("small",  "finetune"):  40,
-    ("small",  "scratch"):   50,
-    ("medium", "head_only"): 12,
-    ("medium", "finetune"):  20,
-    ("medium", "scratch"):   30,
-    ("large",  "head_only"):  8,
-    ("large",  "finetune"):  15,
-    ("large",  "scratch"):   20,
-}
+# epochs 逻辑已收编进 recipe 层（recipe/tables.py）；此处 re-export 保持
+# run_kaggle_benchmark 等现有 `from pipeline import derive_recommended_epochs` 不破。
+from recipe.tables import (  # noqa: E402
+    _RECOMMENDED_EPOCHS,       # noqa: F401
+    derive_recommended_epochs,  # noqa: F401
+)
 
 
-def derive_recommended_epochs(
-    data_size: str,
-    finetune_strategy: str | None,
-    use_pretrained: bool,
-) -> int:
-    """Recommend training epochs based on data size and training mode."""
-    if not use_pretrained:
-        mode = "scratch"
-    elif finetune_strategy == "head_only":
-        mode = "head_only"
-    else:
-        mode = "finetune"
-    return _RECOMMENDED_EPOCHS.get((data_size, mode), 15)
+# ── Module 2 统计 → recipe 信号（分辨率档 / 色彩模式）──────────────────────────
+_GRAYSCALE_MODES = {"L", "1", "LA", "I", "F"}
+
+
+def derive_resolution_tier(m2_report: dict) -> str | None:
+    """按 avg 短边分档：<256 low / <768 medium / >=768 high。无信号 → None。"""
+    aw = m2_report.get("avg_width", 0) or 0
+    ah = m2_report.get("avg_height", 0) or 0
+    if not aw or not ah:
+        return None
+    short = min(aw, ah)
+    if short < 256:
+        return "low"
+    if short >= 768:
+        return "high"
+    return "medium"
+
+
+def derive_color_mode(m2_report: dict) -> str | None:
+    """mode_distribution 主导判定 grayscale / rgb。无信号 → None。"""
+    md = m2_report.get("mode_distribution") or {}
+    if not md:
+        return None
+    dominant = max(md, key=md.get)
+    return "grayscale" if dominant in _GRAYSCALE_MODES else "rgb"
 
 
 _IMBALANCE_RATIO_THRESHOLD = 10
@@ -184,6 +191,12 @@ def merge_modules(m1_output: dict, m2_report: dict) -> dict:
     merged["constraints"]["class_imbalance"] = (
         merged["constraints"].get("class_imbalance", False) or m2_imbalance
     )
+
+    # recipe 层信号：分辨率档 / 色彩模式（单独放 data_stats，不污染检索用 constraints）
+    merged["data_stats"] = {
+        "resolution_tier": derive_resolution_tier(m2_report),
+        "color_mode": derive_color_mode(m2_report),
+    }
 
     return merged
 
@@ -298,14 +311,14 @@ def run_pipeline(
         for r in recommendations:
             print(f"    [{r.get('rank_basis')}] {r.get('backbone')} — {r.get('explanation')}")
 
-    task_lists = build_all_task_lists(recommendations, G, fmt=fmt)
+    task_lists = build_all_task_lists(recommendations, G, fmt=fmt, input_json=m3_input)
     module4_result = None
 
     if module4_output:
         print(f"[Pipeline] Module 4: Generating code to {module4_output}...")
         module4_task_lists = task_lists
         if fmt != "nl":
-            module4_task_lists = build_all_task_lists(recommendations, G, fmt="nl")
+            module4_task_lists = build_all_task_lists(recommendations, G, fmt="nl", input_json=m3_input)
         num_classes = m3_input.get("num_classes")
         for task_list in module4_task_lists:
             mc = task_list.get("model_config")

@@ -1361,6 +1361,8 @@ EDGES = [
     ("swin_large_in22k", "swin_base_in22k",    "alternative_to"),
     ("dinov2_base",      "dinov2_large",       "alternative_to"),
     ("dinov2_large",     "dinov2_base",        "alternative_to"),
+    ("dinov3_base_lvd1689m",  "dinov3_large_lvd1689m", "alternative_to"),
+    ("dinov3_large_lvd1689m", "dinov3_base_lvd1689m",  "alternative_to"),
     ("clip_vit_base_32", "clip_vit_large_14",  "alternative_to"),
     ("clip_vit_large_14","clip_vit_base_32",   "alternative_to"),
     ("dinov3_small_lvd1689m", "dinov3_base_lvd1689m",  "alternative_to"),
@@ -1706,16 +1708,32 @@ def _select_components(
         chosen = candidates[0]  # default: 第一个兼容项
 
         if ctype == "loss":
-            # 类别不平衡 → 优先 focal_loss
-            if c.get("class_imbalance") and "focal_loss" in candidates:
-                chosen = "focal_loss"
-            # 分割任务 → 优先 dice_loss，二值场景用 bce_dice
+            # Phase B：preferred_when 边消费（候选间两两偏好，条件匹配则胜者上位）。
+            # backbone 打分只用边的源+条件；此处是候选内选择，目标有意义。
+            # candidates 顺序即遍历顺序，首个命中者胜（与 candidates[0] 的确定性一致）。
+            edge_pick = None
+            for cand in candidates:
+                for succ in graph.successors(cand):
+                    e = graph[cand][succ]
+                    if (e.get("relation") == "preferred_when"
+                            and succ in candidates
+                            and _matches_condition(e.get("condition", {}), input_json)):
+                        edge_pick = cand
+                        break
+                if edge_pick:
+                    break
+
+            if edge_pick is not None:
+                chosen = edge_pick
+            # class_imbalance -> focal is expressed by the
+            # focal_loss -> cross_entropy_loss preferred_when edge. Keep the
+            # remaining fallback rules for component choices not yet encoded as
+            # loss-preference edges.
             elif task_type == "image_segmentation":
                 if c.get("class_imbalance") and "bce_dice_loss" in candidates:
                     chosen = "bce_dice_loss"
                 elif "dice_loss" in candidates:
                     chosen = "dice_loss"
-            # DETR 系 → hungarian_matching_loss
             elif backbone_id in ("detr", "rt_detr") and "hungarian_matching_loss" in candidates:
                 chosen = "hungarian_matching_loss"
 
@@ -1760,6 +1778,9 @@ _CHECKPOINT_FLOPS_G = {
     "convnext_large_in22k":      34.4,
     "dinov2_base":               23.0,
     "dinov2_large":              81.0,
+    "dinov3_small_lvd1689m":     4.7,
+    "dinov3_base_lvd1689m":      17.6,
+    "dinov3_large_lvd1689m":     61.6,
     "clip_vit_base_32":          4.4,
     "clip_vit_large_14":         80.8,
 }
@@ -2137,12 +2158,16 @@ def retrieve_top3_hybrid(
 # 6. Module 4 接口 — 任务清单生成
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") -> dict:
+def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured",
+                    input_json: dict | None = None) -> dict:
     """
     将单条 retrieve_top3_hybrid 结果转换为 Module 4 可消费的任务清单。
 
     fmt="structured" — 结构化 JSON，适合确定性代码模板填充
     fmt="nl"         — 自然语言任务列表 + 元数据，适合 LLM agent prompt
+
+    input_json 传入时（fmt="nl"），调用 recipe 层把 image_size/lr/epochs/
+    augmentation 并进 model_config（带 provenance）。缺省则不产 recipe（向后兼容）。
     """
     backbone_id   = result["backbone"]
     checkpoint_id = result.get("pretrained")
@@ -2270,6 +2295,23 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured") ->
             "scratch_viable":    scratch,
         })
 
+        # recipe 层：并进推荐级超参（惰性 import——避免 cwd=retrieval 时找不到包）
+        if input_json is not None:
+            from recipe import build_recipe
+            backbone_facts = dict(graph.nodes.get(backbone_id, {}))
+            if checkpoint_id:
+                backbone_facts.update(graph.nodes.get(checkpoint_id, {}))
+            recipe, recipe_prov = build_recipe(
+                model_config, input_json, backbone_facts,
+                input_json.get("data_stats"))
+            model_config["recipe"] = recipe
+            model_config["recipe_provenance"] = recipe_prov
+            # image_size/lr/epochs 直接生效（Module 4 模板已读这些顶层键）；
+            # augmentation 三维的消费需 Module 4 模板改动（recipe_layer_plan §6），暂缓。
+            model_config.setdefault("image_size", recipe["image_size"])
+            model_config.setdefault("learning_rate", recipe["learning_rate"])
+            model_config.setdefault("recommended_epochs", recipe["epochs"])
+
         return {
             "format":       "nl",
             "model_config": model_config,
@@ -2285,11 +2327,15 @@ def build_all_task_lists(
     results: list[dict],
     graph: nx.DiGraph,
     fmt: str = "structured",
+    input_json: dict | None = None,
 ) -> list[dict]:
-    """Top 3 结果全部转换为任务清单，rank 字段标注排名。"""
+    """Top 3 结果全部转换为任务清单，rank 字段标注排名。
+
+    input_json 透传给 build_task_list 以产出 recipe（缺省则不产，向后兼容）。
+    """
     out = []
     for rank, result in enumerate(results, 1):
-        tl = build_task_list(result, graph, fmt=fmt)
+        tl = build_task_list(result, graph, fmt=fmt, input_json=input_json)
         tl["rank"]  = rank
         tl["score"] = result.get("score")
         out.append(tl)

@@ -386,6 +386,23 @@ class TestBehavior(unittest.TestCase):
         results = self._run(inp)
         self.assertIn("sam3", self._backbones(results))
 
+    # ── Test 14: DINOv3 surfaces for feature-quality and resolves its checkpoint ─
+
+    def test_dinov3_available_for_feature_quality(self):
+        inp = _make_input(
+            task_type="feature_extraction",
+            data_size="medium",
+            priority="accuracy",
+            few_shot=True,
+        )
+        results = self._run(inp)
+        d3 = [r for r in results if r["backbone"] == "dinov3"]
+        self.assertTrue(d3, f"dinov3 should surface for feature-quality: {self._backbones(results)}")
+        self.assertTrue(
+            str(d3[0].get("pretrained") or "").startswith("dinov3_"),
+            f"expected a dinov3 LVD-1689M checkpoint, got {d3[0].get('pretrained')}",
+        )
+
 
 class TestBudget(unittest.TestCase):
     """约束感知选型：max_params_m / max_flops_g 预算过滤（Phase 1+2）。"""
@@ -525,6 +542,37 @@ class TestTaskList(unittest.TestCase):
         for tl in tls:
             self.assertIn("score", tl)
             self.assertIsNotNone(tl["score"])
+
+
+class TestPhaseBLossEdges(unittest.TestCase):
+    """Phase B：_select_components 消费 loss 节点间的 preferred_when 边。"""
+
+    def _loss_for(self, graph, constraints):
+        from rag_retrieval import _select_components
+        q = _make_input(task_type="classification", **constraints)
+        return _select_components("resnet", "classification", q, graph)["loss"]
+
+    def test_edge_path_fires_distinctly_from_hardcoded(self):
+        # 硬要求：证明边路径确实活着，而非硬编码 fallback。
+        # medical 下硬编码给 cross_entropy；加一条合成边 focal→CE(medical) 后应翻成
+        # focal —— focal 只可能来自边，据此证明死边已激活。
+        base = self._loss_for(build_graph(), {"medical": True})
+        self.assertEqual(base, "cross_entropy_loss")  # 无边时的默认/硬编码结果
+
+        g = build_graph()
+        g.add_edge("focal_loss", "cross_entropy_loss",
+                   relation="preferred_when", condition={"any": ["medical=True"]})
+        self.assertEqual(self._loss_for(g, {"medical": True}), "focal_loss")
+
+    def test_class_imbalance_picks_focal_via_edge(self):
+        # rag_wang keeps the production direction:
+        # focal_loss→cross_entropy_loss(class_imbalance). Phase B should pick
+        # focal through the edge rather than an old hardcoded fallback.
+        self.assertEqual(self._loss_for(build_graph(), {"class_imbalance": True}),
+                         "focal_loss")
+
+    def test_no_imbalance_falls_back_to_cross_entropy(self):
+        self.assertEqual(self._loss_for(build_graph(), {}), "cross_entropy_loss")
 
 
 if __name__ == "__main__":
