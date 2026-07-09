@@ -129,8 +129,8 @@ class TestGoldenCases(unittest.TestCase):
     def test_large_acc_classification(self):
         res = self.results["large_acc_classification"]
         backbones = _backbones(res)
+        self.assertIn("dinov3", backbones)
         self.assertIn("dinov2", backbones)
-        self.assertIn("swin_transformer", backbones)
         for tier in _checkpoint_tiers(res):
             self.assertNotIn(tier, {"nano"})
 
@@ -144,10 +144,10 @@ class TestGoldenCases(unittest.TestCase):
                 "zero_shot", G.nodes[r["backbone"]].get("capabilities", [])
             )
 
-    # 5. 零样本 + 跨模态：CLIP 应为首选
-    def test_zero_shot_cross_modal_top1_clip(self):
+    # 5. 零样本 + 跨模态：SigLIP2 是当前 rag_wang 的首选跨模态模型
+    def test_zero_shot_cross_modal_top1_siglip2(self):
         res = self.results["zero_shot_cross_modal"]
-        self.assertEqual(_backbones(res)[0], "clip_vit")
+        self.assertEqual(_backbones(res)[0], "siglip2")
 
     # 6. 少样本分类：DINOv2 应为首选（few_shot capability + 冻结骨干策略）
     def test_few_shot_classification_top1_dinov2(self):
@@ -155,10 +155,10 @@ class TestGoldenCases(unittest.TestCase):
         self.assertEqual(_backbones(res)[0], "dinov2")
         self.assertEqual(res[0]["finetune_strategy"], "head_only")
 
-    # 7. 跨模态特征提取：CLIP 首选 + 对比学习损失
+    # 7. 跨模态特征提取：SigLIP2 首选 + 对比学习损失
     def test_cross_modal_feature_extraction(self):
         res = self.results["cross_modal_feature_extraction"]
-        self.assertEqual(_backbones(res)[0], "clip_vit")
+        self.assertEqual(_backbones(res)[0], "siglip2")
         self.assertEqual(res[0]["loss"], "infonce_loss")
 
     # 8. 普通小数据分类：必须有预训练 checkpoint（小数据不该从头训练），
@@ -174,12 +174,12 @@ class TestGoldenCases(unittest.TestCase):
         for tier in _checkpoint_tiers(res):
             self.assertIn(tier, {"nano", "small", "base"})
 
-    # 9. 大数据高精度检测：专用检测器（DETR、YOLO 系）必须在列。
+    # 9. 大数据高精度检测：YOLO26/YOLOv8 专用检测器必须在列。
     #    排序受向量分影响存疑（resnet 曾靠 v=1.0 登顶），只锁成员资格
     def test_large_acc_detection_has_dedicated_detectors(self):
         res = self.results["large_acc_detection"]
         backbones = _backbones(res)
-        self.assertIn("detr", backbones)
+        self.assertIn("yolo26", backbones)
         self.assertIn("yolov8", backbones)
 
 
