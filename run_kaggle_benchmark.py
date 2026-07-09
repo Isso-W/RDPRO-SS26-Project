@@ -91,11 +91,23 @@ def prepare_project(
         llm_provider=llm_provider,
     )
 
+    from kaggle_orchestrator import write_run_manifest
+
+    run_manifest = write_run_manifest(
+        output_dir,
+        benchmark_key=benchmark_key,
+        info=info,
+        module3_input=m3_input,
+        recommendations=recommendations,
+        module4=module4,
+    )
+
     return {
         "info": info,
         "module3_input": m3_input,
         "recommendations": recommendations,
         "module4": module4,
+        "run_manifest": str(run_manifest),
     }
 
 
@@ -125,6 +137,7 @@ def main() -> int:
     info = result["info"]
     print("\n" + "=" * 70)
     print(f"Generated project: {project}")
+    print(f"Run manifest: {result['run_manifest']}")
     print("Next steps:")
     print(f"  1) Train:   cd {project} && python -u run.py --epochs 15")
     print(f"  2) Submit:  python kaggle_submit.py {args.benchmark} \\")

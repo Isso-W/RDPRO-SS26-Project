@@ -185,14 +185,37 @@ def write_submission(predictions, index_to_label, sample_submission, out_path, l
     return out_path
 
 
-def submit(competition: str, submission_csv: str | Path, message: str) -> None:
+def _get_attr(obj, *names):
+    for name in names:
+        if isinstance(obj, dict) and name in obj:
+            return obj[name]
+        if hasattr(obj, name):
+            return getattr(obj, name)
+    return None
+
+
+def submit(competition: str, submission_csv: str | Path, message: str) -> dict:
     from kaggle.api.kaggle_api_extended import KaggleApi
 
     api = KaggleApi()
     api.authenticate()
     print(f"[submit] Submitting {submission_csv} to '{competition}' ...")
-    api.competition_submit(str(submission_csv), message, competition)
-    print("[submit] Submitted. Check the competition page for your score.")
+    response = api.competition_submit(str(submission_csv), message, competition)
+    details = {"api_response": str(response) if response is not None else None}
+
+    try:
+        submissions = api.competition_submissions(competition)
+    except Exception as exc:  # pragma: no cover - depends on Kaggle service/auth state
+        details["submission_history_error"] = f"{type(exc).__name__}: {exc}"
+        print("[submit] Submitted. Could not retrieve submission history yet.")
+        return {"status": "submitted", "public_score": None, "details": details}
+
+    latest = submissions[0] if submissions else None
+    status = _get_attr(latest, "status", "Status") or "submitted"
+    public_score = _get_attr(latest, "publicScore", "public_score", "score", "Score")
+    details["latest_submission"] = str(latest) if latest is not None else None
+    print(f"[submit] Submitted. status={status} public_score={public_score}")
+    return {"status": status, "public_score": public_score, "details": details}
 
 
 def predict_and_submit(
@@ -203,8 +226,13 @@ def predict_and_submit(
     message: str | None = None,
     do_submit: bool = False,
     batch_size: int = 64,
+    receipt_out: str | Path | None = None,
+    log_memory: bool = False,
+    memory_path: str | Path | None = None,
+    run_manifest_path: str | Path | None = None,
 ) -> dict:
     from ingestion.kaggle_loader import ingest_benchmark
+    from kaggle_orchestrator import log_kaggle_outcome_if_scored, write_submission_receipt
 
     # Re-locate the competition files (download is skipped if already present).
     info = ingest_benchmark(benchmark_key, data_root)
@@ -225,10 +253,47 @@ def predict_and_submit(
         )
     write_submission(predictions, idx_to_label, sample, out_path, label_columns=info.get("label_columns"))
 
+    submit_result = {"status": "not_submitted", "public_score": None, "details": {}}
+    submission_message = message or f"Jiaozi {benchmark_key} submission"
     if do_submit:
-        submit(info["competition"], out_path, message or f"Jiaozi {benchmark_key} submission")
+        submit_result = submit(info["competition"], out_path, submission_message)
 
-    return {"submission": str(out_path), "competition": info["competition"], "submitted": do_submit}
+    project_dir = Path(project_dir)
+    receipt_path = Path(receipt_out) if receipt_out else project_dir / "submission_receipt.json"
+    write_submission_receipt(
+        receipt_path,
+        benchmark_key=benchmark_key,
+        competition=info["competition"],
+        submission_csv=out_path,
+        submitted=do_submit,
+        message=submission_message if do_submit else None,
+        status=submit_result.get("status"),
+        public_score=submit_result.get("public_score"),
+        details=submit_result.get("details"),
+    )
+
+    memory_log = None
+    if log_memory:
+        manifest = (
+            Path(run_manifest_path)
+            if run_manifest_path
+            else project_dir.parent / "kaggle_run_manifest.json"
+        )
+        memory_log = log_kaggle_outcome_if_scored(
+            receipt_path,
+            run_manifest_path=manifest,
+            project_dir=project_dir,
+            memory_path=memory_path,
+        )
+
+    return {
+        "submission": str(out_path),
+        "competition": info["competition"],
+        "submitted": do_submit,
+        "receipt": str(receipt_path),
+        "public_score": submit_result.get("public_score"),
+        "memory_log": memory_log,
+    }
 
 
 def main() -> int:
@@ -240,6 +305,14 @@ def main() -> int:
     parser.add_argument("--submit", action="store_true", help="Submit to Kaggle after writing the CSV.")
     parser.add_argument("--message", default=None, help="Submission message.")
     parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--receipt-out", default=None,
+                        help="Where to write submission_receipt.json (default: <project>/submission_receipt.json).")
+    parser.add_argument("--log-memory", action="store_true",
+                        help="Append the Kaggle public score to outcome memory when the receipt has a score.")
+    parser.add_argument("--memory", default=None,
+                        help="Outcome-memory JSONL path (default: recommender/outcomes.jsonl).")
+    parser.add_argument("--run-manifest", default=None,
+                        help="Path to kaggle_run_manifest.json (default: <project>/../kaggle_run_manifest.json).")
     args = parser.parse_args()
 
     result = predict_and_submit(
@@ -250,6 +323,10 @@ def main() -> int:
         message=args.message,
         do_submit=args.submit,
         batch_size=args.batch_size,
+        receipt_out=args.receipt_out,
+        log_memory=args.log_memory,
+        memory_path=args.memory,
+        run_manifest_path=args.run_manifest,
     )
     print(result)
     return 0

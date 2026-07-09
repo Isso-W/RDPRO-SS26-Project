@@ -206,6 +206,11 @@ Available Kaggle keys in the catalog: `cassava`, `state_farm`, `siim_isic`,
 `plant-pathology-2020-fgvc7` competition slug. (HuggingFace-sourced keys like `cifar10` use the
 `pipeline --dataset` path instead and raise here.)
 
+Plant Pathology 2020 uses one-hot target columns in `train.csv` and
+`sample_submission.csv`. Jiaozi materializes a derived training CSV with a single
+`__jiaozi_label` column, then writes probabilistic one-hot submissions back into
+the original Kaggle format.
+
 ### End to end: select → train → predict → submit
 
 `run_kaggle_benchmark.py` ingests the competition, reads the CSV labels to build a
@@ -217,6 +222,11 @@ Kaggle CSV:
 python run_kaggle_benchmark.py cassava \
   --data-root ./kaggle_data --output ./kaggle_run --priority balanced
 ```
+
+The generation step writes `kaggle_run/kaggle_run_manifest.json`, which records
+the competition, Module 3 input, recommendations, generated Module 4 project, and
+current git commit. This is the lightweight handoff record used by the Kaggle
+submission receipt and outcome-memory logging flow.
 
 Then train the generated project (GPU recommended):
 
@@ -235,6 +245,25 @@ python kaggle_submit.py cassava --project ./kaggle_run/module4_code --data-root 
 python kaggle_submit.py cassava --project ./kaggle_run/module4_code --data-root ./kaggle_data \
     --submit --message "Jiaozi efficientnet baseline"
 ```
+
+Every submit command writes `submission_receipt.json` in the generated project
+directory. To log a scored Kaggle run into the accumulating recommender memory
+when Kaggle exposes a public score:
+
+```bash
+python kaggle_submit.py plant-pathology-2020-fgv \
+  --project ./kaggle_run/module4_code \
+  --data-root ./kaggle_data \
+  --submit \
+  --message "Jiaozi Plant Pathology baseline" \
+  --log-memory \
+  --memory recommender/outcomes.jsonl
+```
+
+If Kaggle has not processed the submission yet, the receipt is still written and
+memory logging is skipped with `missing_public_score`; rerun with
+`--log-memory --run-manifest ./kaggle_run/kaggle_run_manifest.json` after the
+score is visible.
 
 > The competition test labels are hidden — you can't score locally; submission is the
 > only way to get a number. `run.py`'s own `evaluate` runs on a held-out slice of the

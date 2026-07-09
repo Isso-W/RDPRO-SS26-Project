@@ -83,6 +83,38 @@ def test_build_training_specs_reads_top_level_and_constraint_tta():
     assert constraint_spec.tta is True
 
 
+def test_training_spec_preserves_tta_recipe_and_fold_controls_together():
+    spec = build_training_specs(
+        [
+            {
+                "model_config": {
+                    "task_type": "classification",
+                    "tta": True,
+                    "fold_file": "folds.json",
+                    "fold_index": 2,
+                    "export_preds_path": "val_preds.json",
+                    "recipe": {
+                        "augmentation": {
+                            "tier": "medium",
+                            "invariance": {"hflip": True},
+                            "schedule": "taper_last_20pct",
+                        }
+                    },
+                }
+            }
+        ]
+    )[0]
+
+    config = spec.to_config()
+
+    assert config["tta"] is True
+    assert config["model_config"]["tta"] is True
+    assert config["model_config"]["fold_file"] == "folds.json"
+    assert config["model_config"]["fold_index"] == 2
+    assert config["model_config"]["export_preds_path"] == "val_preds.json"
+    assert config["model_config"]["recipe"]["augmentation"]["schedule"] == "taper_last_20pct"
+
+
 def test_build_training_specs_handles_older_candidate_shape():
     candidates = [
         {
