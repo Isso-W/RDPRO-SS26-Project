@@ -802,16 +802,88 @@ def _train_py() -> str:
             return F.cross_entropy(output, target)
 
 
+        def _augmentation_recipe(config: dict[str, Any]):
+            """Return the structured recipe augmentation {tier, invariance, schedule} or None.
+
+            Module 3's recipe layer emits this under model_config["recipe"]; the generated
+            config lifts "recipe" to the top level. Falls back to a top-level "augmentation"
+            dict if one is present. A legacy string augmentation (or nothing) → None.
+            """
+            recipe = get_value(config, "recipe", None)
+            aug = recipe.get("augmentation") if isinstance(recipe, dict) else None
+            if aug is None:
+                candidate = get_value(config, "augmentation", None)
+                if isinstance(candidate, dict):
+                    aug = candidate
+            return aug if isinstance(aug, dict) else None
+
+
+        def _augmentation_schedule(config: dict[str, Any]) -> str:
+            aug = _augmentation_recipe(config)
+            return str((aug or {}).get("schedule", "") or "").lower()
+
+
         def _build_image_transform(config: dict[str, Any], split: str):
             from torchvision import transforms
 
             image_size = as_int(get_value(config, "image_size", 224), 224)
-            augmentation = str(get_value(config, "augmentation", "basic") or "basic").lower()
             normalize = transforms.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225],
             )
-            if split == "train" and augmentation in {"strong", "competition", "advanced"}:
+
+            if split != "train":
+                resize_size = max(image_size, round(image_size * 1.1))
+                return transforms.Compose([
+                    transforms.Resize((resize_size, resize_size)),
+                    transforms.CenterCrop(image_size),
+                    transforms.ToTensor(),
+                    normalize,
+                ])
+
+            # Structured recipe augmentation (Module 3 recipe layer) wins when present: the
+            # pipeline is assembled op-by-op from the invariance mask, so grayscale /
+            # document / fine-grained / domain vetoes are honored. RandAugment is
+            # deliberately NOT used — it bundles color + rotation + shear that would bypass
+            # those vetoes; tier controls intensity via crop range + RandomErasing instead.
+            recipe_aug = _augmentation_recipe(config)
+            if recipe_aug is not None:
+                tier = str(recipe_aug.get("tier", "medium")).lower()
+                invariance = recipe_aug.get("invariance") or {}
+                if tier == "none":
+                    return transforms.Compose([
+                        transforms.Resize((image_size, image_size)),
+                        transforms.ToTensor(),
+                        normalize,
+                    ])
+                crop_min = as_float(invariance.get("crop_scale_min", 0.65), 0.65)
+                crop_min = min(max(crop_min, 0.05), 1.0)
+                ops = [transforms.RandomResizedCrop(
+                    image_size,
+                    scale=(crop_min, 1.0),
+                    ratio=(0.75, 1.3333333333),
+                )]
+                if as_bool(invariance.get("hflip", False), False):
+                    ops.append(transforms.RandomHorizontalFlip())
+                if as_bool(invariance.get("vflip", False), False):
+                    ops.append(transforms.RandomVerticalFlip())
+                if as_bool(invariance.get("rot90", False), False):
+                    ops.append(transforms.RandomRotation(180))   # orientation-free domain
+                if as_bool(invariance.get("color", False), False):
+                    ops.append(transforms.ColorJitter(
+                        brightness=0.2, contrast=0.2, saturation=0.2, hue=0.05,
+                    ))
+                ops.append(transforms.ToTensor())
+                ops.append(normalize)
+                if tier == "heavy":
+                    ops.append(transforms.RandomErasing(
+                        p=0.25, scale=(0.02, 0.15), ratio=(0.3, 3.3),
+                    ))
+                return transforms.Compose(ops)
+
+            # Legacy string augmentation (backward compatible).
+            augmentation = str(get_value(config, "augmentation", "basic") or "basic").lower()
+            if augmentation in {"strong", "competition", "advanced"}:
                 return transforms.Compose([
                     transforms.RandomResizedCrop(
                         image_size,
@@ -835,17 +907,9 @@ def _train_py() -> str:
                         ratio=(0.3, 3.3),
                     ),
                 ])
-            if split == "train":
-                return transforms.Compose([
-                    transforms.Resize((image_size, image_size)),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.ToTensor(),
-                    normalize,
-                ])
-            resize_size = max(image_size, round(image_size * 1.1))
             return transforms.Compose([
-                transforms.Resize((resize_size, resize_size)),
-                transforms.CenterCrop(image_size),
+                transforms.Resize((image_size, image_size)),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 normalize,
             ])
@@ -1585,6 +1649,17 @@ def _train_py() -> str:
                     False,
                 )
 
+                # Augmentation taper (recipe schedule): swap the train loader to the
+                # eval (no-augmentation) transform for the final 20% of epochs so the
+                # model settles on the clean data distribution. Frozen-head path below
+                # is already augmentation-free, so this only affects full finetuning.
+                aug_schedule = _augmentation_schedule(config)
+                _taper_at = int(0.8 * max(1, int(epochs)))
+                taper_start_epoch = (
+                    _taper_at if aug_schedule == "taper_last_20pct" and _taper_at >= 1 else None
+                )
+                tapered = False
+
                 # Frozen backbone + classification/feature_extraction → extract features once
                 # and train only the head on the cached vectors (≈ one data pass instead of N).
                 ran_cached = False
@@ -1630,6 +1705,15 @@ def _train_py() -> str:
                 for epoch in (
                     range(start_epoch, max(1, int(epochs))) if not ran_cached else range(0)
                 ):
+                    if taper_start_epoch is not None and not tapered and epoch >= taper_start_epoch:
+                        print(
+                            f"[train] Augmentation taper: switching to eval-style "
+                            f"preprocessing for the final epochs (from epoch {epoch + 1})."
+                        )
+                        dataloader = _build_dataloader(
+                            config, split="train", batch_size=batch_size, deterministic=True
+                        )
+                        tapered = True
                     epoch_loss = 0.0
                     batch_count = 0
                     for x, target in dataloader:
