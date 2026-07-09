@@ -1,0 +1,292 @@
+[
+  {
+    "format": "nl",
+    "model_config": {
+      "backbone": "dinov3",
+      "pretrained_hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+      "pretrained_name": "DINOv3-B/16 / LVD-1689M",
+      "pretrain_dataset": "LVD-1689M (self-supervised)",
+      "params_M": 86,
+      "head": "classification_head",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "finetune_strategy": "partial",
+      "freeze_backbone": false,
+      "unfreeze_last_n_blocks": 2,
+      "train_norm_layers": true,
+      "scratch_viable": false,
+      "recipe": {
+        "epochs": 40,
+        "image_size": 224,
+        "learning_rate": 0.0001,
+        "augmentation": {
+          "tier": "heavy",
+          "invariance": {
+            "hflip": true,
+            "vflip": false,
+            "rot90": false,
+            "color": true,
+            "crop_scale_min": 0.4
+          },
+          "schedule": "taper_last_20pct"
+        }
+      },
+      "recipe_provenance": {
+        "epochs": "epochs_table[small,finetune]",
+        "image_size": "family_default=224",
+        "learning_rate": "lr_base[cnn,finetune]",
+        "augmentation": "tier[data_size=small→heavy]; invariance[domain_signal_missing]; schedule[small→taper_last_20pct]"
+      },
+      "image_size": 224,
+      "learning_rate": 0.0001,
+      "recommended_epochs": 40,
+      "num_classes": 4,
+      "train_csv": "/content/kaggle_data/plant-pathology-2020-fgvc7/train__jiaozi_labels.csv",
+      "image_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images",
+      "image_column": "image_id",
+      "label_column": "__jiaozi_label",
+      "label_columns": [
+        "healthy",
+        "multiple_diseases",
+        "rust",
+        "scab"
+      ],
+      "image_path_template": "{image}",
+      "image_extension": ".jpg",
+      "evaluation_metric": "roc_auc",
+      "offline_smoke": false,
+      "batch_size": 8,
+      "eval_batch_size": 16,
+      "mixed_precision": true,
+      "early_stopping_patience": 4,
+      "export_preds_path": "outputs/val_predictions_candidate_1.csv",
+      "fold_file": "/content/kaggle_data/plant-pathology-2020-fgvc7/folds.json",
+      "fold_index": 0,
+      "tta": {
+        "enabled": true,
+        "transforms": [
+          "hflip"
+        ],
+        "num_augments": 2
+      },
+      "class_imbalance": true,
+      "use_class_weights": true,
+      "class_weight_power": 0.5
+    },
+    "tasks": [
+      "Load DINOv3-B/16 / LVD-1689M from facebook/dinov3-vitb16-pretrain-lvd1689m (86M params, pretrained on LVD-1689M (self-supervised))",
+      "Partial finetune: update head, norm layers, and the last 2 backbone blocks",
+      "Use Classification Head as the output head",
+      "Use CrossEntropyLoss as the training loss",
+      "Use AdamW as the optimizer"
+    ],
+    "alternatives": [],
+    "rank": 1,
+    "score": 1.0,
+    "class_imbalance": true,
+    "label_columns": [
+      "healthy",
+      "multiple_diseases",
+      "rust",
+      "scab"
+    ],
+    "evaluation_metric": "roc_auc",
+    "use_class_weights": true,
+    "class_weight_power": 0.5
+  },
+  {
+    "format": "nl",
+    "model_config": {
+      "backbone": "dinov2",
+      "pretrained_hf_id": "facebook/dinov2-base",
+      "pretrained_name": "DINOv2-Base",
+      "pretrain_dataset": "LVD-142M (self-supervised)",
+      "params_M": 86,
+      "head": "classification_head",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "finetune_strategy": "head_only",
+      "freeze_backbone": true,
+      "unfreeze_last_n_blocks": 0,
+      "train_norm_layers": false,
+      "scratch_viable": false,
+      "recipe": {
+        "epochs": 25,
+        "image_size": 224,
+        "learning_rate": 0.001,
+        "augmentation": {
+          "tier": "medium",
+          "invariance": {
+            "hflip": true,
+            "vflip": false,
+            "rot90": false,
+            "color": true,
+            "crop_scale_min": 0.6
+          },
+          "schedule": "taper_last_20pct"
+        }
+      },
+      "recipe_provenance": {
+        "epochs": "epochs_table[small,head_only]",
+        "image_size": "family_default=224 | ok/14",
+        "learning_rate": "lr_base[transformer,head_only]",
+        "augmentation": "tier[data_size=small→heavy | head_only→medium]; invariance[domain_signal_missing]; schedule[small→taper_last_20pct]"
+      },
+      "image_size": 224,
+      "learning_rate": 0.001,
+      "recommended_epochs": 25,
+      "num_classes": 4,
+      "train_csv": "/content/kaggle_data/plant-pathology-2020-fgvc7/train__jiaozi_labels.csv",
+      "image_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images",
+      "image_column": "image_id",
+      "label_column": "__jiaozi_label",
+      "label_columns": [
+        "healthy",
+        "multiple_diseases",
+        "rust",
+        "scab"
+      ],
+      "image_path_template": "{image}",
+      "image_extension": ".jpg",
+      "evaluation_metric": "roc_auc",
+      "offline_smoke": false,
+      "batch_size": 8,
+      "eval_batch_size": 16,
+      "mixed_precision": true,
+      "early_stopping_patience": 4,
+      "export_preds_path": "outputs/val_predictions_candidate_2.csv",
+      "fold_file": "/content/kaggle_data/plant-pathology-2020-fgvc7/folds.json",
+      "fold_index": 0,
+      "tta": {
+        "enabled": true,
+        "transforms": [
+          "hflip"
+        ],
+        "num_augments": 2
+      },
+      "class_imbalance": true,
+      "use_class_weights": true,
+      "class_weight_power": 0.5
+    },
+    "tasks": [
+      "Load DINOv2-Base from facebook/dinov2-base (86M params, pretrained on LVD-142M (self-supervised))",
+      "Head-only finetune: freeze backbone, train head only",
+      "Use Classification Head as the output head",
+      "Use CrossEntropyLoss as the training loss",
+      "Use AdamW as the optimizer"
+    ],
+    "alternatives": [
+      "dinov3"
+    ],
+    "rank": 2,
+    "score": 0.673,
+    "class_imbalance": true,
+    "label_columns": [
+      "healthy",
+      "multiple_diseases",
+      "rust",
+      "scab"
+    ],
+    "evaluation_metric": "roc_auc",
+    "use_class_weights": true,
+    "class_weight_power": 0.5
+  },
+  {
+    "format": "nl",
+    "model_config": {
+      "backbone": "swin_transformer",
+      "pretrained_hf_id": "microsoft/swin-base-patch4-window7-224",
+      "pretrained_name": "Swin-Base / ImageNet-22k",
+      "pretrain_dataset": "ImageNet-22k",
+      "params_M": 88,
+      "head": "classification_head",
+      "loss": "focal_loss",
+      "optimizer": "adamw",
+      "finetune_strategy": "full",
+      "freeze_backbone": false,
+      "unfreeze_last_n_blocks": 0,
+      "train_norm_layers": false,
+      "scratch_viable": false,
+      "recipe": {
+        "epochs": 40,
+        "image_size": 224,
+        "learning_rate": 3e-05,
+        "augmentation": {
+          "tier": "heavy",
+          "invariance": {
+            "hflip": true,
+            "vflip": false,
+            "rot90": false,
+            "color": true,
+            "crop_scale_min": 0.4
+          },
+          "schedule": "taper_last_20pct"
+        }
+      },
+      "recipe_provenance": {
+        "epochs": "epochs_table[small,finetune]",
+        "image_size": "family_default=224 | ok/32",
+        "learning_rate": "lr_base[transformer,finetune]",
+        "augmentation": "tier[data_size=small→heavy]; invariance[domain_signal_missing]; schedule[small→taper_last_20pct]"
+      },
+      "image_size": 224,
+      "learning_rate": 3e-05,
+      "recommended_epochs": 40,
+      "num_classes": 4,
+      "train_csv": "/content/kaggle_data/plant-pathology-2020-fgvc7/train__jiaozi_labels.csv",
+      "image_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images",
+      "image_column": "image_id",
+      "label_column": "__jiaozi_label",
+      "label_columns": [
+        "healthy",
+        "multiple_diseases",
+        "rust",
+        "scab"
+      ],
+      "image_path_template": "{image}",
+      "image_extension": ".jpg",
+      "evaluation_metric": "roc_auc",
+      "offline_smoke": false,
+      "batch_size": 8,
+      "eval_batch_size": 16,
+      "mixed_precision": true,
+      "early_stopping_patience": 4,
+      "export_preds_path": "outputs/val_predictions_candidate_3.csv",
+      "fold_file": "/content/kaggle_data/plant-pathology-2020-fgvc7/folds.json",
+      "fold_index": 0,
+      "tta": {
+        "enabled": true,
+        "transforms": [
+          "hflip"
+        ],
+        "num_augments": 2
+      },
+      "class_imbalance": true,
+      "use_class_weights": true,
+      "class_weight_power": 0.5
+    },
+    "tasks": [
+      "Load Swin-Base / ImageNet-22k from microsoft/swin-base-patch4-window7-224 (88M params, pretrained on ImageNet-22k)",
+      "Full finetune: update all backbone and head weights",
+      "Use Classification Head as the output head",
+      "Use FocalLoss as the training loss",
+      "Use AdamW as the optimizer"
+    ],
+    "alternatives": [
+      "convnext",
+      "vit"
+    ],
+    "rank": 3,
+    "score": 0.649,
+    "class_imbalance": true,
+    "label_columns": [
+      "healthy",
+      "multiple_diseases",
+      "rust",
+      "scab"
+    ],
+    "evaluation_metric": "roc_auc",
+    "use_class_weights": true,
+    "class_weight_power": 0.5
+  }
+]

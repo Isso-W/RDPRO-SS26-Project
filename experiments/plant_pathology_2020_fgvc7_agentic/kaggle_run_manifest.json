@@ -1,0 +1,198 @@
+{
+  "created_at": "2026-07-09T23:03:16",
+  "git_commit": "8f3015b366a5775383856320d326445bf3186cd2",
+  "benchmark_key": "plant-pathology-2020-fgvc7",
+  "competition": "plant-pathology-2020-fgvc7",
+  "metric": "roc_auc",
+  "data": {
+    "train_csv": "/content/kaggle_data/plant-pathology-2020-fgvc7/train__jiaozi_labels.csv",
+    "image_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images",
+    "image_column": "image_id",
+    "label_column": "__jiaozi_label",
+    "label_columns": [
+      "healthy",
+      "multiple_diseases",
+      "rust",
+      "scab"
+    ],
+    "sample_submission": "/content/kaggle_data/plant-pathology-2020-fgvc7/sample_submission.csv",
+    "test_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images"
+  },
+  "module3_input": {
+    "task_type": "classification",
+    "data_size": "small",
+    "priority": "accuracy",
+    "constraints": {
+      "class_imbalance": true,
+      "competition_platform": "kaggle",
+      "submission_format": "one_hot_probability_columns",
+      "target_runtime": "colab_gpu"
+    },
+    "description": "Plant Pathology 2020 FGVC7 apple leaf disease classification. Train on high-resolution RGB leaf images with four exclusive Kaggle one-hot columns: healthy, multiple_diseases, rust, scab. Optimize probability outputs for mean column-wise ROC AUC; multiple_diseases is rare, so prefer imbalance-aware loss or sampling.",
+    "num_classes": 4,
+    "evaluation_metric": "roc_auc",
+    "data_stats": {
+      "resolution_tier": "high",
+      "color_mode": "rgb"
+    }
+  },
+  "recommendations": [
+    {
+      "backbone": "dinov3",
+      "head": "classification_head",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "pretrained": "dinov3_base_lvd1689m",
+      "scratch_viable": false,
+      "finetune_strategy": "partial",
+      "unfreeze_last_n_blocks": 2,
+      "train_norm_layers": true,
+      "freeze_viable": true,
+      "alt_backbones": [],
+      "score": 1.0,
+      "score_detail": {
+        "structured": 1.0,
+        "vector": 1.0
+      }
+    },
+    {
+      "backbone": "dinov2",
+      "head": "classification_head",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "pretrained": "dinov2_base",
+      "scratch_viable": false,
+      "finetune_strategy": "head_only",
+      "unfreeze_last_n_blocks": 0,
+      "train_norm_layers": false,
+      "freeze_viable": true,
+      "alt_backbones": [
+        "dinov3"
+      ],
+      "score": 0.673,
+      "score_detail": {
+        "structured": 0.727,
+        "vector": 0.591
+      }
+    },
+    {
+      "backbone": "swin_transformer",
+      "head": "classification_head",
+      "loss": "focal_loss",
+      "optimizer": "adamw",
+      "pretrained": "swin_base_in22k",
+      "scratch_viable": false,
+      "finetune_strategy": "full",
+      "unfreeze_last_n_blocks": 0,
+      "train_norm_layers": false,
+      "freeze_viable": true,
+      "alt_backbones": [
+        "convnext",
+        "vit"
+      ],
+      "score": 0.649,
+      "score_detail": {
+        "structured": 0.545,
+        "vector": 0.803
+      }
+    }
+  ],
+  "module4": {
+    "input_path": "experiments/plant_pathology_2020_fgvc7_agentic/module4_code/module3_candidates.json",
+    "output_dir": "experiments/plant_pathology_2020_fgvc7_agentic/module4_code",
+    "summary": {
+      "status": "approved",
+      "output_dir": "experiments/plant_pathology_2020_fgvc7_agentic/module4_code",
+      "iterations": 1,
+      "num_candidates": 4,
+      "generated_files": [
+        "README_generated.md",
+        "configs.json",
+        "evaluate.py",
+        "generation_info.json",
+        "infer.py",
+        "model.py",
+        "model_utils.py",
+        "module4_summary.json",
+        "requirements.txt",
+        "run.py",
+        "run_experiments.py",
+        "smoke_data.py",
+        "train.py",
+        "utils.py"
+      ],
+      "smoke_success": true,
+      "review_feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+      "errors": [],
+      "warnings": [
+        "Smoke tests were skipped by request; approval is static-only."
+      ],
+      "smoke": {
+        "success": true,
+        "skipped": true,
+        "runtime_sec": 0.0,
+        "commands": []
+      },
+      "review": {
+        "is_approved": true,
+        "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+        "errors": [],
+        "warnings": [
+          "Smoke tests were skipped by request; approval is static-only."
+        ]
+      },
+      "iteration_history": [
+        {
+          "iteration": 1,
+          "smoke_success": true,
+          "smoke_skipped": true,
+          "is_approved": true,
+          "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+          "errors": [],
+          "warnings": [
+            "Smoke tests were skipped by request; approval is static-only."
+          ]
+        }
+      ],
+      "refinement_summary": null,
+      "candidates": [
+        {
+          "rank": 1,
+          "score": 1.0,
+          "task_type": "classification",
+          "backbone": "dinov3",
+          "loss": "cross_entropy_loss",
+          "optimizer": "adamw",
+          "finetune_strategy": "partial"
+        },
+        {
+          "rank": 2,
+          "score": 1.0,
+          "task_type": "classification",
+          "backbone": "dinov3",
+          "loss": "cross_entropy_loss",
+          "optimizer": "adamw",
+          "finetune_strategy": "partial"
+        },
+        {
+          "rank": 3,
+          "score": 0.673,
+          "task_type": "classification",
+          "backbone": "dinov2",
+          "loss": "cross_entropy_loss",
+          "optimizer": "adamw",
+          "finetune_strategy": "head_only"
+        },
+        {
+          "rank": 4,
+          "score": 0.649,
+          "task_type": "classification",
+          "backbone": "swin_transformer",
+          "loss": "focal_loss",
+          "optimizer": "adamw",
+          "finetune_strategy": "full"
+        }
+      ]
+    }
+  }
+}

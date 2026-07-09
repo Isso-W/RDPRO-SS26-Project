@@ -1,0 +1,10 @@
+{
+  "fallback_reason": "",
+  "generated_by": "module4_agent",
+  "llm_attempted": false,
+  "llm_model": "",
+  "llm_provider": "none",
+  "llm_used": false,
+  "model_py_source": "template",
+  "template_fallback": true
+}

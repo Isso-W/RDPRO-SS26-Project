@@ -1,0 +1,14 @@
+{
+  "competition": "plant-pathology-2020-fgvc7",
+  "status": "generated_code_blocked_before_scoring",
+  "blocker": "Local Kaggle credentials are missing, so data download, training on competition files, submission, and public-score retrieval must happen on Colab/Kaggle after credentials and rules acceptance are available.",
+  "local_artifacts_ready": [
+    "module4_code/configs.json",
+    "module4_code/run.py",
+    "module4_code/run_experiments.py",
+    "kaggle_run_manifest.json",
+    "colab_prepare_train.py",
+    "COLAB_RUNBOOK.md"
+  ],
+  "next_command": "python experiments/plant_pathology_2020_fgvc7_agentic/colab_prepare_train.py --train --epochs 5"
+}

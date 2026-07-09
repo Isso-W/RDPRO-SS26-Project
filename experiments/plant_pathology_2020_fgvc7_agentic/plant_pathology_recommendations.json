@@ -1,0 +1,61 @@
+[
+  {
+    "backbone": "dinov3",
+    "head": "classification_head",
+    "loss": "cross_entropy_loss",
+    "optimizer": "adamw",
+    "pretrained": "dinov3_base_lvd1689m",
+    "scratch_viable": false,
+    "finetune_strategy": "partial",
+    "unfreeze_last_n_blocks": 2,
+    "train_norm_layers": true,
+    "freeze_viable": true,
+    "alt_backbones": [],
+    "score": 1.0,
+    "score_detail": {
+      "structured": 1.0,
+      "vector": 1.0
+    }
+  },
+  {
+    "backbone": "dinov2",
+    "head": "classification_head",
+    "loss": "cross_entropy_loss",
+    "optimizer": "adamw",
+    "pretrained": "dinov2_base",
+    "scratch_viable": false,
+    "finetune_strategy": "head_only",
+    "unfreeze_last_n_blocks": 0,
+    "train_norm_layers": false,
+    "freeze_viable": true,
+    "alt_backbones": [
+      "dinov3"
+    ],
+    "score": 0.673,
+    "score_detail": {
+      "structured": 0.727,
+      "vector": 0.591
+    }
+  },
+  {
+    "backbone": "swin_transformer",
+    "head": "classification_head",
+    "loss": "focal_loss",
+    "optimizer": "adamw",
+    "pretrained": "swin_base_in22k",
+    "scratch_viable": false,
+    "finetune_strategy": "full",
+    "unfreeze_last_n_blocks": 0,
+    "train_norm_layers": false,
+    "freeze_viable": true,
+    "alt_backbones": [
+      "convnext",
+      "vit"
+    ],
+    "score": 0.649,
+    "score_detail": {
+      "structured": 0.545,
+      "vector": 0.803
+    }
+  }
+]

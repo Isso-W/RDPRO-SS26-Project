@@ -1,0 +1,18 @@
+{
+  "task_type": "classification",
+  "data_size": "small",
+  "priority": "accuracy",
+  "constraints": {
+    "class_imbalance": true,
+    "competition_platform": "kaggle",
+    "submission_format": "one_hot_probability_columns",
+    "target_runtime": "colab_gpu"
+  },
+  "description": "Plant Pathology 2020 FGVC7 apple leaf disease classification. Train on high-resolution RGB leaf images with four exclusive Kaggle one-hot columns: healthy, multiple_diseases, rust, scab. Optimize probability outputs for mean column-wise ROC AUC; multiple_diseases is rare, so prefer imbalance-aware loss or sampling.",
+  "num_classes": 4,
+  "evaluation_metric": "roc_auc",
+  "data_stats": {
+    "resolution_tier": "high",
+    "color_mode": "rgb"
+  }
+}
