@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -150,6 +151,7 @@ def _eval_on_dataloader(model: torch.nn.Module, dataloader, config: dict[str, An
         if export_path:
             # 导出 val 预测供离线算指标 bundle（macro_f1 / roc_auc / pr_auc）
             import json as _json
+            Path(export_path).parent.mkdir(parents=True, exist_ok=True)
             with open(export_path, "w", encoding="utf-8") as _fh:
                 _json.dump(
                     {"y_true": labels.tolist(), "y_prob": probabilities.tolist()},
