@@ -114,14 +114,21 @@ def test_run_uses_trained_model_for_evaluation():
 
 def test_generated_classification_tta_is_available():
     generated = generate_files(_specs(), llm_provider="none")
-    expected_switch = 'as_bool(get_value(config, "tta", False), False)'
 
     for filename in ("train.py", "evaluate.py", "infer.py"):
         content = generated.files[filename]
-        assert "torch.flip" in content
-        assert "tta" in content
-        assert expected_switch in content
         assert "def _classification_logits" in content
+        # multi-view TTA: reads the tta config (bool or dict) and averages over
+        # hflip / vflip / rot90 views, not just a single hard-coded flip.
+        assert 'get_value(config, "tta", False)' in content
+        assert "torch.flip" in content
+        assert "rot90" in content
+        assert 'raw.get("transforms")' in content
+
+
+def test_generated_hf_backbone_interpolates_pos_encoding():
+    generated = generate_files(_specs(), llm_provider="none")
+    assert "interpolate_pos_encoding=True" in generated.files["model_utils.py"]
 
 
 def test_frozen_backbone_uses_cached_feature_path(tmp_path, monkeypatch):

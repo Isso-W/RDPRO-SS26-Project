@@ -155,6 +155,42 @@ def _materialize_label_csv(
     return derived
 
 
+def build_label_csv_from_filenames(
+    image_dir: str | Path,
+    *,
+    pattern: str,
+    image_column: str,
+    label_column: str,
+    out_path: str | Path,
+) -> Path:
+    """Build a train CSV for competitions whose labels live in the filename.
+
+    Each image whose name matches ``pattern`` (first capture group = label) gets
+    a row of ``{image_column: stem, label_column: group}``. Non-matching files
+    are skipped. Used by e.g. Dogs vs. Cats Redux (cat.N.jpg / dog.N.jpg).
+    """
+    import re
+
+    import pandas as pd
+
+    regex = re.compile(pattern)
+    directory = Path(image_dir)
+    rows: list[dict[str, str]] = []
+    for path in sorted(directory.rglob("*")):
+        if not path.is_file():
+            continue
+        match = regex.search(path.name)
+        if match:
+            rows.append({image_column: path.stem, label_column: match.group(1)})
+    if not rows:
+        raise ValueError(f"No filenames under {directory} matched pattern {pattern!r}.")
+    frame = pd.DataFrame(rows)
+    out = Path(out_path)
+    frame.to_csv(out, index=False)
+    print(f"[kaggle] built label CSV from filenames -> {out} ({len(frame)} rows)")
+    return out
+
+
 def ingest_benchmark(
     benchmark_key: str,
     data_root: str | Path,
@@ -180,6 +216,22 @@ def ingest_benchmark(
 
     train_csv = _locate(dest, benchmark.get("csv_globs", []), want_dir=False)
     image_dir = _locate(dest, benchmark.get("image_dir_globs", []), want_dir=True)
+
+    label_columns = benchmark.get("label_columns")
+    label_column = benchmark.get("label_column") or ("__jiaozi_label" if label_columns else "label")
+
+    # Competitions with labels encoded in filenames (e.g. Dogs vs. Cats) have no
+    # train CSV — synthesize one from the image directory.
+    label_from_filename = benchmark.get("label_from_filename")
+    if train_csv is None and label_from_filename and image_dir is not None:
+        train_csv = build_label_csv_from_filenames(
+            image_dir,
+            pattern=label_from_filename,
+            image_column=benchmark.get("image_column", "image"),
+            label_column=label_column,
+            out_path=Path(image_dir).parent / "train__jiaozi_from_filenames.csv",
+        )
+
     if train_csv is None or image_dir is None:
         available = sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*"))[:40]
         raise FileNotFoundError(
@@ -187,8 +239,6 @@ def ingest_benchmark(
             f"({benchmark.get('image_dir_globs')}) under {dest}.\nFirst entries: {available}"
         )
 
-    label_columns = benchmark.get("label_columns")
-    label_column = benchmark.get("label_column") or ("__jiaozi_label" if label_columns else "label")
     train_csv = _materialize_label_csv(train_csv, label_column, label_columns)
 
     # Best-effort test-set discovery (hidden labels — used for prediction + submission).
@@ -211,6 +261,7 @@ def ingest_benchmark(
         "image_extension": benchmark.get("image_extension", ""),
         "num_classes": benchmark.get("num_classes"),
         "metric": benchmark.get("metric"),
+        "submission_positive_class": benchmark.get("submission_positive_class"),
         "test_dir": str(test_dir) if test_dir else None,
         "sample_submission": str(sample_submission) if sample_submission else None,
     }

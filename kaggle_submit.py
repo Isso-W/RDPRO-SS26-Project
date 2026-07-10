@@ -120,14 +120,30 @@ def index_to_label_map(train_csv: str | Path, label_column: str) -> dict:
     return {index: value for index, value in enumerate(unique)}
 
 
-def write_submission(predictions, index_to_label, sample_submission, out_path, label_columns=None):
-    """Fill the sample_submission with predictions, matching ids by filename or stem."""
+def write_submission(predictions, index_to_label, sample_submission, out_path, label_columns=None,
+                     positive_class=None):
+    """Fill the sample_submission with predictions, matching ids by filename or stem.
+
+    ``positive_class`` (for single-target binary competitions scored on a
+    probability, e.g. ROC AUC / log loss) makes the target column receive the
+    probability of that class rather than the argmax label.
+    """
     import pandas as pd
 
     sample = pd.read_csv(sample_submission)
     columns = list(sample.columns)
     id_column, target_column = columns[0], columns[-1]
     one_hot_columns = [column for column in (label_columns or []) if column in sample.columns]
+    # Auto-detect probability-per-class submissions (e.g. Dog Breed's 120 columns,
+    # Leaf's 99) when no label_columns were configured: every non-id column is a
+    # class probability, matched to predictions by class name.
+    if not one_hot_columns and positive_class is None and len(columns) > 2:
+        one_hot_columns = columns[1:]
+
+    positive_index = None
+    if positive_class is not None:
+        label_to_index = {str(label): index for index, label in index_to_label.items()}
+        positive_index = label_to_index.get(str(positive_class))
 
     by_key: dict[str, object] = {}
     probabilities_by_key: dict[str, list[float]] = {}
@@ -143,9 +159,16 @@ def write_submission(predictions, index_to_label, sample_submission, out_path, l
 
     def _lookup(raw_id):
         key = str(raw_id)
+        if positive_index is not None:
+            probs = probabilities_by_key.get(key, probabilities_by_key.get(Path(key).stem))
+            if probs is not None and positive_index < len(probs):
+                return probs[positive_index]
         return by_key.get(key, by_key.get(Path(key).stem))
 
     if one_hot_columns:
+        # Probability columns may be int-typed placeholders in the sample file.
+        for column in one_hot_columns:
+            sample[column] = sample[column].astype(float)
         missing = 0
         for position, raw_id in enumerate(sample[id_column].tolist()):
             key = str(raw_id)
@@ -251,7 +274,14 @@ def predict_and_submit(
         raise FileNotFoundError(
             f"No sample_submission.csv found for {benchmark_key!r}; cannot format a submission."
         )
-    write_submission(predictions, idx_to_label, sample, out_path, label_columns=info.get("label_columns"))
+    write_submission(
+        predictions,
+        idx_to_label,
+        sample,
+        out_path,
+        label_columns=info.get("label_columns"),
+        positive_class=info.get("submission_positive_class"),
+    )
 
     submit_result = {"status": "not_submitted", "public_score": None, "details": {}}
     submission_message = message or f"Jiaozi {benchmark_key} submission"

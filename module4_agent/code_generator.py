@@ -416,7 +416,13 @@ def _model_utils_py() -> str:
                 self.feature_pooling = "pooler_output_or_cls_token"
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
-                out = self.model(pixel_values=x)
+                # interpolate_pos_encoding lets ViT-style backbones run above their
+                # pretrained resolution (a no-op at native size); models that do not
+                # accept the kwarg (e.g. Swin) fall back cleanly.
+                try:
+                    out = self.model(pixel_values=x, interpolate_pos_encoding=True)
+                except TypeError:
+                    out = self.model(pixel_values=x)
                 pooled = getattr(out, "pooler_output", None)
                 if pooled is not None:
                     return pooled
@@ -1567,11 +1573,33 @@ def _train_py() -> str:
             x: torch.Tensor,
             config: dict[str, Any] | None,
         ) -> torch.Tensor:
+            # Test-time augmentation: average logits over the identity view plus
+            # each requested label-preserving view. ``tta`` may be a bool
+            # (True -> hflip) or a dict {"enabled": bool, "transforms": [...]}.
+            raw = get_value(config, "tta", False)
+            if isinstance(raw, dict):
+                enabled = as_bool(raw.get("enabled", True), True)
+                names = raw.get("transforms") or ["hflip"]
+            else:
+                enabled = as_bool(raw, False)
+                names = ["hflip"]
+            views = {
+                "hflip": lambda t: torch.flip(t, dims=[3]),
+                "vflip": lambda t: torch.flip(t, dims=[2]),
+                "rot90": lambda t: torch.rot90(t, k=1, dims=[2, 3]),
+                "rot180": lambda t: torch.rot90(t, k=2, dims=[2, 3]),
+                "rot270": lambda t: torch.rot90(t, k=3, dims=[2, 3]),
+            }
             logits = model(x)
-            if as_bool(get_value(config, "tta", False), False):
-                flipped_logits = model(torch.flip(x, dims=[3]))
-                logits = (logits + flipped_logits) / 2.0
-            return logits
+            if not enabled:
+                return logits
+            ops = [views[n] for n in (str(v).lower() for v in names) if n in views]
+            if not ops:
+                return logits
+            total = logits
+            for op in ops:
+                total = total + model(op(x))
+            return total / (len(ops) + 1)
 
 
         def _classification_validation(
@@ -2376,11 +2404,33 @@ def _evaluate_py() -> str:
             x: torch.Tensor,
             config: dict[str, Any] | None,
         ) -> torch.Tensor:
+            # Test-time augmentation: average logits over the identity view plus
+            # each requested label-preserving view. ``tta`` may be a bool
+            # (True -> hflip) or a dict {"enabled": bool, "transforms": [...]}.
+            raw = get_value(config, "tta", False)
+            if isinstance(raw, dict):
+                enabled = as_bool(raw.get("enabled", True), True)
+                names = raw.get("transforms") or ["hflip"]
+            else:
+                enabled = as_bool(raw, False)
+                names = ["hflip"]
+            views = {
+                "hflip": lambda t: torch.flip(t, dims=[3]),
+                "vflip": lambda t: torch.flip(t, dims=[2]),
+                "rot90": lambda t: torch.rot90(t, k=1, dims=[2, 3]),
+                "rot180": lambda t: torch.rot90(t, k=2, dims=[2, 3]),
+                "rot270": lambda t: torch.rot90(t, k=3, dims=[2, 3]),
+            }
             logits = model(x)
-            if as_bool(get_value(config, "tta", False), False):
-                flipped_logits = model(torch.flip(x, dims=[3]))
-                logits = (logits + flipped_logits) / 2.0
-            return logits
+            if not enabled:
+                return logits
+            ops = [views[n] for n in (str(v).lower() for v in names) if n in views]
+            if not ops:
+                return logits
+            total = logits
+            for op in ops:
+                total = total + model(op(x))
+            return total / (len(ops) + 1)
 
 
         def _eval_on_dataloader(model: torch.nn.Module, dataloader, config: dict[str, Any]) -> dict[str, Any]:
@@ -2604,11 +2654,33 @@ def _infer_py() -> str:
             image: torch.Tensor,
             config: dict[str, Any] | None,
         ) -> torch.Tensor:
+            # Test-time augmentation: average logits over the identity view plus
+            # each requested label-preserving view. ``tta`` may be a bool
+            # (True -> hflip) or a dict {"enabled": bool, "transforms": [...]}.
+            raw = get_value(config, "tta", False)
+            if isinstance(raw, dict):
+                enabled = as_bool(raw.get("enabled", True), True)
+                names = raw.get("transforms") or ["hflip"]
+            else:
+                enabled = as_bool(raw, False)
+                names = ["hflip"]
+            views = {
+                "hflip": lambda t: torch.flip(t, dims=[3]),
+                "vflip": lambda t: torch.flip(t, dims=[2]),
+                "rot90": lambda t: torch.rot90(t, k=1, dims=[2, 3]),
+                "rot180": lambda t: torch.rot90(t, k=2, dims=[2, 3]),
+                "rot270": lambda t: torch.rot90(t, k=3, dims=[2, 3]),
+            }
             logits = model(image)
-            if as_bool(get_value(config, "tta", False), False):
-                flipped_logits = model(torch.flip(image, dims=[3]))
-                logits = (logits + flipped_logits) / 2.0
-            return logits
+            if not enabled:
+                return logits
+            ops = [views[n] for n in (str(v).lower() for v in names) if n in views]
+            if not ops:
+                return logits
+            total = logits
+            for op in ops:
+                total = total + model(op(image))
+            return total / (len(ops) + 1)
 
 
         def predict(weights_path: str | None = None, image: torch.Tensor | None = None, config: dict[str, Any] | None = None, model: torch.nn.Module | None = None) -> dict[str, Any]:
