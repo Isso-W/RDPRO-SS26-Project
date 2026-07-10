@@ -79,7 +79,7 @@ BENCHMARKS: dict[str, dict[str, Any]] = {
         "source": "kaggle",
         "competition": "plant-pathology-2020-fgvc7",
         "query": "Classify apple leaf images as healthy, multiple diseases, rust, or scab.",
-        "metric": "categorical_accuracy",
+        "metric": "roc_auc",
         "num_classes": 4,
         "baseline": 0.965,
         "backbone": "efficientnet_b0",
