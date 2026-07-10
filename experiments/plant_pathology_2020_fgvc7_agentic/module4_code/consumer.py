@@ -17,6 +17,7 @@ from ensemble_artifacts import (
     mean_column_auc,
     now_iso,
     probability_columns,
+    rank_normalize,
     read_json,
     truth_columns,
     weight_grid,
@@ -25,6 +26,22 @@ from ensemble_artifacts import (
 
 
 DEFAULT_LABEL_COLUMNS = ["healthy", "multiple_diseases", "rust", "scab"]
+
+
+def _apply_blend_space(arrays: list[np.ndarray], space: str) -> list[np.ndarray]:
+    """Map each candidate's per-column scores into the blending space.
+
+    ``"prob"`` blends raw probabilities. ``"rank"`` (default) rank-normalises
+    each candidate's columns first, which suits the mean column-wise ROC AUC
+    metric — only ordering matters, and it stops a narrow-band model from
+    being drowned out by a wide-range one.
+    """
+
+    if space == "prob":
+        return list(arrays)
+    if space == "rank":
+        return [rank_normalize(array) for array in arrays]
+    raise ValueError(f"unknown blend space: {space!r}")
 
 
 def _find_repo_root(start: Path) -> Path | None:
@@ -202,10 +219,14 @@ def _select_weights(
     label_columns: list[str],
     *,
     step: float,
+    blend_space: str = "rank",
 ) -> dict[str, Any]:
     prob_cols = probability_columns(label_columns)
     true_cols = truth_columns(label_columns)
-    arrays = [candidate["oof"][prob_cols].to_numpy(dtype=float) for candidate in candidates]
+    arrays = _apply_blend_space(
+        [candidate["oof"][prob_cols].to_numpy(dtype=float) for candidate in candidates],
+        blend_space,
+    )
     y_true = candidates[0]["oof"][true_cols].to_numpy(dtype=float)
 
     candidate_ids = [candidate["candidate_id"] for candidate in candidates]
@@ -234,6 +255,7 @@ def _select_weights(
             "metric": equal_metric,
         },
         "grid_step": step,
+        "blend_space": blend_space,
     }
 
 
@@ -245,13 +267,20 @@ def _blend_frames(
     *,
     ids: list[str],
     include_truth: bool,
+    blend_space: str = "rank",
 ) -> pd.DataFrame:
     prob_cols = probability_columns(label_columns)
+    ordered_arrays = _apply_blend_space(
+        [
+            frame.set_index("image_id").loc[ids][prob_cols].to_numpy(dtype=float)
+            for frame in frames
+        ],
+        blend_space,
+    )
     blended = np.zeros((len(ids), len(prob_cols)), dtype=float)
-    for frame, candidate in zip(frames, candidates):
+    for values, candidate in zip(ordered_arrays, candidates):
         weight = float(weights[candidate["candidate_id"]])
-        ordered = frame.set_index("image_id").loc[ids]
-        blended += weight * ordered[prob_cols].to_numpy(dtype=float)
+        blended += weight * values
 
     rows: dict[str, Any] = {"image_id": ids}
     if include_truth:
@@ -350,7 +379,10 @@ def run_consumer(args: argparse.Namespace) -> dict[str, Any]:
     _validate_oof_alignment(candidates, label_columns)
     sample_ids = _validate_test_alignment(candidates, sample_submission)
 
-    weights = _select_weights(candidates, label_columns, step=args.weight_grid_step)
+    blend_space = getattr(args, "blend_space", "rank")
+    weights = _select_weights(
+        candidates, label_columns, step=args.weight_grid_step, blend_space=blend_space
+    )
     selected_weights = weights["selected"]["weights"]
     prob_cols = probability_columns(label_columns)
     true_cols = truth_columns(label_columns)
@@ -363,6 +395,7 @@ def run_consumer(args: argparse.Namespace) -> dict[str, Any]:
         label_columns,
         ids=oof_ids,
         include_truth=True,
+        blend_space=blend_space,
     )
     ensemble_oof_path = output_dir / "ensemble_oof.csv"
     ensemble_oof.to_csv(ensemble_oof_path, index=False)
@@ -374,6 +407,7 @@ def run_consumer(args: argparse.Namespace) -> dict[str, Any]:
         label_columns,
         ids=sample_ids,
         include_truth=False,
+        blend_space=blend_space,
     )
     test_probs_path = output_dir / "test_probs.csv"
     test_blend.to_csv(test_probs_path, index=False)
@@ -392,6 +426,7 @@ def run_consumer(args: argparse.Namespace) -> dict[str, Any]:
         "label_columns": label_columns,
         "prediction_columns": prob_cols,
         "truth_columns": true_cols,
+        "blend_space": blend_space,
         "candidate_metrics": {
             candidate["candidate_id"]: {
                 "fold_indices": candidate["fold_indices"],
@@ -479,6 +514,12 @@ def main() -> int:
     parser.add_argument("--submission-out", default=None)
     parser.add_argument("--label-columns", default=",".join(DEFAULT_LABEL_COLUMNS))
     parser.add_argument("--weight-grid-step", type=float, default=0.05)
+    parser.add_argument(
+        "--blend-space",
+        choices=["rank", "prob"],
+        default="rank",
+        help="Blend candidates in rank space (default, suits ROC AUC) or raw probability space.",
+    )
     parser.add_argument("--benchmark-key", default="plant-pathology-2020-fgvc7")
     parser.add_argument("--competition", default="plant-pathology-2020-fgvc7")
     parser.add_argument("--submit", action="store_true")

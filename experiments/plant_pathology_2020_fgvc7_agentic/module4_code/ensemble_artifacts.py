@@ -113,6 +113,40 @@ def clipped_probabilities(values: np.ndarray) -> np.ndarray:
     return np.clip(np.asarray(values, dtype=float), 0.0, 1.0)
 
 
+def rank_normalize(values: np.ndarray) -> np.ndarray:
+    """Per-column average-rank transform scaled to [0, 1].
+
+    The competition metric is mean column-wise ROC AUC, which depends only on
+    the within-column ordering of scores. Rank-normalising each candidate's
+    columns before blending makes models comparable on a common scale, so a
+    model with a narrow probability band is not drowned out by a wide-range
+    one. It is monotonic per column, so a single model's AUC is unchanged.
+    """
+
+    arr = np.asarray(values, dtype=float)
+    if arr.ndim == 1:
+        arr = arr.reshape(-1, 1)
+    out = np.empty_like(arr, dtype=float)
+    n = arr.shape[0]
+    denom = max(n - 1, 1)
+    for col in range(arr.shape[1]):
+        column = arr[:, col]
+        order = np.argsort(column, kind="mergesort")
+        ordered = column[order]
+        ranks = np.empty(n, dtype=float)
+        start = 0
+        while start < n:
+            end = start + 1
+            while end < n and ordered[end] == ordered[start]:
+                end += 1
+            # zero-based average rank so the range is exactly [0, n-1]
+            average_rank = (start + end - 1) / 2.0
+            ranks[order[start:end]] = average_rank
+            start = end
+        out[:, col] = ranks / denom
+    return out
+
+
 def weight_grid(num_models: int, step: float) -> list[list[float]]:
     """Return non-negative weight vectors summing to 1.0."""
 

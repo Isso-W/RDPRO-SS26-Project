@@ -9,19 +9,8 @@ import torch
 
 from model import build_model
 from smoke_data import synthetic_image
-from utils import as_bool, get_value, task_type
-
-
-def _classification_logits(
-    model: torch.nn.Module,
-    image: torch.Tensor,
-    config: dict[str, Any] | None,
-) -> torch.Tensor:
-    logits = model(image)
-    if as_bool(get_value(config, "tta", False), False):
-        flipped_logits = model(torch.flip(image, dims=[3]))
-        logits = (logits + flipped_logits) / 2.0
-    return logits
+from train import _classification_logits
+from utils import task_type
 
 
 def predict(weights_path: str | None = None, image: torch.Tensor | None = None, config: dict[str, Any] | None = None, model: torch.nn.Module | None = None) -> dict[str, Any]:

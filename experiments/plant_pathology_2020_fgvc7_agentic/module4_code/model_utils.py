@@ -122,7 +122,14 @@ class _HFBackbone(nn.Module):
         self.feature_pooling = "pooler_output_or_cls_token"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        out = self.model(pixel_values=x)
+        # interpolate_pos_encoding lets ViT-style backbones (DINOv2/DINOv3) run
+        # at a resolution above their pretrained one — required for the
+        # fine-grained leaf textures at 384px. It is a no-op at native size.
+        # Models that do not accept the kwarg (e.g. Swin) fall back cleanly.
+        try:
+            out = self.model(pixel_values=x, interpolate_pos_encoding=True)
+        except TypeError:
+            out = self.model(pixel_values=x)
         pooled = getattr(out, "pooler_output", None)
         if pooled is not None:
             return pooled

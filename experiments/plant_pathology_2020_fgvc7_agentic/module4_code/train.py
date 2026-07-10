@@ -595,16 +595,60 @@ def _classification_metrics(
     }
 
 
+# Test-time augmentation views. Each maps an input batch to a geometrically
+# transformed one; leaves are orientation-free, so flips and 90° rotation are
+# label-preserving and average out spatial bias. Dim 2 is height, dim 3 width.
+_TTA_TRANSFORMS = {
+    "hflip": lambda x: torch.flip(x, dims=[3]),
+    "vflip": lambda x: torch.flip(x, dims=[2]),
+    "rot90": lambda x: torch.rot90(x, k=1, dims=[2, 3]),
+    "rot180": lambda x: torch.rot90(x, k=2, dims=[2, 3]),
+    "rot270": lambda x: torch.rot90(x, k=3, dims=[2, 3]),
+}
+
+
+def _resolve_tta_transforms(config: dict[str, Any] | None) -> list[str]:
+    """Return the ordered list of extra TTA views requested by ``config``.
+
+    ``tta`` may be a bool (``True`` -> ``["hflip"]``) or a dict
+    ``{"enabled": bool, "transforms": [...]}``. Unknown transform names are
+    dropped. An empty list means identity-only inference.
+    """
+
+    raw = get_value(config, "tta", False)
+    if isinstance(raw, dict):
+        if not as_bool(raw.get("enabled", True), True):
+            return []
+        names = raw.get("transforms") or ["hflip"]
+    elif as_bool(raw, False):
+        names = ["hflip"]
+    else:
+        return []
+    return [str(name).lower() for name in names if str(name).lower() in _TTA_TRANSFORMS]
+
+
+def _apply_tta(
+    model: torch.nn.Module,
+    x: torch.Tensor,
+    ops: list[str],
+) -> torch.Tensor:
+    """Average model logits over the identity view plus each TTA view."""
+
+    logits = model(x)
+    if not ops:
+        return logits
+    total = logits
+    for name in ops:
+        total = total + model(_TTA_TRANSFORMS[name](x))
+    return total / (len(ops) + 1)
+
+
 def _classification_logits(
     model: torch.nn.Module,
     x: torch.Tensor,
     config: dict[str, Any] | None,
 ) -> torch.Tensor:
-    logits = model(x)
-    if as_bool(get_value(config, "tta", False), False):
-        flipped_logits = model(torch.flip(x, dims=[3]))
-        logits = (logits + flipped_logits) / 2.0
-    return logits
+    return _apply_tta(model, x, _resolve_tta_transforms(config))
 
 
 def _classification_validation(

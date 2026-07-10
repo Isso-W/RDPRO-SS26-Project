@@ -10,16 +10,16 @@
     "finetune_strategy": "partial",
     "freeze_backbone": false,
     "head": "classification_head",
-    "image_size": 224,
+    "image_size": 384,
     "learning_rate": 0.0001,
     "loss": "cross_entropy_loss",
     "model_config": {
       "backbone": "dinov3",
-      "batch_size": 8,
+      "batch_size": 4,
       "class_imbalance": true,
       "class_weight_power": 0.5,
       "early_stopping_patience": 4,
-      "eval_batch_size": 16,
+      "eval_batch_size": 8,
       "evaluation_metric": "roc_auc",
       "export_preds_path": "outputs/val_predictions_candidate_1.csv",
       "finetune_strategy": "partial",
@@ -31,7 +31,7 @@
       "image_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images",
       "image_extension": ".jpg",
       "image_path_template": "{image}",
-      "image_size": 224,
+      "image_size": 384,
       "label_column": "__jiaozi_label",
       "label_columns": [
         "healthy",
@@ -62,7 +62,7 @@
           "tier": "heavy"
         },
         "epochs": 40,
-        "image_size": 224,
+        "image_size": 384,
         "learning_rate": 0.0001
       },
       "recipe_provenance": {
@@ -79,9 +79,11 @@
       "train_norm_layers": true,
       "tta": {
         "enabled": true,
-        "num_augments": 2,
+        "num_augments": 4,
         "transforms": [
-          "hflip"
+          "hflip",
+          "vflip",
+          "rot90"
         ]
       },
       "unfreeze_last_n_blocks": 2,
@@ -107,7 +109,15 @@
       "Use AdamW as the optimizer"
     ],
     "train_norm_layers": true,
-    "tta": false,
+    "tta": {
+      "enabled": true,
+      "num_augments": 4,
+      "transforms": [
+        "hflip",
+        "vflip",
+        "rot90"
+      ]
+    },
     "unfreeze_last_n_blocks": 2,
     "use_pretrained": true
   },
@@ -122,16 +132,16 @@
     "finetune_strategy": "partial",
     "freeze_backbone": false,
     "head": "classification_head",
-    "image_size": 224,
+    "image_size": 384,
     "learning_rate": 0.0001,
     "loss": "cross_entropy_loss",
     "model_config": {
       "backbone": "dinov3",
-      "batch_size": 8,
+      "batch_size": 4,
       "class_imbalance": true,
       "class_weight_power": 0.5,
       "early_stopping_patience": 4,
-      "eval_batch_size": 16,
+      "eval_batch_size": 8,
       "evaluation_metric": "roc_auc",
       "export_preds_path": "outputs/val_predictions_candidate_1.csv",
       "finetune_strategy": "partial",
@@ -143,7 +153,7 @@
       "image_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images",
       "image_extension": ".jpg",
       "image_path_template": "{image}",
-      "image_size": 224,
+      "image_size": 384,
       "label_column": "__jiaozi_label",
       "label_columns": [
         "healthy",
@@ -174,7 +184,7 @@
           "tier": "heavy"
         },
         "epochs": 40,
-        "image_size": 224,
+        "image_size": 384,
         "learning_rate": 0.0001
       },
       "recipe_provenance": {
@@ -191,9 +201,11 @@
       "train_norm_layers": true,
       "tta": {
         "enabled": true,
-        "num_augments": 2,
+        "num_augments": 4,
         "transforms": [
-          "hflip"
+          "hflip",
+          "vflip",
+          "rot90"
         ]
       },
       "unfreeze_last_n_blocks": 4,
@@ -219,7 +231,15 @@
       "Use AdamW as the optimizer"
     ],
     "train_norm_layers": true,
-    "tta": false,
+    "tta": {
+      "enabled": true,
+      "num_augments": 4,
+      "transforms": [
+        "hflip",
+        "vflip",
+        "rot90"
+      ]
+    },
     "unfreeze_last_n_blocks": 4,
     "use_pretrained": true
   },
@@ -236,7 +256,7 @@
     "finetune_strategy": "head_only",
     "freeze_backbone": true,
     "head": "classification_head",
-    "image_size": 224,
+    "image_size": 378,
     "learning_rate": 0.001,
     "loss": "cross_entropy_loss",
     "model_config": {
@@ -257,7 +277,7 @@
       "image_dir": "/content/kaggle_data/plant-pathology-2020-fgvc7/images",
       "image_extension": ".jpg",
       "image_path_template": "{image}",
-      "image_size": 224,
+      "image_size": 378,
       "label_column": "__jiaozi_label",
       "label_columns": [
         "healthy",
@@ -288,7 +308,7 @@
           "tier": "medium"
         },
         "epochs": 25,
-        "image_size": 224,
+        "image_size": 378,
         "learning_rate": 0.001
       },
       "recipe_provenance": {
@@ -303,9 +323,11 @@
       "train_norm_layers": false,
       "tta": {
         "enabled": true,
-        "num_augments": 2,
+        "num_augments": 4,
         "transforms": [
-          "hflip"
+          "hflip",
+          "vflip",
+          "rot90"
         ]
       },
       "unfreeze_last_n_blocks": 0,
@@ -331,7 +353,15 @@
       "Use AdamW as the optimizer"
     ],
     "train_norm_layers": false,
-    "tta": false,
+    "tta": {
+      "enabled": true,
+      "num_augments": 4,
+      "transforms": [
+        "hflip",
+        "vflip",
+        "rot90"
+      ]
+    },
     "unfreeze_last_n_blocks": 0,
     "use_pretrained": true
   },
@@ -416,9 +446,11 @@
       "train_norm_layers": false,
       "tta": {
         "enabled": true,
-        "num_augments": 2,
+        "num_augments": 4,
         "transforms": [
-          "hflip"
+          "hflip",
+          "vflip",
+          "rot90"
         ]
       },
       "unfreeze_last_n_blocks": 0,
@@ -444,7 +476,15 @@
       "Use AdamW as the optimizer"
     ],
     "train_norm_layers": false,
-    "tta": false,
+    "tta": {
+      "enabled": true,
+      "num_augments": 4,
+      "transforms": [
+        "hflip",
+        "vflip",
+        "rot90"
+      ]
+    },
     "unfreeze_last_n_blocks": 0,
     "use_pretrained": true
   }

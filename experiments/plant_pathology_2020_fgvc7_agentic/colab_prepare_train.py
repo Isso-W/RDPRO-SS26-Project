@@ -80,6 +80,33 @@ def _make_stratified_folds(
     return output
 
 
+def _safe_image_size(item: dict, requested: int) -> int:
+    """Pick the largest patch-grid-aligned resolution a backbone can serve.
+
+    ViT backbones (DINOv2/DINOv3) accept higher resolutions via positional-
+    encoding interpolation, but the side length must be a multiple of the
+    patch size (14 for DINOv2, 16 for DINOv3). Swin ``window7-224`` checkpoints
+    hard-code the 224px window layout, so they are pinned to 224.
+    """
+
+    backbone = str(item.get("backbone") or "").lower()
+    checkpoint = str(item.get("checkpoint") or item.get("pretrained_hf_id") or "").lower()
+    identity = f"{backbone} {checkpoint}"
+
+    if "swin" in identity or "window7-224" in identity:
+        return min(requested, 224)
+
+    if "dinov2" in identity:
+        patch = 14
+    elif "dinov3" in identity or "vit" in identity:
+        patch = 16
+    else:
+        patch = 16  # safe default for transformer patch grids
+
+    snapped = (requested // patch) * patch
+    return max(snapped, patch)
+
+
 def _patch_config_item(
     item: dict,
     info: dict,
@@ -88,6 +115,14 @@ def _patch_config_item(
     candidate_index: int,
 ) -> None:
     candidate_dir = f"candidate_{candidate_index}/fold_{args.fold_index}"
+    image_size = _safe_image_size(item, args.image_size)
+    # Guard GPU memory at high resolution: attention cost grows with the token
+    # count, so shrink the batch when we step above the 224px baseline.
+    batch_size = args.batch_size
+    eval_batch_size = args.eval_batch_size
+    if image_size >= 384:
+        batch_size = min(batch_size, 4)
+        eval_batch_size = min(eval_batch_size, 8)
     patch = {
         "train_csv": info["train_csv"],
         "image_dir": info["image_dir"],
@@ -100,9 +135,9 @@ def _patch_config_item(
         "offline_smoke": False,
         "fold_file": str(fold_file),
         "fold_index": args.fold_index,
-        "batch_size": args.batch_size,
-        "eval_batch_size": args.eval_batch_size,
-        "image_size": args.image_size,
+        "batch_size": batch_size,
+        "eval_batch_size": eval_batch_size,
+        "image_size": image_size,
         "use_class_weights": True,
         "class_weight_power": args.class_weight_power,
         "checkpoint_dir": str(MODULE4_DIR / "checkpoints" / candidate_dir),
@@ -142,7 +177,7 @@ def main() -> int:
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--fold-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=123)
-    parser.add_argument("--image-size", type=int, default=224)
+    parser.add_argument("--image-size", type=int, default=384)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--eval-batch-size", type=int, default=16)
     parser.add_argument("--class-weight-power", type=float, default=0.5)
