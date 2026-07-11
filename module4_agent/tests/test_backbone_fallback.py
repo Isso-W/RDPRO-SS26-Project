@@ -67,3 +67,22 @@ def test_non_pretrained_does_not_raise(tmp_path, monkeypatch):
     mu = _import_generated(tmp_path, monkeypatch, "model_utils")
     backbone, _ = mu.load_backbone(_cfg(use_pretrained=False))
     assert type(backbone).__name__ == "TinyBackbone"
+
+
+def test_backbone_load_info_reports_source_and_params(tmp_path, monkeypatch):
+    torch = pytest.importorskip("torch")
+    import torch.nn as nn
+    mu = _import_generated(tmp_path, monkeypatch, "model_utils")
+    bb, ch = mu.load_backbone(_cfg(allow_backbone_fallback=True))   # -> tiny_fallback
+
+    class _M(nn.Module):
+        def __init__(self, backbone):
+            super().__init__()
+            self.backbone = backbone
+            self.head = nn.Linear(ch, 2)
+
+    info = mu.backbone_load_info(_M(bb), _cfg(allow_backbone_fallback=True))
+    assert info["source"] == "tiny_fallback"
+    assert info["actual_model"] == "TinyBackbone"
+    assert info["total_params"] > 0 and info["trainable_params"] >= 0
+    assert info["fallback_reason"]   # non-empty reason recorded

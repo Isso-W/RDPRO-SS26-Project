@@ -322,6 +322,43 @@ def _model_utils_py() -> str:
                 return self.net(x)
 
 
+        def _annotate_backbone(
+            backbone: nn.Module,
+            *,
+            source: str,
+            requested_backbone: str,
+            requested_hf_id: str = "",
+            actual_model: str = "",
+            fallback_reason: str = "",
+        ) -> nn.Module:
+            """Stamp load provenance so training can report what actually loaded."""
+            backbone._jiaozi_load_info = {
+                "source": source,
+                "requested_backbone": requested_backbone,
+                "requested_hf_id": requested_hf_id,
+                "actual_model": actual_model or backbone.__class__.__name__,
+                "fallback_reason": fallback_reason,
+                "backbone_class": backbone.__class__.__name__,
+            }
+            return backbone
+
+
+        def backbone_load_info(model: nn.Module, config: dict[str, Any] | None = None) -> dict[str, Any]:
+            """What backbone was really built (source + param counts) — for training logs."""
+            config = config or {}
+            backbone = getattr(model, "backbone", model)
+            info = dict(getattr(backbone, "_jiaozi_load_info", {}) or {})
+            info.setdefault("source", "unknown")
+            info.setdefault("requested_backbone", str(get_value(config, "backbone", "")))
+            info.setdefault("requested_hf_id", str(get_value(config, "pretrained_hf_id", "") or ""))
+            info.setdefault("actual_model", backbone.__class__.__name__ if backbone is not None else "None")
+            info.setdefault("fallback_reason", "")
+            info["backbone_class"] = backbone.__class__.__name__ if backbone is not None else "None"
+            info["total_params"] = int(sum(p.numel() for p in model.parameters()))
+            info["trainable_params"] = int(sum(p.numel() for p in model.parameters() if p.requires_grad))
+            return info
+
+
         _TORCHVISION_MODELS: dict[str, str] = {
             "resnet": "resnet50",
             "resnet18": "resnet18",
@@ -472,7 +509,10 @@ def _model_utils_py() -> str:
             if pretrained and hf_id:
                 loaded = _try_huggingface(hf_id, image_size)
                 if loaded is not None:
-                    return loaded
+                    bb, ch = loaded
+                    _annotate_backbone(bb, source="huggingface", requested_backbone=name,
+                                       requested_hf_id=hf_id, actual_model=hf_id)
+                    return bb, ch
 
             model = _try_torchvision(name, pretrained=pretrained)
             if model is None:
@@ -491,10 +531,15 @@ def _model_utils_py() -> str:
                         f"Set allow_backbone_fallback=true to override for a debug run."
                     )
                 bb = TinyBackbone()
+                _annotate_backbone(bb, source="tiny_fallback", requested_backbone=name,
+                                   requested_hf_id=hf_id, actual_model="TinyBackbone",
+                                   fallback_reason="No HuggingFace or torchvision backbone could be loaded.")
                 return bb, bb.out_channels
 
             extractor = _extract_features(model)
             channels = _infer_channels(extractor, image_size)
+            _annotate_backbone(extractor, source="torchvision", requested_backbone=name,
+                               actual_model=_TORCHVISION_MODELS.get(name, name))
             return extractor, channels
 
 
@@ -1577,6 +1622,17 @@ def _train_py() -> str:
                 torch.backends.cudnn.benchmark = True
             model.to(device)
             model.train()
+            try:
+                from model_utils import backbone_load_info
+                _li = backbone_load_info(model, config)
+                print(
+                    f"[train] backbone: source={_li['source']} actual={_li['actual_model']} "
+                    f"params total={_li['total_params']:,} trainable={_li['trainable_params']:,}"
+                )
+                if _li.get("fallback_reason"):
+                    print(f"[train] backbone_fallback_reason={_li['fallback_reason']}")
+            except Exception as _e:
+                print(f"[train] backbone load-info unavailable: {_e}")
             optimizer = _build_optimizer(model, config)
             scheduler = _build_scheduler(optimizer, config, epochs)
             amp_enabled = (
