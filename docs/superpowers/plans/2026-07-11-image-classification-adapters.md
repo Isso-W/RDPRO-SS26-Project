@@ -330,6 +330,30 @@ class _ImageDataset(torch.utils.data.Dataset):
         return tensor, self.targets[index]
 
 
+class _PriorModel(torch.nn.Module):
+    """No-op ablation baseline for refine_solution's ``pass`` component swap.
+
+    ``refine_solution`` (mlestar/refinement.py) ablates each candidate block
+    by replacing it with the literal source ``"pass"`` and checking whether
+    that measurably hurts the metric. The tabular adapter handles this via
+    ``DummyClassifier(strategy="prior")``; timm has no model literally named
+    "pass", so `create_model("pass", ...)` fails, every ablation gets
+    `metric_value=None`, and `refine_solution`'s `select_target_block` raises
+    an uncaught `RuntimeError` -- crashing `compare()` for every vision
+    benchmark, not just this one. This class ignores the input entirely and
+    always predicts a fixed zero-logit vector (a uniform prediction after
+    softmax/sigmoid), which is deliberately uninformative -- exactly what an
+    ablated "no model" component should produce.
+    """
+
+    def __init__(self, num_classes: int) -> None:
+        super().__init__()
+        self._num_classes = num_classes
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        return torch.zeros(images.shape[0], self._num_classes, dtype=torch.float32)
+
+
 class ImageClassificationAdapter:
     """Fine-tune a timm model per fold and score out-of-fold predictions.
 
@@ -510,6 +534,8 @@ class ImageClassificationAdapter:
 
     def _build_model(self, model_name: str, num_classes: int, seed: int) -> torch.nn.Module:
         torch.manual_seed(seed)
+        if model_name == "pass":
+            return _PriorModel(num_classes)
         return create_model(model_name, pretrained=self.pretrained, num_classes=num_classes)
 
     def _subsample(self, train_idx: np.ndarray, seed: int) -> np.ndarray:
@@ -519,11 +545,17 @@ class ImageClassificationAdapter:
         return rng.choice(train_idx, size=self.max_train_samples, replace=False)
 
     def _fit(self, model: torch.nn.Module, dataset: _ImageDataset, seed: int) -> None:
+        parameters = list(model.parameters())
+        if not parameters:
+            # _PriorModel (the "pass" ablation baseline) has no trainable
+            # weights -- Adam raises on an empty parameter list, and there is
+            # nothing to fit anyway.
+            return
         generator = torch.Generator().manual_seed(seed)
         loader = torch.utils.data.DataLoader(
             dataset, batch_size=self.batch_size, shuffle=True, generator=generator
         )
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(parameters, lr=1e-4)
         loss_fn = self._loss_fn()
         model.train()
         for _ in range(self.epochs):
