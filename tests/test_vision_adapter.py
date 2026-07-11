@@ -193,3 +193,33 @@ def test_dogs_vs_cats_run_produces_a_log_loss_metric(tmp_path):
     assert result.receipt.metric_value is not None
     assert result.receipt.metric_value >= 0.0
     assert result.oof.shape == (6,)
+
+
+from mlestar.adapters.vision import HistopathologicCancerAdapter
+
+HISTOPATHOLOGIC_FIXTURE = Path("examples/synthetic_histopathologic_cancer")
+
+
+def test_histopathologic_cancer_load_dataset_reads_separate_labels_csv():
+    task = get_task("histopathologic_cancer")
+    adapter = HistopathologicCancerAdapter(
+        HISTOPATHOLOGIC_FIXTURE, "/tmp/mlestar-vision-test-hcancer-load", task, pretrained=False
+    )
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert labels.tolist() == [1, 0, 1, 0, 1, 0]
+    assert ids == ["h0", "h1", "h2", "h3", "h4", "h5"]
+    assert paths[0].name == "h0.tif"
+
+
+def test_histopathologic_cancer_run_produces_a_roc_auc_metric(tmp_path):
+    task = get_task("histopathologic_cancer")
+    adapter = HistopathologicCancerAdapter(
+        HISTOPATHOLOGIC_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert 0.0 <= result.receipt.metric_value <= 1.0
+    assert result.oof.shape == (6,)

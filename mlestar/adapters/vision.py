@@ -383,3 +383,16 @@ class DogsVsCatsAdapter(ImageClassificationAdapter):
             labels.append(1.0 if prefix == "dog" else 0.0)
             ids.append(path.stem)
         return image_paths, np.array(labels, dtype=float), ids
+
+
+class HistopathologicCancerAdapter(ImageClassificationAdapter):
+    """Metastatic cancer detection in .tif image patches, labels in a separate CSV."""
+
+    def _load_dataset(self, data_root: Path) -> tuple[list[Path], np.ndarray, list[str]]:
+        csv_path = data_root / "train_labels.csv"
+        if not csv_path.is_file():
+            raise FileNotFoundError(f"Histopathologic Cancer needs train_labels.csv in {data_root}.")
+        frame = pd.read_csv(csv_path)
+        image_paths = [data_root / "train" / f"{id_}.tif" for id_ in frame["id"]]
+        labels = frame["label"].to_numpy(dtype=float)
+        return image_paths, labels, frame["id"].astype(str).tolist()
