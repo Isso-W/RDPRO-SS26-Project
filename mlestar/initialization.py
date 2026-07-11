@@ -48,9 +48,16 @@ def choose_best(
 ) -> tuple[CandidateSpec, ExperimentReceipt]:
     """Choose the best successful receipt without treating a failure as zero."""
 
-    valid = [(candidate, receipt) for candidate, receipt in candidates if receipt.metric_value is not None]
+    pairs = list(candidates)
+    valid = [(candidate, receipt) for candidate, receipt in pairs if receipt.metric_value is not None]
     if not valid:
-        raise RuntimeError("No candidate produced a validation metric.")
+        details = "; ".join(
+            f"{candidate.candidate_id}: {receipt.error}"
+            for candidate, receipt in pairs
+            if receipt.error is not None
+        )
+        suffix = f" Candidate errors -- {details}" if details else ""
+        raise RuntimeError(f"No candidate produced a validation metric.{suffix}")
     direction = bool(task.metric.greater_is_better)
     return max(valid, key=lambda item: float(item[1].metric_value)) if direction else min(
         valid, key=lambda item: float(item[1].metric_value)

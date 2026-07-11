@@ -1,7 +1,10 @@
 from dataclasses import replace
 
-from mlestar.contracts import FoldSpec, MetricSpec, SubmissionSpec, TaskSpec
-from mlestar.initialization import CandidateSpec, initialize_solution
+import pytest
+
+from benchmarks.catalog import get_task
+from mlestar.contracts import ExperimentReceipt, FoldSpec, MetricSpec, SubmissionSpec, TaskSpec
+from mlestar.initialization import CandidateSpec, choose_best, initialize_solution
 
 
 class _Evaluator:
@@ -38,3 +41,24 @@ def test_initialization_evaluates_candidates_and_accepts_improving_merge() -> No
     assert result.best.candidate_id == "tree+linear"
     assert [item.candidate_id for item in result.receipts] == ["linear", "tree", "bad"]
     assert result.best_receipt.metric_value == 0.81
+
+
+def test_choose_best_error_message_includes_candidate_errors():
+    task = get_task("leaf_classification")
+    candidate_a = CandidateSpec("a", (("model", "a"),))
+    candidate_b = CandidateSpec("b", (("model", "b"),))
+    receipt_a = ExperimentReceipt(
+        experiment_id="a-1", parent_experiment_id=None, phase="initial", candidate_id="a",
+        metric_value=None, fold_scores=(), seed=13, oof_path=None, test_path=None,
+        error="FileNotFoundError: train.csv missing",
+    )
+    receipt_b = ExperimentReceipt(
+        experiment_id="b-1", parent_experiment_id=None, phase="initial", candidate_id="b",
+        metric_value=None, fold_scores=(), seed=13, oof_path=None, test_path=None,
+        error="ValueError: bad label",
+    )
+    with pytest.raises(RuntimeError) as excinfo:
+        choose_best([(candidate_a, receipt_a), (candidate_b, receipt_b)], task)
+    message = str(excinfo.value)
+    assert "FileNotFoundError: train.csv missing" in message
+    assert "ValueError: bad label" in message
