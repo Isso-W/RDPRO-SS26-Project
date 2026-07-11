@@ -37,7 +37,19 @@ def test_notebook_download_cell_fails_loudly_if_data_still_missing() -> None:
     # Shell magics (!cmd) don't raise on non-zero exit, so a failed Kaggle
     # download/unzip would otherwise continue silently. The cell must check
     # the outcome itself and raise before control reaches the compare cell.
-    unzip_index = download_cell.index("unzip")
-    postcheck_index = download_cell.index("train.csv", unzip_index)
+    extract_index = download_cell.index("extractall")
+    postcheck_index = download_cell.index("train.csv", extract_index)
     raise_index = download_cell.index("raise", postcheck_index)
     assert postcheck_index < raise_index
+
+
+def test_notebook_extracts_nested_leaf_csv_archives() -> None:
+    notebook = json.loads(Path("notebooks/mlestar_kaggle_experiments.ipynb").read_text(encoding="utf-8"))
+    cells_source = ["".join(cell.get("source", [])) for cell in notebook["cells"]]
+    download_cell = next(src for src in cells_source if "kaggle competitions download" in src)
+    # The leaf-classification competition zip contains train.csv.zip,
+    # test.csv.zip, and sample_submission.csv.zip nested one level deeper --
+    # extracting only the outer archive leaves train.csv.zip on disk, not
+    # train.csv, so the adapter's FileNotFoundError check still fires.
+    assert "zipfile" in download_cell
+    assert "*.csv.zip" in download_cell or "csv.zip" in download_cell
