@@ -1,0 +1,87 @@
+[
+  {
+    "format": "nl",
+    "rank": 1,
+    "score": 0.92,
+    "model_config": {
+      "task_type": "classification",
+      "backbone": "efficientnet_b0",
+      "pretrained_hf_id": "google/efficientnet-b0",
+      "pretrained_name": "EfficientNet-B0 ImageNet",
+      "head": "classification_head",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "finetune_strategy": "head_only",
+      "freeze_backbone": true,
+      "scratch_viable": false,
+      "params_M": 5.3,
+      "num_classes": 3,
+      "image_size": 64
+    },
+    "tasks": [
+      "Load EfficientNet-B0 pretrained on ImageNet.",
+      "Use head-only fine-tuning and freeze the backbone.",
+      "Use CrossEntropyLoss.",
+      "Use AdamW as optimizer."
+    ],
+    "alternatives": []
+  },
+  {
+    "format": "nl",
+    "rank": 2,
+    "score": 0.86,
+    "model_config": {
+      "task_type": "object_detection",
+      "backbone": "yolov8n",
+      "pretrained_hf_id": "ultralytics/yolov8n",
+      "pretrained_name": "YOLOv8-Nano COCO",
+      "head": "detection_head_anchor_free",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "finetune_strategy": "full",
+      "freeze_backbone": false,
+      "scratch_viable": true,
+      "params_M": 3.2,
+      "num_classes": 3,
+      "image_size": 64
+    },
+    "tasks": [
+      "Use a small anchor-free detector.",
+      "Full fine-tuning is allowed.",
+      "Use a focal-style detection loss.",
+      "Use SGD with momentum."
+    ],
+    "alternatives": [
+      "rt_detr_resnet18"
+    ]
+  },
+  {
+    "format": "nl",
+    "rank": 3,
+    "score": 0.81,
+    "model_config": {
+      "task_type": "image_segmentation",
+      "backbone": "segformer_b0",
+      "pretrained_hf_id": "nvidia/segformer-b0-finetuned-ade-512-512",
+      "pretrained_name": "SegFormer-B0 ADE20K",
+      "head": "segmentation_head",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "finetune_strategy": "head_only",
+      "freeze_backbone": true,
+      "scratch_viable": false,
+      "params_M": 3.8,
+      "num_classes": 3,
+      "image_size": 64
+    },
+    "tasks": [
+      "Load SegFormer-B0 pretrained on ADE20K.",
+      "Use head-only fine-tuning for a small labeled dataset.",
+      "Evaluate with mIoU and Dice-style smoke metrics."
+    ],
+    "alternatives": [
+      "deeplabv3_resnet50"
+    ]
+  }
+]
+

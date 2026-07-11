@@ -1,5 +1,10 @@
 __pycache__/
 *.py[cod]
+.DS_Store
+.pytest_cache/
+chroma_db_kb/
+retrieval/chroma_db_kb/
+generated/
 .demo_run/
 demo_run/
 .tmp_example_test/

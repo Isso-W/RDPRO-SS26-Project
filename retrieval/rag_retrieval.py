@@ -17,8 +17,12 @@ Module 3 知识库 — CV任务专用
   preferred_when   — 某条件下更优（edge attr: condition）
 """
 
+import hashlib
 import json
+import os
+import re
 import networkx as nx
+import numpy as np
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
@@ -1035,6 +1039,67 @@ MODULE1_EXAMPLES = {
 # 4. 图 + 向量索引构建
 # ═══════════════════════════════════════════════════════════════════════════════
 
+class LocalHashEmbeddingFunction:
+    """Offline deterministic embedding fallback for local tests.
+
+    The real SentenceTransformer embedding can still be enabled with
+    CV_AUTODL_EMBEDDINGS=hf, but tests should not require HuggingFace network
+    access just to exercise the retrieval logic.
+    """
+
+    def __init__(self, dimension: int = 384):
+        self.dimension = dimension
+
+    @staticmethod
+    def name() -> str:
+        return "local_hash"
+
+    @staticmethod
+    def build_from_config(config: dict) -> "LocalHashEmbeddingFunction":
+        return LocalHashEmbeddingFunction(dimension=int(config.get("dimension", 384)))
+
+    def get_config(self) -> dict:
+        return {"dimension": self.dimension}
+
+    def default_space(self) -> str:
+        return "cosine"
+
+    def supported_spaces(self) -> list[str]:
+        return ["cosine", "l2", "ip"]
+
+    def is_legacy(self) -> bool:
+        return False
+
+    def embed_query(self, input):
+        return self.__call__(input)
+
+    def __call__(self, input):
+        documents = input if isinstance(input, list) else [input]
+        return [self._embed(str(document)) for document in documents]
+
+    def _embed(self, text: str):
+        vector = np.zeros(self.dimension, dtype=np.float32)
+        tokens = re.findall(r"[a-zA-Z0-9_]+", text.lower())
+        for token in tokens:
+            digest = hashlib.md5(token.encode("utf-8")).digest()
+            index = int.from_bytes(digest[:4], "little") % self.dimension
+            sign = 1.0 if digest[4] % 2 == 0 else -1.0
+            vector[index] += sign
+        norm = np.linalg.norm(vector)
+        if norm > 0:
+            vector /= norm
+        return vector
+
+
+def _make_embedding_function():
+    mode = os.environ.get("CV_AUTODL_EMBEDDINGS", "local").strip().lower()
+    if mode in {"hf", "huggingface", "sentence_transformer", "sentence-transformer"}:
+        try:
+            return SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2"), "cv_backbones"
+        except Exception as exc:
+            print(f"[Index] Falling back to local embeddings: {exc}")
+    return LocalHashEmbeddingFunction(), "cv_backbones_local"
+
 def build_graph() -> nx.DiGraph:
     G = nx.DiGraph()
     for c in COMPONENTS:
@@ -1049,8 +1114,8 @@ def build_graph() -> nx.DiGraph:
 def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collection:
     """向量索引只对 backbone 建立；pretrained_model 通过图遍历关联。"""
     client = chromadb.PersistentClient(path=persist_path)
-    ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-    collection = client.get_or_create_collection("cv_backbones", embedding_function=ef)
+    ef, collection_name = _make_embedding_function()
+    collection = client.get_or_create_collection(collection_name, embedding_function=ef)
 
     backbones = [c for c in COMPONENTS if c["component_type"] == "backbone"]
     existing_ids = set(collection.get()["ids"])
