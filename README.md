@@ -21,6 +21,9 @@ inside the run directory.
 ```bash
 python -m pip install -e '.[vision,llm,kaggle,dev]'
 python -m pytest -q
+python -m mlestar.cli compare --benchmark leaf_classification \
+  --data-root examples/synthetic_leaf --run-root /tmp/mlestar-smoke \
+  --seeds 13 --no-submit
 ```
 
 ## Scope of benchmark results
