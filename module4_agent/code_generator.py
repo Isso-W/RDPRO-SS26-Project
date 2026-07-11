@@ -464,18 +464,32 @@ def _model_utils_py() -> str:
             name = str(get_value(config, "backbone", "tiny_cnn")).lower()
             image_size = as_int(get_value(config, "image_size", 224), 224)
             pretrained = as_bool(get_value(config, "use_pretrained", False), False)
+            allow_fallback = as_bool(get_value(config, "allow_backbone_fallback", False), False)
             if as_bool(get_value(config, "offline_smoke", False), False):
                 pretrained = False
 
-            if pretrained:
-                hf_id = str(get_value(config, "pretrained_hf_id", "") or "").strip()
-                if hf_id:
-                    loaded = _try_huggingface(hf_id, image_size)
-                    if loaded is not None:
-                        return loaded
+            hf_id = str(get_value(config, "pretrained_hf_id", "") or "").strip()
+            if pretrained and hf_id:
+                loaded = _try_huggingface(hf_id, image_size)
+                if loaded is not None:
+                    return loaded
 
             model = _try_torchvision(name, pretrained=pretrained)
             if model is None:
+                # A real pretrained backbone was requested but nothing real could be loaded.
+                # Refuse to silently train a randomly-initialized TinyBackbone (e.g. a gated
+                # DINOv3 checkpoint that needs an HF token) — that produces meaningless results
+                # that look like a fast, successful run.
+                if pretrained and not allow_fallback:
+                    raise RuntimeError(
+                        f"Could not load a real backbone for {name!r} with use_pretrained=true. "
+                        f"The HuggingFace checkpoint {hf_id or '(none)'!r} failed to load (see the "
+                        f"[model_utils] message above) and {name!r} has no torchvision fallback. "
+                        f"Gated checkpoints such as DINOv3 need `huggingface-cli login` (or the "
+                        f"HF_TOKEN env var) AND accepting the model license on its HuggingFace page. "
+                        f"Refusing to silently fall back to a random TinyBackbone. "
+                        f"Set allow_backbone_fallback=true to override for a debug run."
+                    )
                 bb = TinyBackbone()
                 return bb, bb.out_channels
 
