@@ -107,3 +107,17 @@ Run tests:
 cd /Users/wang/Desktop/TUB2025sose/ML_project/Jiaozi
 python3 -m unittest discover -s tests -v
 ```
+
+## MLE-STAR DataOps implementation
+
+The standalone MLE-STAR implementation lives in `mlestar/`. It uses task-specific
+search evidence, generated skrub DataOps pipelines, real experiment receipts,
+static leakage/data-use audits, component ablation helpers, and OOF-safe blends.
+
+```bash
+python -m pip install -r requirements.txt
+python -m mlestar --version
+```
+
+See `docs/MLESTAR_DATAOPS.md` for the run contract and
+`docs/COLAB_MLESTAR.md` for the Colab workflow.

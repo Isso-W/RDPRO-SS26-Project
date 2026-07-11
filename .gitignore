@@ -5,3 +5,17 @@ demo_run/
 .tmp_example_test/
 .tmp_cifar10_test/
 colab_demo_output/
+.env
+.kaggle/
+kaggle.json
+/runs/
+/kaggle_data/
+/remote_outputs/
+/*.parquet
+/submission*.csv
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+chroma_db_kb/
+.pytest_cache/

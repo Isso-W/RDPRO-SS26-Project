@@ -1,0 +1,12 @@
+# Runtime dependencies for the standalone MLE-STAR DataOps implementation.
+# Install with the same Python interpreter used to run tests.
+numpy
+pandas
+scikit-learn
+skrub>=0.9,<0.10
+kaggle>=2.2.2
+pillow
+timm
+torch
+openai>=2.0.0
+pytest
