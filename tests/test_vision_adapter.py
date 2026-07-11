@@ -133,3 +133,33 @@ def test_dog_breed_run_produces_a_log_loss_metric(tmp_path):
     assert result.receipt.metric_value is not None
     assert result.receipt.metric_value >= 0.0
     assert result.oof.shape == (6, 3)
+
+
+from mlestar.adapters.vision import AerialCactusAdapter
+
+AERIAL_CACTUS_FIXTURE = Path("examples/synthetic_aerial_cactus")
+
+
+def test_aerial_cactus_load_dataset_reads_binary_csv():
+    task = get_task("aerial_cactus")
+    adapter = AerialCactusAdapter(
+        AERIAL_CACTUS_FIXTURE, "/tmp/mlestar-vision-test-cactus-load", task, pretrained=False
+    )
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert labels.tolist() == [1, 0, 1, 0, 1, 0]
+    assert ids == ["c0.jpg", "c1.jpg", "c2.jpg", "c3.jpg", "c4.jpg", "c5.jpg"]
+    assert paths[0].name == "c0.jpg"
+
+
+def test_aerial_cactus_run_produces_a_roc_auc_metric(tmp_path):
+    task = get_task("aerial_cactus")
+    adapter = AerialCactusAdapter(
+        AERIAL_CACTUS_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert 0.0 <= result.receipt.metric_value <= 1.0
+    assert result.oof.shape == (6,)

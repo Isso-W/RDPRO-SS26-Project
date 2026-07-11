@@ -347,3 +347,16 @@ class DogBreedAdapter(ImageClassificationAdapter):
         image_paths = [data_root / "train" / f"{id_}.jpg" for id_ in frame["id"]]
         labels = frame["breed"].map(breed_to_index).to_numpy(dtype=int)
         return image_paths, labels, frame["id"].astype(str).tolist()
+
+
+class AerialCactusAdapter(ImageClassificationAdapter):
+    """Binary cactus detection from aerial image tiles."""
+
+    def _load_dataset(self, data_root: Path) -> tuple[list[Path], np.ndarray, list[str]]:
+        csv_path = data_root / "train.csv"
+        if not csv_path.is_file():
+            raise FileNotFoundError(f"Aerial Cactus needs train.csv in {data_root}.")
+        frame = pd.read_csv(csv_path)
+        image_paths = [data_root / "train" / id_ for id_ in frame["id"]]
+        labels = frame["has_cactus"].to_numpy(dtype=float)
+        return image_paths, labels, frame["id"].astype(str).tolist()
