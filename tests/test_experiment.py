@@ -38,19 +38,6 @@ def test_compare_still_rejects_unimplemented_benchmarks(tmp_path):
         compare(benchmark="global_wheat", data_root=tmp_path, run_root=tmp_path)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Pre-existing gap in ImageClassificationAdapter._build_model (mlestar/adapters/vision.py, "
-        "unchanged since Task 2): unlike LeafClassificationAdapter._build_model, it has no case for "
-        "the 'pass' no-op-ablation model name that refine_solution's generic ablation step always "
-        "tries, so timm.create_model('pass', ...) raises RuntimeError('Unknown model (pass)') for "
-        "every candidate's model-block ablation, which makes select_target_block raise "
-        "'No ablation produced a metric.' and crashes compare() for every vision benchmark's refine "
-        "step. Fixing this requires touching mlestar/adapters/vision.py, which is out of Task 8's "
-        "declared scope (experiment.py + test_experiment.py only)."
-    ),
-    strict=True,
-)
 def test_compare_runs_plant_pathology_end_to_end(tmp_path):
     report = compare(
         benchmark="plant_pathology_2020",
