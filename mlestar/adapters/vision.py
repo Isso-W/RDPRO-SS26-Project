@@ -314,3 +314,41 @@ class AptosAdapter(ImageClassificationAdapter):
         image_paths = [data_root / "train_images" / f"{id_code}.png" for id_code in frame["id_code"]]
         labels = frame["diagnosis"].to_numpy(dtype=float)
         return image_paths, labels, frame["id_code"].astype(str).tolist()
+
+
+class DogBreedAdapter(ImageClassificationAdapter):
+    """Fine-grained dog-breed classification, class names from sample_submission.csv."""
+
+    def _load_dataset(self, data_root: Path) -> tuple[list[Path], np.ndarray, list[str]]:
+        labels_path = data_root / "labels.csv"
+        sample_path = data_root / "sample_submission.csv"
+        if not labels_path.is_file():
+            raise FileNotFoundError(f"Dog Breed needs labels.csv (not train.csv) in {data_root}.")
+        if not sample_path.is_file():
+            raise FileNotFoundError(f"Dog Breed needs sample_submission.csv in {data_root}.")
+        frame = pd.read_csv(labels_path)
+        class_names = list(pd.read_csv(sample_path).columns[1:])
+        breed_to_index = {name: index for index, name in enumerate(class_names)}
+        unknown = sorted(set(frame["breed"]) - set(breed_to_index))
+        if unknown:
+            raise ValueError(f"labels.csv has breeds not in sample_submission.csv: {unknown}")
+        image_paths = [data_root / "train" / f"{id_}.jpg" for id_ in frame["id"]]
+        labels = frame["breed"].map(breed_to_index).to_numpy(dtype=int)
+        return image_paths, labels, frame["id"].astype(str).tolist()
+
+    def _fold_scores(self, folds: pd.DataFrame, labels: np.ndarray, oof: np.ndarray) -> list[float]:
+        """Override to handle folds with missing classes in multiclass problems."""
+        scoring_labels, scoring_oof = self._score_inputs(labels, oof)
+        fold_column = folds["fold"].to_numpy()
+        num_classes = oof.shape[1] if oof.ndim > 1 else 1
+        scores = []
+        for fold in range(self.task.fold.n_splits):
+            mask = fold_column == fold
+            fold_labels = scoring_labels[mask]
+            fold_oof = scoring_oof[mask]
+            # Skip fold scoring if not all classes are represented (common in multiclass with small datasets)
+            if np.ndim(fold_labels) == 0 or len(np.unique(fold_labels)) < num_classes:
+                scores.append(np.nan)
+            else:
+                scores.append(score_metric(self.task.metric, fold_labels, fold_oof).value)
+        return scores

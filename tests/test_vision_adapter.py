@@ -103,3 +103,33 @@ def test_aptos_run_produces_a_qwk_metric(tmp_path):
     assert result.receipt.metric_value is not None
     assert -1.0 <= result.receipt.metric_value <= 1.0
     assert result.oof.shape == (6,)
+
+
+from mlestar.adapters.vision import DogBreedAdapter
+
+DOG_BREED_FIXTURE = Path("examples/synthetic_dog_breed")
+
+
+def test_dog_breed_load_dataset_encodes_breed_names_from_labels_csv():
+    task = get_task("dog_breed")
+    adapter = DogBreedAdapter(DOG_BREED_FIXTURE, "/tmp/mlestar-vision-test-breed-load", task, pretrained=False)
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert ids == ["d0", "d1", "d2", "d3", "d4", "d5"]
+    assert paths[0].name == "d0.jpg"
+    # class names come from sample_submission.csv's header, alphabetically:
+    # beagle, poodle, pug -- so d0/d2 (beagle) -> 0, d3/d5 (poodle) -> 1, d1/d4 (pug) -> 2
+    assert labels.tolist() == [0, 2, 0, 1, 2, 1]
+
+
+def test_dog_breed_run_produces_a_log_loss_metric(tmp_path):
+    task = get_task("dog_breed")
+    adapter = DogBreedAdapter(
+        DOG_BREED_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert result.receipt.metric_value >= 0.0
+    assert result.oof.shape == (6, 3)
