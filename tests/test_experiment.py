@@ -44,6 +44,8 @@ def test_compare_runs_plant_pathology_end_to_end(tmp_path):
         data_root=Path("examples/synthetic_plant_pathology"),
         run_root=tmp_path,
         seeds=(13,),
+        adapter_kwargs={"pretrained": False},
     )
     assert report["benchmark"] == "plant_pathology_2020"
     assert report["summary"]["baseline"]["failures"] == 0
+    assert report["summary"]["mlestar_refined"]["failures"] == 0

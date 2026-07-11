@@ -86,7 +86,7 @@ def _summary(rows: list[dict[str, object]]) -> dict[str, dict[str, float | int]]
 
 def compare(
     *, benchmark: str, data_root: str | Path, run_root: str | Path, seeds: Sequence[int] = (13, 29, 47),
-    outer_rounds: int = 1, inner_rounds: int = 1,
+    outer_rounds: int = 1, inner_rounds: int = 1, adapter_kwargs: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Run paired real baseline/initial/refinement/OOF-ensemble arms for one benchmark.
 
@@ -101,6 +101,7 @@ def compare(
         raise NotImplementedError(
             f"{benchmark} requires its {task.modality} adapter; use the catalog for a schema-only preflight."
         )
+    adapter_kwargs = adapter_kwargs or {}
     model_a, model_b = _CANDIDATE_MODELS[benchmark]
     root = Path(run_root).resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -109,7 +110,7 @@ def compare(
     for seed in seeds:
         seed_root = root / f"seed_{seed}"
         seed_root.mkdir(parents=True, exist_ok=True)
-        adapter = adapter_class(data_root, seed_root, task)
+        adapter = adapter_class(data_root, seed_root, task, **adapter_kwargs)
         baseline_candidate = _candidate(model_a, model_a)
         baseline_run = adapter.run(baseline_candidate, phase="baseline", seed=seed)
         initial = initialize_solution(
