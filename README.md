@@ -34,3 +34,6 @@ the API error and compares offline OOF metrics only.
 See `docs/superpowers/plans/2026-07-11-standalone-mlestar-reproduction.md` for
 the implementation plan and `docs/EVALUATION_PROTOCOL.md` for the final study
 protocol.
+
+For Colab, use `notebooks/mlestar_kaggle_experiments.ipynb` and follow
+`docs/COLAB.md`.
