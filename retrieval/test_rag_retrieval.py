@@ -322,6 +322,21 @@ class TestBehavior(unittest.TestCase):
             f"expected a dinov3 LVD-1689M checkpoint, got {d3[0].get('pretrained')}",
         )
 
+    def test_dinov3_gated_off_when_not_accuracy(self):
+        # v3 is accuracy_upgrade: with priority != accuracy it must not appear — DINOv2 is
+        # the open, non-gated default. Keeps the gated v3 out of non-accuracy picks.
+        inp = _make_input(
+            task_type="feature_extraction",
+            data_size="medium",
+            priority="balanced",
+            few_shot=True,
+        )
+        results = self._run(inp)
+        self.assertNotIn(
+            "dinov3", self._backbones(results),
+            f"dinov3 (accuracy_upgrade) should be gated off when priority!=accuracy: {self._backbones(results)}",
+        )
+
 
 class TestBudget(unittest.TestCase):
     """约束感知选型：max_params_m / max_flops_g 预算过滤（Phase 1+2）。"""

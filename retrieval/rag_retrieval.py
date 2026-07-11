@@ -322,10 +322,12 @@ COMPONENTS = [
         "scratch_viable_from": None,
         "domain_transfer": "strong",
         "capabilities": ["zero_shot", "few_shot", "dense_features", "foundation_features"],
+        # accuracy_upgrade: v3 只在 priority=accuracy 时进入候选，否则回落到开放、无门禁的
+        # DINOv2（v3 权重是 gated=manual，不该在非精度场景当首选推给加载不了的用户）。
         "tier": {
-            "feature_extraction": "default",
-            "classification":     "special_case",
-            "image_segmentation": "special_case",
+            "feature_extraction": "accuracy_upgrade",
+            "classification":     "accuracy_upgrade",
+            "image_segmentation": "accuracy_upgrade",
         },
         "description": (
             "Modern self-supervised vision foundation model producing high-quality dense "
