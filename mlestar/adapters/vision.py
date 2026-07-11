@@ -203,8 +203,13 @@ class ImageClassificationAdapter:
 
     def _score_inputs(self, labels: np.ndarray, oof: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         if self.task.modality == "image_ordinal":
-            num_classes = self._num_classes(labels)
-            rounded = np.clip(np.round(oof), 0, num_classes - 1)
+            # NOTE: do not reuse _num_classes(labels) here -- for image_ordinal
+            # it returns 1 (the regression head's output width), not the count
+            # of valid ordinal grade levels. Using it as the clip bound forces
+            # every rounded prediction to 0. The valid range must come from
+            # the labels themselves.
+            max_label = int(labels.max())
+            rounded = np.clip(np.round(oof), 0, max_label)
             return labels, rounded
         return labels, oof
 

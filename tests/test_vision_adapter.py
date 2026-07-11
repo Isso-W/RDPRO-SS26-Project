@@ -55,3 +55,23 @@ def test_merge_names_an_ensemble_candidate():
     merged = adapter.merge(incumbent, addition)
     assert merged.candidate_id == "resnet18+efficientnet_b0"
     assert merged.block("model") == "ensemble:resnet18+efficientnet_b0"
+
+
+def test_score_inputs_ordinal_clips_to_label_range_not_num_classes():
+    from mlestar.adapters.vision import ImageClassificationAdapter
+    from mlestar.contracts import FoldSpec, MetricSpec, SubmissionSpec, TaskSpec
+
+    task = TaskSpec(
+        key="fake_ordinal",
+        competition="fake-ordinal",
+        modality="image_ordinal",
+        metric=MetricSpec("qwk"),
+        fold=FoldSpec(n_splits=2),
+        submission=SubmissionSpec(id_columns=("id",), prediction_columns=("diagnosis",)),
+        target_columns=("diagnosis",),
+    )
+    adapter = ImageClassificationAdapter("/tmp/does-not-matter", "/tmp/does-not-matter-run", task, pretrained=False)
+    labels = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+    oof = np.array([0.2, 1.6, 2.4, 3.9, 3.4])  # raw regression outputs, unrounded
+    _, rounded = adapter._score_inputs(labels, oof)
+    assert rounded.tolist() == [0.0, 2.0, 2.0, 4.0, 3.0]
