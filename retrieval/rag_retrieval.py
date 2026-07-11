@@ -1934,11 +1934,12 @@ def build_task_list(result: dict, graph: nx.DiGraph, fmt: str = "structured",
                 input_json.get("data_stats"))
             model_config["recipe"] = recipe
             model_config["recipe_provenance"] = recipe_prov
-            # image_size/lr/epochs 直接生效（Module 4 模板已读这些顶层键）；
+            # image_size/lr/epochs/early_stop 直接生效（Module 4 模板已读这些顶层键）；
             # augmentation 三维的消费需 Module 4 模板改动（recipe_layer_plan §6），暂缓。
             model_config.setdefault("image_size", recipe["image_size"])
             model_config.setdefault("learning_rate", recipe["learning_rate"])
             model_config.setdefault("recommended_epochs", recipe["epochs"])
+            model_config.setdefault("early_stopping_patience", recipe["early_stopping_patience"])
 
         return {
             "format":       "nl",

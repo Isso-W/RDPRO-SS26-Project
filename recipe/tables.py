@@ -19,6 +19,12 @@ _RECOMMENDED_EPOCHS: dict[tuple[str, str], int] = {
     ("large",  "scratch"):   20,
 }
 
+_EARLY_STOP_PATIENCE: dict[str, int] = {
+    "small": 3,
+    "medium": 5,
+    "large": 8,
+}
+
 
 def training_mode(finetune_strategy: str | None, use_pretrained: bool) -> str:
     """(finetune_strategy, use_pretrained) → mode ∈ {head_only, finetune, scratch}。"""
@@ -43,13 +49,17 @@ def derive_recommended_epochs(
     return _RECOMMENDED_EPOCHS.get((data_size, mode), 15)
 
 
+def early_stopping_patience(data_size: str) -> int:
+    return _EARLY_STOP_PATIENCE.get(data_size, 5)
+
+
 # ═══ backbone 家族分类（lr / 默认分辨率用）═══════════════════════════════════
 # 与 retrieval/rag_retrieval.py COMPONENTS 的 14 个 backbone id 对齐。
 _FAMILY_CLASS: dict[str, str] = {
     "resnet": "cnn", "efficientnet": "cnn", "mobilenet_v3": "cnn",
     "convnext": "cnn", "unet": "cnn", "yolov8": "cnn",
     "vit": "transformer", "swin_transformer": "transformer",
-    "dinov2": "transformer", "clip_vit": "transformer",
+    "dinov2": "transformer", "dinov3": "transformer", "clip_vit": "transformer",
     "detr": "transformer", "rt_detr": "transformer",
     "segformer": "transformer", "mask2former": "transformer",
 }
@@ -63,7 +73,7 @@ def family_class(family: str) -> str:
 # family 默认输入分辨率（无 checkpoint 期望分辨率时的回退）
 _FAMILY_IMAGE_DEFAULT: dict[str, int] = {
     "resnet": 224, "efficientnet": 224, "mobilenet_v3": 224, "convnext": 224,
-    "vit": 224, "swin_transformer": 224, "dinov2": 224, "clip_vit": 224,
+    "vit": 224, "swin_transformer": 224, "dinov2": 224, "dinov3": 224, "clip_vit": 224,
     "unet": 256, "segformer": 512, "mask2former": 512,
     "yolov8": 640, "detr": 800, "rt_detr": 640,
 }
@@ -73,6 +83,7 @@ DEFAULT_IMAGE_SIZE = 224
 # 仅列除数明确、不满足会报错的家族；CNN 接受任意尺寸，不入表。
 _IMAGE_DIVISOR: dict[str, int] = {
     "dinov2": 14,            # ViT patch 14
+    "dinov3": 16,            # ViT-S/B/L patch 16
     "vit": 16,               # ViT patch 16
     "swin_transformer": 32,  # 4 级下采样 → 32 整除
 }

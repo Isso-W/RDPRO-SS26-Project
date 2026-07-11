@@ -1,4 +1,4 @@
-"""layer.py — recipe 编排：(已选骨干 + 数据信号) → image_size/lr/epochs/augmentation。
+"""layer.py — recipe 编排：(已选骨干 + 数据信号) → image_size/lr/epochs/augmentation/early stop。
 
 每个值带 provenance（来源规则路径 + 信号缺失标记）。纯规则、无 LLM。
 调用点：rag_retrieval.build_task_list 组装完 model_config 后。
@@ -79,5 +79,9 @@ def build_recipe(
     # 4. augmentation（三维）
     recipe["augmentation"], prov["augmentation"] = augment.build_augment(
         config, input_json, data_stats)
+
+    # 5. early stopping（只作为真实训练的保险丝，不改变 epoch 上限）
+    recipe["early_stopping_patience"] = tables.early_stopping_patience(data_size)
+    prov["early_stopping_patience"] = f"early_stopping[{data_size}]"
 
     return recipe, prov

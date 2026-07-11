@@ -29,11 +29,20 @@ def test_epochs_migration_unchanged():
     assert tables.derive_recommended_epochs("weird", "x", True) == 15      # 缺省
 
 
+def test_early_stopping_patience_by_data_size():
+    assert tables.early_stopping_patience("small") == 3
+    assert tables.early_stopping_patience("medium") == 5
+    assert tables.early_stopping_patience("large") == 8
+    assert tables.early_stopping_patience("weird") == 5
+
+
 def test_lr_table_hit():
     r, _ = build_recipe(_cfg("vit", "full"), _inp(), {}, None)
     assert r["learning_rate"] == 3e-5          # transformer finetune
     r2, _ = build_recipe(_cfg("resnet", "head_only"), _inp(), {}, None)
     assert r2["learning_rate"] == 1e-3         # cnn head_only
+    r3, _ = build_recipe(_cfg("dinov3", "full"), _inp(), {}, None)
+    assert r3["learning_rate"] == 3e-5         # DINOv3 ViT finetune
 
 
 def test_image_size_bump_and_snap():
@@ -54,7 +63,7 @@ def test_checkpoint_resolution_overrides_family_default():
 
 
 # ── 不变量（对所有构造输入必成立）─────────────────────────────────────────────
-_BACKBONES = ["resnet", "efficientnet", "vit", "swin_transformer", "dinov2", "convnext"]
+_BACKBONES = ["resnet", "efficientnet", "vit", "swin_transformer", "dinov2", "dinov3", "convnext"]
 _SIZES = ["small", "medium", "large"]
 _STRAT = ["full", "head_only"]
 
@@ -105,6 +114,7 @@ def test_golden_few_shot_forces_heavy():
 def test_golden_recipe_has_all_fields():
     r, prov = build_recipe(_cfg("efficientnet"), _inp("medium"), {},
                            {"resolution_tier": "medium", "color_mode": "rgb"})
-    assert set(r) == {"epochs", "image_size", "learning_rate", "augmentation"}
-    assert set(prov) == {"epochs", "image_size", "learning_rate", "augmentation"}
+    expected = {"epochs", "image_size", "learning_rate", "augmentation", "early_stopping_patience"}
+    assert set(r) == expected
+    assert set(prov) == expected
     assert set(r["augmentation"]) == {"tier", "invariance", "schedule"}

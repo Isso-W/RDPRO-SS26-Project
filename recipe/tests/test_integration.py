@@ -24,12 +24,15 @@ def test_recipe_injected_when_input_json_given():
     tl = rag.build_task_list(_result(), g, fmt="nl", input_json=inp)
     mc = tl["model_config"]
     assert "recipe" in mc and "recipe_provenance" in mc
-    assert set(mc["recipe"]) == {"epochs", "image_size", "learning_rate", "augmentation"}
+    assert set(mc["recipe"]) == {
+        "epochs", "image_size", "learning_rate", "augmentation", "early_stopping_patience"
+    }
     assert mc["recipe"]["image_size"] == 384          # fine_grained + high_res 上调
-    # image_size/lr/epochs 也提到顶层，Module 4 模板直接生效
+    # image_size/lr/epochs/early stop 也提到顶层，Module 4 模板直接生效
     assert mc["image_size"] == 384
     assert mc["learning_rate"] == mc["recipe"]["learning_rate"]
     assert mc["recommended_epochs"] == mc["recipe"]["epochs"]
+    assert mc["early_stopping_patience"] == mc["recipe"]["early_stopping_patience"]
 
 
 def test_no_recipe_without_input_json():
