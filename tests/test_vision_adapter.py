@@ -163,3 +163,33 @@ def test_aerial_cactus_run_produces_a_roc_auc_metric(tmp_path):
     assert result.receipt.metric_value is not None
     assert 0.0 <= result.receipt.metric_value <= 1.0
     assert result.oof.shape == (6,)
+
+
+from mlestar.adapters.vision import DogsVsCatsAdapter
+
+DOGS_VS_CATS_FIXTURE = Path("examples/synthetic_dogs_vs_cats")
+
+
+def test_dogs_vs_cats_load_dataset_parses_label_from_filename():
+    task = get_task("dogs_vs_cats")
+    adapter = DogsVsCatsAdapter(
+        DOGS_VS_CATS_FIXTURE, "/tmp/mlestar-vision-test-dvc-load", task, pretrained=False
+    )
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    # dog=1, cat=0, sorted by filename: cat.0,cat.1,cat.2,dog.0,dog.1,dog.2
+    assert labels.tolist() == [0, 0, 0, 1, 1, 1]
+    assert ids == ["cat.0", "cat.1", "cat.2", "dog.0", "dog.1", "dog.2"]
+
+
+def test_dogs_vs_cats_run_produces_a_log_loss_metric(tmp_path):
+    task = get_task("dogs_vs_cats")
+    adapter = DogsVsCatsAdapter(
+        DOGS_VS_CATS_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert result.receipt.metric_value >= 0.0
+    assert result.oof.shape == (6,)

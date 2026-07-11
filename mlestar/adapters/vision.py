@@ -360,3 +360,26 @@ class AerialCactusAdapter(ImageClassificationAdapter):
         image_paths = [data_root / "train" / id_ for id_ in frame["id"]]
         labels = frame["has_cactus"].to_numpy(dtype=float)
         return image_paths, labels, frame["id"].astype(str).tolist()
+
+
+class DogsVsCatsAdapter(ImageClassificationAdapter):
+    """Dog-versus-cat probability prediction, label encoded in the filename."""
+
+    def _load_dataset(self, data_root: Path) -> tuple[list[Path], np.ndarray, list[str]]:
+        train_dir = data_root / "train"
+        if not train_dir.is_dir():
+            raise FileNotFoundError(f"Dogs vs Cats needs a train/ directory in {data_root}.")
+        files = sorted(train_dir.iterdir())
+        if not files:
+            raise FileNotFoundError(f"Dogs vs Cats train/ directory in {data_root} is empty.")
+        image_paths: list[Path] = []
+        labels: list[float] = []
+        ids: list[str] = []
+        for path in files:
+            prefix = path.name.split(".")[0]
+            if prefix not in {"cat", "dog"}:
+                raise ValueError(f"Unexpected Dogs vs Cats filename (want cat.N.jpg/dog.N.jpg): {path.name}")
+            image_paths.append(path)
+            labels.append(1.0 if prefix == "dog" else 0.0)
+            ids.append(path.stem)
+        return image_paths, np.array(labels, dtype=float), ids
