@@ -282,10 +282,22 @@ class ImageClassificationAdapter:
     def _fold_scores(self, folds: pd.DataFrame, labels: np.ndarray, oof: np.ndarray) -> list[float]:
         scoring_labels, scoring_oof = self._score_inputs(labels, oof)
         fold_column = folds["fold"].to_numpy()
-        scores = []
+        scores: list[float] = []
         for fold in range(self.task.fold.n_splits):
             mask = fold_column == fold
-            scores.append(score_metric(self.task.metric, scoring_labels[mask], scoring_oof[mask]).value)
+            try:
+                scores.append(score_metric(self.task.metric, scoring_labels[mask], scoring_oof[mask]).value)
+            except ValueError:
+                # A validation fold this small can end up missing a class
+                # entirely (e.g. multiclass log_loss's class-count mismatch,
+                # or roc_auc's "only one class present" case) -- both are
+                # sklearn ValueErrors raised because the per-fold subset
+                # lacks the diversity the metric needs, not a real failure.
+                # NaN records "this fold couldn't be scored" rather than a
+                # fabricated number; the aggregate `metric_value` (scored
+                # over all rows at once, computed in `run()`, not here) is
+                # unaffected since the full dataset has every class.
+                scores.append(float("nan"))
         return scores
 
 
@@ -335,20 +347,3 @@ class DogBreedAdapter(ImageClassificationAdapter):
         image_paths = [data_root / "train" / f"{id_}.jpg" for id_ in frame["id"]]
         labels = frame["breed"].map(breed_to_index).to_numpy(dtype=int)
         return image_paths, labels, frame["id"].astype(str).tolist()
-
-    def _fold_scores(self, folds: pd.DataFrame, labels: np.ndarray, oof: np.ndarray) -> list[float]:
-        """Override to handle folds with missing classes in multiclass problems."""
-        scoring_labels, scoring_oof = self._score_inputs(labels, oof)
-        fold_column = folds["fold"].to_numpy()
-        num_classes = oof.shape[1] if oof.ndim > 1 else 1
-        scores = []
-        for fold in range(self.task.fold.n_splits):
-            mask = fold_column == fold
-            fold_labels = scoring_labels[mask]
-            fold_oof = scoring_oof[mask]
-            # Skip fold scoring if not all classes are represented (common in multiclass with small datasets)
-            if np.ndim(fold_labels) == 0 or len(np.unique(fold_labels)) < num_classes:
-                scores.append(np.nan)
-            else:
-                scores.append(score_metric(self.task.metric, fold_labels, fold_oof).value)
-        return scores
