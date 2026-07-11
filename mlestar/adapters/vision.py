@@ -301,3 +301,16 @@ class PlantPathologyAdapter(ImageClassificationAdapter):
         image_paths = [data_root / "images" / f"{image_id}.jpg" for image_id in frame["image_id"]]
         labels = frame[label_columns].to_numpy(dtype=float)
         return image_paths, labels, frame["image_id"].astype(str).tolist()
+
+
+class AptosAdapter(ImageClassificationAdapter):
+    """Ordinal diabetic-retinopathy grading (APTOS 2019 Blindness Detection)."""
+
+    def _load_dataset(self, data_root: Path) -> tuple[list[Path], np.ndarray, list[str]]:
+        csv_path = data_root / "train.csv"
+        if not csv_path.is_file():
+            raise FileNotFoundError(f"APTOS needs train.csv in {data_root}.")
+        frame = pd.read_csv(csv_path)
+        image_paths = [data_root / "train_images" / f"{id_code}.png" for id_code in frame["id_code"]]
+        labels = frame["diagnosis"].to_numpy(dtype=float)
+        return image_paths, labels, frame["id_code"].astype(str).tolist()

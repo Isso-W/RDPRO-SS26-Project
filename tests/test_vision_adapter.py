@@ -75,3 +75,31 @@ def test_score_inputs_ordinal_clips_to_label_range_not_num_classes():
     oof = np.array([0.2, 1.6, 2.4, 3.9, 3.4])  # raw regression outputs, unrounded
     _, rounded = adapter._score_inputs(labels, oof)
     assert rounded.tolist() == [0.0, 2.0, 2.0, 4.0, 3.0]
+
+
+from mlestar.adapters.vision import AptosAdapter
+
+APTOS_FIXTURE = Path("examples/synthetic_aptos")
+
+
+def test_aptos_load_dataset_reads_ordinal_csv():
+    task = get_task("aptos_2019")
+    adapter = AptosAdapter(APTOS_FIXTURE, "/tmp/mlestar-vision-test-aptos-load", task, pretrained=False)
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert labels.tolist() == [0, 1, 2, 3, 4, 2]
+    assert ids == ["id_0", "id_1", "id_2", "id_3", "id_4", "id_5"]
+    assert paths[0].name == "id_0.png"
+
+
+def test_aptos_run_produces_a_qwk_metric(tmp_path):
+    task = get_task("aptos_2019")
+    adapter = AptosAdapter(
+        APTOS_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert -1.0 <= result.receipt.metric_value <= 1.0
+    assert result.oof.shape == (6,)
