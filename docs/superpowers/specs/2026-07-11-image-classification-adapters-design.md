@@ -49,7 +49,12 @@ mlestar/adapters/
 `LeafClassificationAdapter`, so `initialization.py`, `refinement.py`, and
 `ensemble.py` require **no changes**. It owns:
 
-- fixed stratified fold splitting (reusing `task.fold`)
+- fixed fold splitting via plain `KFold` (reusing `task.fold.n_splits`,
+  deliberately not `StratifiedKFold` -- `plant_pathology_2020`'s labels are
+  multi-label indicator vectors, which `StratifiedKFold` cannot take as `y`
+  at all, and the tiny synthetic fixtures have too few members per class
+  for stratification's per-class minimum-count requirement even on the
+  single-label tasks; plain index-based `KFold` has neither constraint)
 - timm model construction, per-fold fine-tuning, OOF + test prediction
 - modality dispatch (loss function, output activation, prediction shaping)
 - calling `score_metric(self.task.metric, y_true, oof, ...)`
