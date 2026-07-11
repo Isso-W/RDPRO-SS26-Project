@@ -6,7 +6,7 @@
 审计记录；只有生成的 pipeline 已通过 OOF 与 submission schema 检查后，才应请求 Kaggle
 评分。
 
-开始前需要由你完成两项账户操作：在 Kaggle 接受目标竞赛规则，并在 Colab 的 Secrets 中保存凭证。不要把 API key、`kaggle.json`、数据、checkpoint、OOF 预测或 submission 提交到 Git。
+开始前需要由你完成两项账户操作：在 Kaggle 接受目标竞赛规则，并在 Colab 的 Secrets 中保存 API token。不要把 token、`kaggle.json`、数据、checkpoint、OOF 预测或 submission 提交到 Git。
 
 在 Colab 中选择 GPU Runtime，挂载 Google Drive，然后执行：
 
@@ -16,9 +16,9 @@ cd Jiaozi
 pip install -r requirements.txt
 ```
 
-在 Secrets 中设置 `KAGGLE_USERNAME`、`KAGGLE_KEY`，以及需要代码生成时的
-`OPENAI_API_KEY` 或 `JIAOZI_DASHSCOPE_API_KEY`。将 Secret 映射到当前 runtime
-环境变量后，先验证 Kaggle 身份和竞赛访问权限：
+在 Secrets 中只设置 `KAGGLE_API_TOKEN`，以及需要代码生成时的 `OPENAI_API_KEY`
+或 `JIAOZI_DASHSCOPE_API_KEY`。将 Secret 映射到当前 runtime 环境变量后，先验证
+Kaggle 身份和竞赛访问权限：
 
 ```bash
 kaggle --version

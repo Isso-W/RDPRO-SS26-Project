@@ -37,6 +37,7 @@ class _Skb:
         Path('observed_environment.json').write_text(json.dumps({
             'openai': os.environ.get('OPENAI_API_KEY'),
             'kaggle': os.environ.get('KAGGLE_KEY'),
+            'kaggle_api_token': os.environ.get('KAGGLE_API_TOKEN'),
             'python_no_user_site': os.environ.get('PYTHONNOUSERSITE'),
         }))
         return __TERMINAL__
@@ -70,6 +71,7 @@ def _terminal(**overrides: object) -> dict[str, object]:
 def test_executor_parses_real_metric_sanitizes_environment_and_persists_artifacts(tmp_path, tiny_contract, monkeypatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "must-not-reach-project")
     monkeypatch.setenv("KAGGLE_KEY", "must-not-reach-project")
+    monkeypatch.setenv("KAGGLE_API_TOKEN", "must-not-reach-project")
     project = _write_project(tmp_path, _terminal())
 
     receipt = execute_project(project, tiny_contract, workspace_root=tmp_path, timeout_seconds=10)
@@ -79,7 +81,12 @@ def test_executor_parses_real_metric_sanitizes_environment_and_persists_artifact
     assert receipt.oof_path and receipt.oof_path.endswith("oof.parquet")
     assert receipt.success
     observed = json.loads((project / "observed_environment.json").read_text())
-    assert observed == {"openai": None, "kaggle": None, "python_no_user_site": "1"}
+    assert observed == {
+        "openai": None,
+        "kaggle": None,
+        "kaggle_api_token": None,
+        "python_no_user_site": "1",
+    }
     assert json.loads((project / "executor_stdout.txt").read_text())["metric_value"] == 0.875
     assert "generated progress" in (project / "executor_stderr.txt").read_text()
     assert json.loads((project / "execution_receipt.json").read_text())["status"] == "success"
