@@ -1,0 +1,17 @@
+.env
+.kaggle/
+kaggle.json
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+/runs/
+/data/
+/artifacts/
+/submission*.csv
+*.parquet
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.zip
