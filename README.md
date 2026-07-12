@@ -28,6 +28,13 @@ python -m mlestar.cli compare --benchmark leaf_classification \
 
 ## Scope of benchmark results
 
+Seven of the ten catalogued tasks have executable training adapters (one
+tabular, six image-classification, sharing a common timm fine-tuning
+pipeline). The remaining three -- object detection, segmentation, and
+image denoising -- are registered in the catalog but not yet implemented,
+and `mlestar compare` fails loudly rather than fabricating a result for
+them.
+
 The ten catalogued tasks are evaluated with fixed folds, identical seeds and
 matched time budgets across baseline, initial, targeted-refinement and ensemble
 arms. The historical Kaggle competitions may be closed: a current public score
