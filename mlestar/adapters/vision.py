@@ -20,6 +20,11 @@ from ..contracts import ExperimentReceipt, TaskSpec
 from ..initialization import CandidateSpec
 from ..metrics import score_metric
 
+# Selected once at import time: every adapter instance and every fold trains
+# and predicts on this device. Colab's GPU runtime is otherwise never used --
+# plain torch tensors default to CPU and nothing in this module moved them.
+_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 @dataclass(frozen=True)
 class VisionRun:
@@ -66,7 +71,7 @@ class _PriorModel(torch.nn.Module):
         self._num_classes = num_classes
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-        return torch.zeros(images.shape[0], self._num_classes, dtype=torch.float32)
+        return images.new_zeros(images.shape[0], self._num_classes)
 
 
 class ImageClassificationAdapter:
@@ -216,13 +221,13 @@ class ImageClassificationAdapter:
     def _predict_probs(self, logits: torch.Tensor) -> np.ndarray:
         modality = self.task.modality
         if modality == "image_binary":
-            return torch.sigmoid(logits).squeeze(1).detach().numpy()
+            return torch.sigmoid(logits).squeeze(1).detach().cpu().numpy()
         if modality == "image_multilabel":
-            return torch.sigmoid(logits).detach().numpy()
+            return torch.sigmoid(logits).detach().cpu().numpy()
         if modality == "image_ordinal":
-            return logits.squeeze(1).detach().numpy()
+            return logits.squeeze(1).detach().cpu().numpy()
         if modality == "image_multiclass":
-            return torch.softmax(logits, dim=1).detach().numpy()
+            return torch.softmax(logits, dim=1).detach().cpu().numpy()
         raise ValueError(f"Unsupported modality: {modality!r}")
 
     def _score_inputs(self, labels: np.ndarray, oof: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -250,8 +255,8 @@ class ImageClassificationAdapter:
     def _build_model(self, model_name: str, num_classes: int, seed: int) -> torch.nn.Module:
         torch.manual_seed(seed)
         if model_name == "pass":
-            return _PriorModel(num_classes)
-        return create_model(model_name, pretrained=self.pretrained, num_classes=num_classes)
+            return _PriorModel(num_classes).to(_DEVICE)
+        return create_model(model_name, pretrained=self.pretrained, num_classes=num_classes).to(_DEVICE)
 
     def _subsample(self, train_idx: np.ndarray, seed: int) -> np.ndarray:
         if self.max_train_samples is None or len(train_idx) <= self.max_train_samples:
@@ -275,6 +280,8 @@ class ImageClassificationAdapter:
         model.train()
         for _ in range(self.epochs):
             for images, targets in loader:
+                images = images.to(_DEVICE)
+                targets = targets.to(_DEVICE)
                 optimizer.zero_grad()
                 logits = model(images)
                 loss = loss_fn(logits, targets)
@@ -287,6 +294,7 @@ class ImageClassificationAdapter:
         outputs = []
         with torch.no_grad():
             for images, _ in loader:
+                images = images.to(_DEVICE)
                 outputs.append(self._predict_probs(model(images)))
         return np.concatenate(outputs, axis=0)
 
