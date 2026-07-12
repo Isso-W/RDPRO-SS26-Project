@@ -33,23 +33,49 @@ def test_notebook_downloads_leaf_classification_data_when_missing() -> None:
 def test_notebook_download_cell_fails_loudly_if_data_still_missing() -> None:
     notebook = json.loads(Path("notebooks/mlestar_kaggle_experiments.ipynb").read_text(encoding="utf-8"))
     cells_source = ["".join(cell.get("source", [])) for cell in notebook["cells"]]
-    download_cell = next(src for src in cells_source if "kaggle competitions download" in src)
+    helper_cell = next(src for src in cells_source if "def fetch_kaggle_competition" in src)
     # Shell magics (!cmd) don't raise on non-zero exit, so a failed Kaggle
-    # download/unzip would otherwise continue silently. The cell must check
-    # the outcome itself and raise before control reaches the compare cell.
-    extract_index = download_cell.index("extractall")
-    postcheck_index = download_cell.index("train.csv", extract_index)
-    raise_index = download_cell.index("raise", postcheck_index)
+    # download/unzip would otherwise continue silently. The helper must check
+    # the outcome itself and raise before returning.
+    extract_index = helper_cell.index("extractall")
+    postcheck_index = helper_cell.index("marker_file", extract_index)
+    raise_index = helper_cell.index("raise", postcheck_index)
     assert postcheck_index < raise_index
 
 
 def test_notebook_extracts_nested_leaf_csv_archives() -> None:
     notebook = json.loads(Path("notebooks/mlestar_kaggle_experiments.ipynb").read_text(encoding="utf-8"))
     cells_source = ["".join(cell.get("source", [])) for cell in notebook["cells"]]
-    download_cell = next(src for src in cells_source if "kaggle competitions download" in src)
-    # The leaf-classification competition zip contains train.csv.zip,
-    # test.csv.zip, and sample_submission.csv.zip nested one level deeper --
-    # extracting only the outer archive leaves train.csv.zip on disk, not
-    # train.csv, so the adapter's FileNotFoundError check still fires.
-    assert "zipfile" in download_cell
-    assert "*.csv.zip" in download_cell or "csv.zip" in download_cell
+    helper_cell = next(src for src in cells_source if "def fetch_kaggle_competition" in src)
+    # The leaf-classification competition zip nests train/test/
+    # sample_submission one level deeper as their own *.csv.zip archives, so
+    # the outer extraction alone would leave e.g. train.csv.zip on disk, not
+    # train.csv -- this only needs to be correct once, in the shared helper.
+    assert "zipfile" in helper_cell
+    assert "*.csv.zip" in helper_cell or "csv.zip" in helper_cell
+
+
+def test_notebook_has_a_reusable_download_helper_used_by_all_seven_tasks() -> None:
+    notebook = json.loads(Path("notebooks/mlestar_kaggle_experiments.ipynb").read_text(encoding="utf-8"))
+    source = "\n".join("".join(cell.get("source", [])) for cell in notebook["cells"])
+    assert "def fetch_kaggle_competition" in source
+    for slug in (
+        "leaf-classification",
+        "plant-pathology-2020-fgvc7",
+        "aptos2019-blindness-detection",
+        "dog-breed-identification",
+        "aerial-cactus-identification",
+        "dogs-vs-cats-redux-kernels-edition",
+        "histopathologic-cancer-detection",
+    ):
+        assert slug in source, f"missing competition slug: {slug}"
+    for benchmark in (
+        "leaf_classification",
+        "plant_pathology_2020",
+        "aptos_2019",
+        "dog_breed",
+        "aerial_cactus",
+        "dogs_vs_cats",
+        "histopathologic_cancer",
+    ):
+        assert f"--benchmark {benchmark}" in source, f"missing compare cell for: {benchmark}"
