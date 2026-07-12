@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import product
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 import numpy as np
 
@@ -64,6 +64,7 @@ def select_ensemble(
     metric: str | MetricSpec,
     *,
     grid_step: float = 0.05,
+    score_transform: "Callable[[np.ndarray], np.ndarray] | None" = None,
 ) -> EnsembleResult:
     """Choose non-negative, sum-one blending weights by OOF score only."""
 
@@ -75,6 +76,8 @@ def select_ensemble(
     best: EnsembleResult | None = None
     for weights in _simplex(len(names), grid_step):
         prediction = sum(weight * array for weight, array in zip(weights, arrays))
+        if score_transform is not None:
+            prediction = score_transform(prediction)
         score = score_metric(metric, y_true, prediction)
         candidate = EnsembleResult(dict(zip(names, weights)), score)
         if best is None or (

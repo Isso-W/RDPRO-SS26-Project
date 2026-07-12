@@ -8,6 +8,7 @@ from pathlib import Path
 from statistics import mean, stdev
 from typing import Sequence
 
+import numpy as np
 import pandas as pd
 
 from benchmarks.catalog import get_task
@@ -23,6 +24,7 @@ from .adapters.vision import (
 )
 from .ensemble import select_ensemble
 from .initialization import CandidateSpec, initialize_solution
+from .metrics import better_than
 from .refinement import RefinementPlanner, refine_solution
 
 ADAPTER_CLASSES: dict[str, type] = {
@@ -63,7 +65,7 @@ class _AlternatingPlanner:
         return (other,)
 
 
-def _summary(rows: list[dict[str, object]]) -> dict[str, dict[str, float | int]]:
+def _summary(rows: list[dict[str, object]], metric) -> dict[str, dict[str, float | int]]:
     output: dict[str, dict[str, float | int]] = {}
     seed_count = len({int(row["seed"]) for row in rows})
     for arm in ("baseline", "mlestar_initial", "mlestar_refined", "mlestar_ensemble"):
@@ -77,7 +79,7 @@ def _summary(rows: list[dict[str, object]]) -> dict[str, dict[str, float | int]]
     baseline = {int(row["seed"]): float(row["metric_value"]) for row in rows if row["arm"] == "baseline" and row["metric_value"] is not None}
     for arm in ("mlestar_initial", "mlestar_refined", "mlestar_ensemble"):
         output[arm]["wins"] = sum(
-            float(row["metric_value"]) < baseline[int(row["seed"])]
+            better_than(float(row["metric_value"]), baseline[int(row["seed"])], metric)
             for row in rows
             if row["arm"] == arm and row["metric_value"] is not None and int(row["seed"]) in baseline
         )
@@ -122,6 +124,10 @@ def compare(
             outer_rounds=outer_rounds, inner_rounds=inner_rounds, seed=seed,
         )
         refined_run = adapter.run(refined.candidate, phase="refined_selected", seed=seed)
+        score_transform = None
+        if task.modality == "image_ordinal":
+            max_label = int(baseline_run.y_true.max())
+            score_transform = lambda prediction, _max=max_label: np.clip(np.round(prediction), 0, _max)
         ensemble = select_ensemble(
             {
                 "baseline": (range(len(baseline_run.y_true)), baseline_run.oof),
@@ -129,6 +135,7 @@ def compare(
             },
             baseline_run.y_true,
             task.metric,
+            score_transform=score_transform,
         )
         arm_values = {
             "baseline": baseline_run.receipt.metric_value,
@@ -151,7 +158,7 @@ def compare(
         "paired_folds": True,
         "seeds": list(seeds),
         "arms": ["baseline", "mlestar_initial", "mlestar_refined", "mlestar_ensemble"],
-        "summary": _summary(rows),
+        "summary": _summary(rows, task.metric),
         "status": "offline_oof_complete",
     }
     pd.DataFrame(rows).to_csv(root / "comparison.csv", index=False)
