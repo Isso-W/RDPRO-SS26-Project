@@ -6,6 +6,15 @@ GraphRAG-based AutoML Benchmark Agent is our computer-vision AutoML prototype fo
 
 Final public repository: [`Isso-W/RDPRO-SS26-Project`](https://github.com/Isso-W/RDPRO-SS26-Project). Because the repository is public, the instructor accounts `@sscdotopen` and `@leodom01` can access it without an invitation.
 
+## TUTOR SUBMISSION LINKS
+
+- **[PROJECT IMPLEMENTATION SOURCE CODE](pipeline.py)** — integrated entry point; see also [`module4_agent/`](module4_agent/), [`retrieval/`](retrieval/), and [`recipe/`](recipe/).
+- **[REPRODUCIBLE SCRIPTED EXPERIMENT SOURCE CODE](experiments/)** — experiment runners, tests, reviewer Notebooks, per-cell logs, manifests, and normalized results.
+- **[README.MD](README.md)** — project components, logic, features, setup, execution, and validation guide.
+- **[CONTRIBUTIONS.MD](CONTRIBUTIONS.md)** — history-backed member contributions with pointers to the relevant files.
+- **[EXPERIMENTS.MD](EXPERIMENTS.md)** — exact experiment commands, scripts, Notebook mapping, and log-file links.
+- **[EXPERIMENTAL_RESULTS.MD](EXPERIMENTAL_RESULTS.md)** — detailed validation and leaderboard results, comparisons, limitations, and pending work.
+
 The project follows the MLE-STAR idea of comparing candidate solutions and refining them with feedback. Our main adaptation is the entry point. Before code generation starts, the system first builds a small set of valid configurations for the benchmark tasks: `classification`, `object_detection`, and `image_segmentation`. These configurations then become the input to code generation and validation.
 
 We use MLE-style benchmark protocols as references for evaluation, fold control, and result reporting. They are design references, not runtime dependencies.
