@@ -4,7 +4,7 @@
 
 GraphRAG-based AutoML Benchmark Agent is our computer-vision AutoML prototype for the MLE-STAR-based course project. Given a task request and an image dataset, it recommends model configurations and generates runnable experiment code.
 
-Final public repository: [`Isso-W/RDPRO-SS26-Project`](https://github.com/Isso-W/RDPRO-SS26-Project). Because the repository is public, the instructor accounts `@sscdotopen` and `@leodom01` can access it without an invitation.
+Final public repository: [`Isso-W/RDPRO-SS26-Project`](https://github.com/Isso-W/RDPRO-SS26-Project). Because the repository is public, the reviewer can access it without an invitation.
 
 ## TUTOR SUBMISSION LINKS
 
