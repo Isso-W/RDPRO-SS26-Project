@@ -1,6 +1,13 @@
 # Reproducible Experiments and Stored Run Logs
 
-This file maps every checked-in experiment to its executable entry point and its stored log. The executed notebooks keep their textual cell outputs, so a reviewer can open a notebook on GitHub and inspect the output directly. The matching `.log` file repeats every code cell in order, including cells with no output, warnings, tracebacks, submission receipts, and submission failures.
+This file lists the experiments included in this repository and points to the
+notebooks, scripts, commands, logs, and checked-in records used to inspect the
+run evidence or rerun the parts that are reproducible from this repo.
+
+Detailed score interpretation and pending-result discussion are kept in
+[`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md).
+
+The executed notebooks keep their textual cell outputs, so a reviewer can open a notebook on GitHub and inspect the output directly. The matching `.log` file repeats every code cell in order, including cells with no output, warnings, tracebacks, submission receipts, and submission failures.
 
 Raw Kaggle data, credentials, submissions, checkpoints, and embedded competition images are not committed. Binary rich-media output was removed from the public evidence copies; textual output was retained. Source archive and notebook SHA-256 values are recorded in [`experiments/notebook_runs/manifest.json`](experiments/notebook_runs/manifest.json).
 
@@ -8,7 +15,7 @@ The later leaderboard records supplied in `RDPRO_Experiment - V2.csv` are normal
 
 ## Running a notebook for review
 
-The notebooks under [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/) are the reviewer-facing entry points. To rerun one in Colab:
+The notebooks under [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/) are the main review copies. To rerun one in Colab:
 
 1. Upload the single notebook matching the competition in the tables below.
 2. Select a GPU runtime when the notebook trains or performs image inference.
@@ -42,7 +49,7 @@ Two small consumer notebooks exercise packaged inference assets rather than trai
 
 ## MLE-STAR notebooks
 
-The large combined archive notebook was split into one reviewer-facing notebook per competition. Shared setup and adapter cells, the selected competition cell, and all of that cell's stored outputs are retained.
+The large combined archive notebook was split into one notebook per competition for easier review. Shared setup and adapter cells, the selected competition cell, and all of that cell's stored outputs are retained.
 
 | Competition | Notebook to run | Per-cell log | Stored run state |
 | --- | --- | --- | --- |
@@ -66,6 +73,12 @@ The supplemental score table also reports later MLE-STAR leaderboard results for
 ## CE versus focal loss on class-imbalanced data
 
 The paired-fold harness is in `experiments/ab_loss_imbalance/`. Its checked-in Cassava records are at [`experiments/ab_loss_imbalance/results/outcomes.jsonl`](experiments/ab_loss_imbalance/results/outcomes.jsonl).
+
+Executable files and checked-in records:
+
+- [`experiments/ab_loss_imbalance/run_ab.py`](experiments/ab_loss_imbalance/run_ab.py)
+- [`experiments/ab_loss_imbalance/collect.py`](experiments/ab_loss_imbalance/collect.py)
+- [`experiments/ab_loss_imbalance/results/outcomes.jsonl`](experiments/ab_loss_imbalance/results/outcomes.jsonl)
 
 Rebuild the summary from the ten checked-in fold records:
 
@@ -95,6 +108,8 @@ The experiment uses seed 42 and a shared fold file for both loss arms. The colle
 
 The independent Python 3.11 project is isolated at `experiments/mlestar_kaggle_benchmarks/`. Install and run it from that directory so its dependencies do not alter the root environment:
 
+The main scripted entry point is [`experiments/mlestar_kaggle_benchmarks/scripts/run_smoke_experiment.py`](experiments/mlestar_kaggle_benchmarks/scripts/run_smoke_experiment.py).
+
 ```bash
 cd experiments/mlestar_kaggle_benchmarks
 python3.11 -m venv .venv
@@ -108,6 +123,8 @@ The scripted smoke fixes seed 13, uses synthetic Leaf Classification data, write
 
 ## Root pipeline and Module 4 smoke run
 
+The relevant entry points are [`pipeline.py`](pipeline.py) and [`module4_agent/__main__.py`](module4_agent/__main__.py).
+
 ```bash
 python -m pip install -e '.[dev]'
 M4_LLM_PROVIDER=none python -m module4_agent \
@@ -120,6 +137,8 @@ This validates generated code on synthetic inputs. It is not evidence of real-da
 ## Evidence export utility
 
 [`experiments/notebook_runs/export_evidence.py`](experiments/notebook_runs/export_evidence.py) reproduces the public notebook copies, per-cell logs, and manifest from the four supplied archives. It strips embedded binary media, updates rerun setup cells, and retains textual output. The archives themselves are intentionally not committed.
+
+The matching evidence test is [`experiments/notebook_runs/test_evidence.py`](experiments/notebook_runs/test_evidence.py).
 
 After a text-only edit to an already exported public notebook, refresh its derived cell logs and manifest metadata without needing the private source archives:
 
