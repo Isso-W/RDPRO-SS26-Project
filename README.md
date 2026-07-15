@@ -514,7 +514,7 @@ The A/B run is not an end-to-end evaluation of the whole agent. It checks one KB
 
 We use this validation step when mined evidence points in a different direction from the current KB rule. Support counts alone are not enough because the effect may depend on dataset domain, metric choice, fold split, or training noise. The A/B experiment turns the proposed KB change into a controlled comparison.
 
-The repository contains the paired-fold setup, metrics, verdict logic, and ten checked-in Cassava fold records (two loss arms by five folds). The collector reconstructs a Cassava testbed verdict of `CE_WINS`. The result is limited to this dataset and does not change the global focal-loss default; the severe-imbalance medical testbed remains pending.
+The repository contains the paired-fold setup, metrics, verdict logic, and ten checked-in Cassava fold records (two loss arms by five folds). The collector reconstructs a Cassava testbed verdict of `CE_WINS`. The result is limited to this dataset and does not change the global focal-loss default; the severe-imbalance medical testbed is not included in the current result set.
 
 ### 9.2 Benchmark Protocol Reference
 
@@ -526,7 +526,7 @@ When a KB proposal needs a real experiment, the validation should follow the sam
 - separate public Kaggle submission reporting;
 - deterministic baseline vs search/refinement/ensemble comparison arms.
 
-Detailed experiment cases, stored notebook outputs, accepted or blocked submissions, and pending scores are documented in [`EXPERIMENTS.md`](EXPERIMENTS.md) and [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md). The active runtime does not depend on those reference experiments.
+Detailed experiment cases, stored notebook outputs, accepted or blocked submissions, and result boundaries are documented in [`EXPERIMENTS.md`](EXPERIMENTS.md) and [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md). The active runtime does not depend on those reference experiments.
 
 ## 10. Environment Configuration
 
@@ -639,9 +639,9 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 ```text
 .
 |-- README.md                         # project guide and main reviewer entry point
-|-- CONTRIBUTIONS.md                  # history-backed module attribution
+|-- CONTRIBUTIONS.md                  # team member contributions and related files
 |-- EXPERIMENTS.md                    # reproducible experiment commands
-|-- EXPERIMENTAL_RESULTS.md           # completed and pending results
+|-- EXPERIMENTAL_RESULTS.md           # result summary, comparisons, and limitations
 |-- .env.example                      # local environment template; real .env files are ignored
 |-- requirements.txt / pyproject.toml  # dependency and packaging metadata
 |-- configs/                          # default local pipeline configuration
@@ -671,7 +671,7 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 |-- experiments/notebook_runs/          # notebooks, per-cell logs, hashes, leaderboard records
 |-- docs/                              # design notes and API docs
 |-- build_vision_benchmarks_notebook.py # utility that builds the benchmark Colab notebook
-|-- jiaozi_fullchain.ipynb             # complete M1-to-M4 Colab demo
+|-- jiaozi_fullchain.ipynb             # full-chain M1-to-M4 Colab demo
 |-- integration_update_colab.ipynb     # integration notebook
 |-- vision_benchmarks_colab.ipynb      # vision benchmark notebook
 `-- kaggle_benchmark_colab.ipynb       # Kaggle benchmark notebook
@@ -686,9 +686,9 @@ The repository maps the instructor's required deliverables to these reviewer ent
 | Project implementation source | [`pipeline.py`](pipeline.py), [`module4_agent/`](module4_agent/), [`retrieval/`](retrieval/), [`recipe/`](recipe/), and the module map in Sections 4-6 |
 | Reproducible scripted experimentation | [`experiments/ab_loss_imbalance/`](experiments/ab_loss_imbalance/), isolated [`experiments/mlestar_kaggle_benchmarks/`](experiments/mlestar_kaggle_benchmarks/), and reviewer [`experiments/notebook_runs/`](experiments/notebook_runs/) |
 | `README.md` | This project guide, including architecture, setup, commands, validation, and repository map |
-| `CONTRIBUTIONS.md` | [`CONTRIBUTIONS.md`](CONTRIBUTIONS.md), with history-backed member and file attribution |
+| `CONTRIBUTIONS.md` | [`CONTRIBUTIONS.md`](CONTRIBUTIONS.md), with team member contributions and links to relevant files |
 | `EXPERIMENTS.md` | [`EXPERIMENTS.md`](EXPERIMENTS.md), with scripts, exact commands, Notebook mapping, and per-cell logs |
-| `EXPERIMENTAL_RESULTS.md` | [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md), with local metrics, leaderboard records, evidence limitations, comparative discussion, and pending work |
+| `EXPERIMENTAL_RESULTS.md` | [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md), with local metrics, leaderboard records, evidence limitations, and comparative discussion |
 
 The reviewer notebooks under [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/) retain visible textual outputs. The matching files under [`experiments/notebook_runs/logs/`](experiments/notebook_runs/logs/) enumerate every code cell, including cells with no stored output or an error.
 
