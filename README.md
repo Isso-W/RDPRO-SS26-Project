@@ -1,44 +1,37 @@
-# Data Engineering for AI & ML [Project]
+# GraphRAG-based AutoML Benchmark Agent
 
-## GraphRAG-based AutoML Benchmark Agent
+GraphRAG-based AutoML Benchmark Agent is our computer-vision AutoML prototype for the MLE-STAR-based course project. Given a task request and an image dataset, it recommends model configurations and generates runnable experiment code.
 
-This course release uses runtime snapshot `9d3f257` as its compatibility baseline, incorporates the full-chain additions through `61e42e1`, and isolates the standalone benchmark experiment from snapshot `0122829`.
+The project follows the MLE-STAR idea of comparing candidate solutions and refining them with feedback. Our main adaptation is the entry point. Before code generation starts, the system first builds a small set of valid configurations for the benchmark tasks: `classification`, `object_detection`, and `image_segmentation`. These configurations then become the input to code generation and validation.
 
-### Submission deliverables
+We use MLE-style benchmark protocols as references for evaluation, fold control, and result reporting. They are design references, not runtime dependencies.
 
-- **Project implementation source code:** the root `pipeline.py` entry point and the `ingestion/`, `analyzer/`, `retrieval/`, `recommender/`, `recipe/`, and `module4_agent/` modules.
-- **Reproducible scripted experimentation source code:** `experiments/ab_loss_imbalance/` and the isolated `experiments/mlestar_kaggle_benchmarks/` project, with commands and result boundaries documented in `EXPERIMENTS.md` and `EXPERIMENTAL_RESULTS.md`.
-
-GraphRAG-based AutoML Benchmark Agent is a computer-vision AutoML prototype. It takes a task request and an image dataset, recommends model configurations, and generates runnable experiment code.
-
-Its role is similar to an MLE-style benchmark agent, but the starting point is different. The system does not begin by freely editing code and trying many experiments. It first builds a small set of valid configurations for the supported image task types: `classification`, `object_detection`, `image_segmentation`, and `feature_extraction`. Those configurations are then used by the code generation and validation steps.
-
-MLE-style benchmark protocols are used as design references for evaluation, fold control, and result reporting. They are not runtime dependencies of this project.
-
-The report is organized in three parts. Sections 1-6 describe the active runtime pipeline. Sections 7-9 explain how the knowledge base can be checked and updated. Sections 10-14 cover environment setup, running commands, validation, and submission files.
+The README is organized in three parts. Sections 1-6 describe the active runtime pipeline. Sections 7-9 explain how the knowledge base can be checked and updated. Sections 10-14 cover environment setup, running commands, validation, and submission files.
 
 ## 1. Project Goal
 
-Given:
+The pipeline starts from two inputs:
 
-- a natural-language user request, and
-- an image dataset reference available to the selected runner,
+- a natural-language user request;
+- an image dataset reference available to the selected runner.
 
-the system analyzes the task and dataset, retrieves suitable model configurations from a knowledge base, and generates runnable training/evaluation/inference code.
+Using these inputs, the pipeline analyzes the task and dataset, retrieves suitable model configurations from a knowledge base, and generates runnable training/evaluation/inference code.
 
-In the current code, the dataset reference can be a HuggingFace image dataset id, a cataloged Kaggle benchmark entry, or a local image folder / CSV image layout. Real-data loading is implemented mainly for `classification` and `feature_extraction`; `object_detection` and `image_segmentation` are supported in recommendation and smoke validation unless a task-specific loader is added.
+The dataset reference can be a HuggingFace image dataset id, a cataloged Kaggle benchmark entry, or a local image folder / CSV image layout. Real-data loading is implemented for classification-style datasets. `object_detection` and `image_segmentation` are supported in recommendation and smoke validation, but real training needs a task-specific loader. The codebase also contains a `feature_extraction` path for embedding-style experiments, although it is not part of the current benchmark task set.
 
 Local execution is kept small. The local run should check that the selected configuration is valid and that the generated code runs. Longer training is intended for Colab or GPU infrastructure.
 
 Each retrieved candidate is treated as one experiment configuration. The generated code can compare several candidates under the same data assumptions, metric choice, and smoke-test settings. For that reason, this document also explains where the knowledge base comes from, how updates are reviewed, and how recommendations are validated.
 
-The next issue is practical: before code generation or refinement, how does the system decide which image-task configurations are valid enough to try?
+The central design problem is therefore not only how to generate code, but how to decide which image-task configurations should be tried in the first place.
 
-## 2. Why KB + RAG in an MLE-Style Agent?
+## 2. From MLE-STAR to KB/RAG
 
-We use MLE-STAR as a reference point because it connects search, experiment feedback, and targeted refinement. The difference is where this project starts. Before running experiments, it tries to make the candidate model space explicit.
+We started by studying the MLE-STAR workflow as a baseline for an ML engineering agent: retrieve candidate solutions, evaluate them, and refine the parts of the pipeline that matter most. This gave us the experimental structure we wanted to keep: compare candidates, use validation feedback, and make controlled changes instead of repeatedly editing code without a clear search space.
 
-For the supported image tasks, many failures happen before training begins: the task type may be mapped incorrectly, the head and loss may not match the backbone, or a recommended checkpoint may be unsuitable for the data and compute constraints. Running more experiments does not solve this if the candidate space itself is poorly structured. For that reason, the KB/RAG layer sits before code generation and experiment execution. It does not replace MLE-style evaluation; it narrows the set of configurations that reach the evaluation stage.
+Our change is before that loop. For the supported image tasks, many failures happen before training begins: the task type may be mapped incorrectly, the head and loss may not match the backbone, or a checkpoint may not fit the data and compute constraints. Running more experiments does not help much if the candidate space itself is poorly structured.
+
+For that reason, we add a KB/RAG layer before code generation and experiment execution. This layer does not replace MLE-style evaluation; it narrows the set of configurations that reach the evaluation stage and makes the first model choices easier to inspect.
 
 With this order, only a smaller set of candidates reaches Module 4:
 
@@ -47,9 +40,9 @@ With this order, only a smaller set of candidates reaches Module 4:
 - semantic retrieval maps flexible user requests into structured candidate configurations;
 - Module 4 treats each candidate as an experiment configuration and validates the generated code through smoke tests and reviewer checks.
 
-Compared with a direct experimental-search implementation, this project first puts model choices into inspectable `model_config` objects. Later refinement can still compare candidates and update controlled fields, but those changes stay inside the structure provided by the knowledge base.
+Compared with a direct experimental-search implementation, the model choices first become structured `model_config` objects. Later refinement can still compare candidates and update controlled fields, but those changes stay inside the structure provided by the knowledge base.
 
-The generated project still contains the expected benchmark pieces: runnable experiments, comparable candidates, and validation logs. The difference is that the first image-model decisions are constrained by the KB. The handoff is simple: the KB defines valid choices, RAG retrieves and ranks candidates, and Module 4 turns the selected configuration into code.
+The generated project still has the expected benchmark pieces: runnable experiments, comparable candidates, and validation logs. The difference is that the first image-model decisions are constrained by the KB. The handoff is simple: the KB defines valid choices, RAG retrieves and ranks candidates, and Module 4 turns the selected configuration into code.
 
 ## 3. From Knowledge Base to RAG to Code Generation
 
@@ -240,7 +233,10 @@ Example intent mapping:
 - "classify leaf disease" -> `classification`
 - "detect vehicles in traffic camera images" -> `object_detection`
 - "segment medical masks" -> `image_segmentation`
-- "extract image embeddings" -> `feature_extraction`
+
+The codebase also keeps `feature_extraction` as an embedding-oriented path, but
+the current benchmark tasks focus on classification, detection, and
+segmentation.
 
 ### Module 2: Dataset Analysis
 
@@ -322,7 +318,7 @@ Main files:
 
 The recommender runs after Module 3. It can rerank candidates using outcomes from similar past runs and record the ranking basis. The recipe layer adds training suggestions such as learning rate, image size, augmentation strength, and early stopping settings.
 
-By default, new outcome-memory records are written to `recommender/outcomes.jsonl`. This is a generated local run artifact and is intentionally ignored rather than checked in.
+By default, new outcome-memory records are written to `recommender/outcomes.jsonl`. This generated local artifact is intentionally ignored rather than checked in.
 
 It can change ranking and training suggestions, but it does not replace the Module 3 candidate-generation step.
 
@@ -505,7 +501,7 @@ The A/B run is not an end-to-end evaluation of the whole agent. It checks one KB
 
 We use this validation step when mined evidence points in a different direction from the current KB rule. Support counts alone are not enough because the effect may depend on dataset domain, metric choice, fold split, or training noise. The A/B experiment turns the proposed KB change into a controlled comparison.
 
-The repository contains the paired-fold setup, metrics, verdict logic, and ten checked-in Cassava fold records (two arms by five folds). The Cassava collector reconstructs a `CE_WINS` testbed verdict, but the untested severe-imbalance/medical regime remains pending. This dataset-limited result is not an automatic KB edit and does not change the global focal-loss default.
+The repository contains the paired-fold setup, metrics, verdict logic, and ten checked-in Cassava fold records (two loss arms by five folds). The collector reconstructs a Cassava testbed verdict of `CE_WINS`. The result is limited to this dataset and does not change the global focal-loss default; the severe-imbalance medical testbed remains pending.
 
 ### 9.2 Benchmark Protocol Reference
 
@@ -551,15 +547,6 @@ Install dependencies:
 python -m pip install -e '.[dev]'
 ```
 
-Open a notebook from the published `main` branch:
-
-- [Full-chain Colab notebook](https://colab.research.google.com/github/Isso-W/Jiaozi/blob/main/jiaozi_fullchain.ipynb)
-- [Integrated pipeline Colab notebook](https://colab.research.google.com/github/Isso-W/Jiaozi/blob/main/integration_update_colab.ipynb)
-- [Vision benchmark Colab notebook](https://colab.research.google.com/github/Isso-W/Jiaozi/blob/main/vision_benchmarks_colab.ipynb)
-- [Kaggle benchmark Colab notebook](https://colab.research.google.com/github/Isso-W/Jiaozi/blob/main/kaggle_benchmark_colab.ipynb)
-
-The notebooks read credentials from Colab Secrets and do not contain API keys.
-
 Run the integrated pipeline:
 
 ```bash
@@ -589,22 +576,6 @@ Useful optional flags:
 --module4-llm-provider qwen
 ```
 
-Rebuild the checked-in Cassava A/B summary:
-
-```bash
-python -m experiments.ab_loss_imbalance.collect
-```
-
-Run the isolated scripted experiment under Python 3.11:
-
-```bash
-cd experiments/mlestar_kaggle_benchmarks
-python3.11 -m pip install -e '.[vision,dev]'
-python3.11 scripts/run_smoke_experiment.py --output-dir /tmp/mlestar-smoke
-```
-
-The standalone smoke command uses synthetic data and disables submissions.
-
 ## 12. Validation Strategy
 
 Validation starts with cheap checks before moving to expensive experiments.
@@ -615,7 +586,7 @@ Current boundaries:
 
 - Local smoke tests validate generated code and configuration consistency; they are not benchmark training runs.
 - Full training, Kaggle submission, and public-score reporting require the appropriate data access, credentials, and usually GPU/Colab resources.
-- General real-data loaders are implemented for classification-style image datasets and feature extraction. Detection and segmentation need task-specific loaders for bounding boxes or masks.
+- General real-data loaders are implemented for classification-style image datasets. Detection and segmentation need task-specific loaders for bounding boxes or masks.
 - Knowledge-base mining produces reviewable proposals. It does not automatically rewrite the runtime retrieval graph.
 
 ### Unit and Behavior Tests
