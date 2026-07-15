@@ -1,52 +1,106 @@
 # Contributions
 
-This file reports contributions visible in the Git history used to assemble this release. It does not infer work from names in documents, and it does not assign unrecorded work. Author aliases that clearly share the same public identity are grouped below; email addresses are intentionally omitted.
-
-The release was assembled from the fixed source snapshots `9d3f257`, `61e42e1`, and `0122829`. Path-level history and the commits named below are the evidence for the module attribution.
+This file summarizes the main work done by each project member and links the
+work to the relevant code, experiment, or documentation files.
 
 ## Xuanyan Wang
 
-- Prepared the course-project snapshot that established the integrated repository layout (`664a281`).
-- Added early-stopping recipe metadata (`61e42e1`).
-- Files affected by these recorded changes include `pipeline.py`, `recipe/`, `retrieval/`, and the repository-wide project snapshot.
+Xuanyan worked on the main agent pipeline, the Module 4 code-generation agent,
+and the final integration of the runtime path.
 
-## Isso-W
+- Integrated the full pipeline flow from parsed user intent and dataset analysis
+  to model recommendation, code generation, and local validation.
+  - Related files: [`pipeline.py`](pipeline.py), [`run_for_testing.py`](run_for_testing.py), [`configs/pipeline.yaml`](configs/pipeline.yaml), [`test_pipeline.py`](test_pipeline.py)
 
-- Built and integrated substantial parts of the Module 1-to-4 pipeline, including dataset-analysis support, retrieval behavior, the outcome-memory recommender, the deterministic recipe layer, and experiment-cost logging.
-- Added the knowledge-base mining workflow and the paired loss-imbalance experiment (`d36901e`, `bff11cd`).
-- Added the full-chain notebook and recipe-driven augmentation flow (`f64c883`, `b5f75b6`), plus Module 4 backbone-loading validation and provenance reporting (`e6f0f8a`, `3f9994f`).
-- Principal paths: `pipeline.py`, `features_extraction_api.py`, `retrieval/`, `recommender/`, `recipe/`, `module4_agent/`, `kb_mining/`, and `experiments/ab_loss_imbalance/`.
+- Connected the early pipeline stages to the later recommendation and code
+  generation steps, including the data passed between Module 1, Module 2, Module
+  3, and Module 4.
+  - Related files: [`features_extraction_api.py`](features_extraction_api.py), [`dataset_analyzer.py`](dataset_analyzer.py), [`ingestion/`](ingestion/), [`analyzer/`](analyzer/)
 
-## Zeyu Wang (`muzhi777`)
+- Developed Module 4, which turns Module 3 candidate configurations into a
+  runnable local training project.
+  - Related files: [`module4_agent/spec_builder.py`](module4_agent/spec_builder.py), [`module4_agent/code_generator.py`](module4_agent/code_generator.py), [`module4_agent/executor.py`](module4_agent/executor.py), [`module4_agent/reviewer.py`](module4_agent/reviewer.py), [`module4_agent/workflow.py`](module4_agent/workflow.py)
 
-- Integrated the modern GraphRAG vision-model additions and preserved the runtime baseline behavior during conflict resolution (`e2a36e5`, `9d3f257`).
-- Added and corrected DINOv3 pooling, partial fine-tuning, ablation selection, and training-backbone logging (`81793d5`, `9c5b8e2`, `9af7196`, `6977a01`).
-- Repaired full-chain retrieval tests and supplied the minimal knowledge-mining CSV fixtures (`8f3015b`).
-- Implemented the standalone benchmark reproduction through snapshot `0122829`, including its adapters, executor, metrics, tests, and GPU handling.
-- Prepared the public executed-Notebook evidence, per-cell logs, normalized leaderboard records, and experiment reports (`fc99cdb`, `b214883`).
-- Translated the public technical documentation and reviewer-facing Notebook text into English while preserving execution counts and numeric outputs (`6889be4`).
-- Principal paths: [`retrieval/`](retrieval/), [`recommender/`](recommender/), [`module4_agent/`](module4_agent/), [`kb_mining/tests/fixtures/`](kb_mining/tests/fixtures/), [`experiments/mlestar_kaggle_benchmarks/`](experiments/mlestar_kaggle_benchmarks/), [`experiments/notebook_runs/`](experiments/notebook_runs/), and [`docs/`](docs/).
+- Added the Module 4 smoke-test path, controlled refinement support, ablation
+  handling, and experiment tracking.
+  - Related files: [`module4_agent/smoke_harness.py`](module4_agent/smoke_harness.py), [`module4_agent/ablation.py`](module4_agent/ablation.py), [`module4_agent/refinement.py`](module4_agent/refinement.py), [`module4_agent/experiment_loop.py`](module4_agent/experiment_loop.py), [`module4_agent/experiment_tracker.py`](module4_agent/experiment_tracker.py), [`module4_agent/tests/`](module4_agent/tests/)
 
-## Haoyue Chen (`haoyue-chen`)
+- Worked on recipe and runtime support used around the generated experiments.
+  - Related files: [`recipe/`](recipe/), [`recommender/`](recommender/), [`cost_meter.py`](cost_meter.py), [`run_and_log.py`](run_and_log.py)
 
-- Authored and expanded the early dataset analyzer (`73eaaf7`, `ce7ae8f`) that appears in the source lineage used by the fixed runtime and full-chain snapshots.
-- Principal historical path: `analyzer.py`, whose integrated successor is `dataset_analyzer.py`.
+## Letian Wang
 
-## Earlier integration contributors
+Letian worked on Module 3, including the knowledge base, RAG retrieval, and the
+model recommendation interface used by the downstream agent.
 
-- `codetraveller66` contributed the initial requirement-extraction API from which `features_extraction_api.py` evolved (`7e1a3fd`).
-- `wang` contributed pipeline and Module 4 integration cleanup (`a181856`, `d28376f`).
-- `deideifan` contributed early README maintenance (`84d8410`, `f8709a6`). Those historical edits are acknowledged here even though the course-release README is based on the separately supplied draft.
+- Built and maintained the Module 3 knowledge-base and retrieval logic for
+  recommending computer-vision model configurations.
+  - Related files: [`retrieval/rag_retrieval.py`](retrieval/rag_retrieval.py), [`retrieval/test_rag_retrieval.py`](retrieval/test_rag_retrieval.py), [`retrieval/test_golden.py`](retrieval/test_golden.py)
 
-## How to verify
+- Defined the Module 3 output contract used by Module 4, including ranked
+  candidates and structured `model_config` fields.
+  - Related files: [`docs/MODULE3_API.md`](docs/MODULE3_API.md), [`docs/report_module3.md`](docs/report_module3.md), [`docs/module3_4_technical_en.md`](docs/module3_4_technical_en.md)
 
-Run these commands from a clone that contains the source refs:
+- Worked on knowledge-base maintenance and the evidence-mining path used to
+  review possible KB updates.
+  - Related files: [`kb_mining/`](kb_mining/), [`kb_mining/data/`](kb_mining/data/), [`kb_mining/tests/`](kb_mining/tests/), [`docs/kb_mining_protocol.md`](docs/kb_mining_protocol.md)
 
-```bash
-git show --stat 9d3f257
-git show --stat 61e42e1
-git show --stat 0122829
-git log --format='%h %an %s' -- pipeline.py retrieval recipe module4_agent kb_mining
-```
+- Helped connect the KB/RAG recommendation step with the integrated agent flow.
+  - Related files: [`pipeline.py`](pipeline.py), [`module4_agent/examples/`](module4_agent/examples/), [`docs/module3_improvements.md`](docs/module3_improvements.md)
 
-This document describes code provenance, not grading weight or percentage credit.
+## Zeyu Wang
+
+Zeyu worked on the MLE-style Kaggle benchmark reproduction and the standalone
+benchmark framework used for comparison and protocol reference.
+
+- Implemented the standalone MLE-style benchmark reproduction code.
+  - Related files: [`experiments/mlestar_kaggle_benchmarks/`](experiments/mlestar_kaggle_benchmarks/)
+
+- Added benchmark adapters, experiment execution, metric handling, search and
+  refinement components, and tests for the standalone benchmark package.
+  - Related files: [`experiments/mlestar_kaggle_benchmarks/mlestar/`](experiments/mlestar_kaggle_benchmarks/mlestar/), [`experiments/mlestar_kaggle_benchmarks/tests/`](experiments/mlestar_kaggle_benchmarks/tests/), [`experiments/mlestar_kaggle_benchmarks/scripts/run_smoke_experiment.py`](experiments/mlestar_kaggle_benchmarks/scripts/run_smoke_experiment.py)
+
+- Connected Kaggle benchmark metadata and helper scripts to the root project.
+  - Related files: [`run_kaggle_benchmark.py`](run_kaggle_benchmark.py), [`vision_benchmark_catalog.py`](vision_benchmark_catalog.py), [`kaggle_submit.py`](kaggle_submit.py)
+
+- Wrote supporting documentation for the benchmark reproduction and evaluation
+  protocol.
+  - Related files: [`experiments/mlestar_kaggle_benchmarks/README.md`](experiments/mlestar_kaggle_benchmarks/README.md), [`experiments/mlestar_kaggle_benchmarks/docs/`](experiments/mlestar_kaggle_benchmarks/docs/)
+
+## Mingyue Fan
+
+Mingyue worked on benchmark execution and result collection for the selected
+Kaggle image tasks.
+
+- Ran and checked benchmark notebooks for the selected task set, including image
+  classification, multi-label classification, segmentation, and detection cases.
+  - Related files: [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/), [`experiments/notebook_runs/logs/`](experiments/notebook_runs/logs/)
+
+- Helped collect notebook outputs, leaderboard records, and normalized result
+  files for reviewer inspection.
+  - Related files: [`experiments/notebook_runs/manifest.json`](experiments/notebook_runs/manifest.json), [`experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv`](experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv), [`experiments/notebook_runs/results/source_manifest.json`](experiments/notebook_runs/results/source_manifest.json)
+
+- Contributed to the experiment description and result discussion.
+  - Related files: [`EXPERIMENTS.md`](EXPERIMENTS.md), [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md)
+
+## Mingda Zhang
+
+Mingda worked on benchmark execution, evidence checking, and result reporting for
+the Kaggle task set.
+
+- Ran and reviewed benchmark notebooks for the selected MLE-bench Lite and
+  custom extension tasks.
+  - Related files: [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/), [`experiments/notebook_runs/logs/`](experiments/notebook_runs/logs/)
+
+- Checked stored notebook outputs and per-cell logs used as experiment evidence.
+  - Related files: [`experiments/notebook_runs/export_evidence.py`](experiments/notebook_runs/export_evidence.py), [`experiments/notebook_runs/test_evidence.py`](experiments/notebook_runs/test_evidence.py), [`experiments/notebook_runs/manifest.json`](experiments/notebook_runs/manifest.json)
+
+- Contributed to the final experiment records and result summary.
+  - Related files: [`EXPERIMENTS.md`](EXPERIMENTS.md), [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md)
+
+## Shared Final Review
+
+The final submission documents were reviewed and edited jointly so that the
+repository could be read as a single project rather than as separate branches.
+
+- Related files: [`README.md`](README.md), [`CONTRIBUTIONS.md`](CONTRIBUTIONS.md), [`EXPERIMENTS.md`](EXPERIMENTS.md), [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md), [`docs/`](docs/)
