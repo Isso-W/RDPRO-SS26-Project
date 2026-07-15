@@ -1,112 +1,110 @@
-# 🥟 饺子项目 (Jiaozi) - 自然语言特征提取 模块 API 文档
+# 🥟 Dumpling Project (Jiaozi) - Natural Language Feature Extraction Module API Documentation
 
-**负责人**: 张明达
-**版本**: v1.2
-**更新日期**: 2026-04-03
+**Responsible person**: Zhang Mingda **Version**: v1.2 **Update date**: 2026-04-03
 
 ---
 
 
-## 模块概述
-本模块负责处理用户（如，实验室研究员）的自然语言输入。通过调用 Qwen 大语言模型（qwen-plus），理解并提取用户的核心意图与模型特征，最终输出为结构化的**字符串列表**，为下游 RAG Agent 去 Huggingface 检索模型提供精准的条件。
+## Module overview
+This module is responsible for processing natural language input from users (e.g., laboratory researchers). By calling the Qwen large language model (qwen-plus), the user's core intentions and model features are understood and extracted, and the final output is a structured string list, which provides accurate conditions for the downstream RAG Agent to Huggingface to retrieve the model.
 
 ---
 
-## 接口调用
+## Interface call
 
-- **接口路径**: `/api/v1/features_extraction`
-- **功能描述**: 接收用户自然语言文本，返回解析后的模型特征列表。
-- **内容类型**: `list`
+- **Interface path**: `/api/v1/features_extraction`
+- **Function Description**: Receives the user's natural language text and returns the parsed model feature list.
+- **Content Type**: `list`
 
-### 1. 请求参数 (Request Body)
+### 1. Request parameters (Request Body)
 
-| 字段名 | 必选 | 类型 | 说明 |
+| Field name | Required | type | illustrate |
 | :--- | :---: | :--- | :--- |
-| `user_message` | 是 | `string` | 用户原始自然语言输入 |
+| `user_message` | yes | `string` | User original natural language input |
 
-**请求示例:**
+**Request Example:**
 ```json
 {
-  "user_message": "我需要一个针对MRI核磁共振图像的医学图像分割模型，最好是PyTorch实现的，输出Mask图，准确率指标要高。"
+  "user_message": "I need a medical image segmentation model for MRI MRI images, preferably implemented by PyTorch, which outputs the Mask image and has a high accuracy index."
 }
 ```
-### 2. 响应参数 (Response Body)
+### 2. Response parameters (Response Body)
 
-| 字段名              | 必选 | 类型 | 说明 |
+| Field name              | Required | type | illustrate |
 |:-----------------| :---: | :--- | :--- |
-| `system_message` | 是 | `string` | 提取出的结构化特征数据 |
+| `system_message` | yes | `string` | Extracted structured feature data |
 
-**响应示例:**
+**Response example:**
 ```json
 {
-  "system_message":["Domain: 医学图像", "Task: 图像分割", "Accuracy: 准确率", "Accuracy_range: 高", "is_local_train: null", "Graphics_card: null", "Input: 图片", "Output: 图片", "Size: null", "Library / Framework: PyTorch", "Input_Language: 中文", "Output_Language: 中文", "License: null"]
+  "system_message":["Domain: Medical Image", "Task: image segmentation", "Accuracy: accuracy", "Accuracy_range: High", "is_local_train: null", "Graphics_card: null", "Input: pictures", "Output: pictures", "Size: null", "Library / Framework: PyTorch", "Input_Language: Chinese", "Output_Language: Chinese", "License: null"]
   }
 }
 ```
 ---
 
-## 大模型prompt
+## Large model prompt
 ```
-【身份】Huggingface模型检索专家。
-【任务】从自然语言提取搜索特征。
-【格式】纯字符串的list，其中元素按顺序包含以下14个维度，list每个元素中的key(维度项)均用英文，值与用户原本的输入语言保持一致(比如用户输入语言为英文，则值抓取英文原文),样式可参考：当输入语言为中文时["Domain: 生物", "Task: 文字生成文字"]，当输入语言为英文时["Domain: Biology", "Task: text to text"]；
-【维度】必须审查并提取：
-1.领域(Domain)
-2.任务类型(Task)
-3.模型准确性评估参数(Accuracy)
-4.模型准确性评估参数范围(Accuracy_range)
-5.是否本地训练(is_local_train)
-6.显卡型号(Graphics_card)
-7.是否本地训练
-8.输入(Input)
-9.输出(Output)
-10.参数量级(Size)
-11.框架(Library / Framework)
-12.输入语言(Input_Language)
-13.输出语言(Output_Language)
-14.协议(License)
-**需注意：
-1.输入/输出这两个维度输出的内容仅为["文字","图片","音频","视频"]（输出内容与用户实际输入语言保持一致，比如用户输入为英文，则输入/输出两个维度的输出为["Text","Image","Audio","Video"]）；
-2.若用户提出了以上任一维度的具体值，则抓取该值作为输出，若没有提出具体的值，则以null作为输出，若用户没有完整提及以上维度，则依然在list中补全所有维度，未提及的维度统一用null作为输出；
-3.若提及具体的输出语言，则仅使用具体的输出语言，若无提及任何输出语言，则默认将【输出语言】的值置于"English"；
-【规则】只提取用户提及或能合理推断的维度，未提及的维度直接忽略。（不准有问候语，不准有markdown符号）。
+[Identity] Huggingface model retrieval expert.
+[Task] Extract search features from natural language.
+[Format] list of pure string, in which the elements contain the following 14 dimensions in order. key (dimension items) in each element of list are all in English. The value is consistent with the user's original input language (for example, if the user input language is English, the value will capture the original English text). For the style, please refer to: When the input language is Chinese ["Domain: Biology", "Task: text generates text"], when the input language is English ["Domain: Biology", "Task: text to text"];
+[Dimension] must be reviewed and extracted:
+1.Field(Domain)
+2.Task type (Task)
+3. Model accuracy evaluation parameters (Accuracy)
+4. Model accuracy evaluation parameter range (Accuracy_range)
+5. Whether to train locally (is_local_train)
+6. Graphics card model (Graphics_card)
+7. Whether to train locally
+8. Enter (Input)
+9. Output (Output)
+10. Parameter magnitude (Size)
+11. Frame (Library / Framework)
+12.Input language (Input_Language)
+13.Output language (Output_Language)
+14. Agreement (License)
+**Note:
+1. The output content of the two dimensions of input/output is only ["text", "picture", "audio", "video"] (the output content is consistent with the user's actual input language. For example, if the user input is English, the output of the two dimensions of input/output is ["Text", "Image", "Audio", "Video"]);
+2. If the user proposes a specific value for any of the above dimensions, the value will be captured as the output. If no specific value is proposed, null will be used as the output. If the user does not fully mention the above dimensions, all dimensions will still be completed in list, and the unmentioned dimensions will be uniformly used as null as the output;
+3. If a specific output language is mentioned, only the specific output language will be used. If no output language is mentioned, the value of [Output Language] will be set to "English" by default;
+[Rule] Only extract dimensions that are mentioned by the user or can be reasonably inferred, and dimensions that are not mentioned are simply ignored. (No greetings allowed, no markdown symbols allowed).
 ```
 
-*注：用户输入分为【精简版】及【自定义版】，【精简版】仅包括以下维度：["领域(Domain)", "任务类型(Task)", "是否本地训练(is_local_train)", "显卡型号(Graphics_card)", "输入(Input)", "输出(Output)", "输入语言(Input_Language)", "输出语言(Output_Language)"]，【自定义版】包含所有维度，该分类须在前端交互实现，本模块仅聚焦特征识别；*
+*Note: User input is divided into [lite version] and [customized version]. [lite version] only includes the following dimensions: ["field (Domain)", "task type (Task)", "whether to train locally (is_local_train)", "graphics card model (Graphics_card)", "Input (Input)", "Output (Output)", "Input language (Input_Language)", "Output language (Output_Language)"], [customized version] includes all dimensions. This classification must be implemented interactively on the front end. This module only focuses on feature recognition;*
 
 ---
 
-## 用户自然语言示例
+## User natural language example
 
-- **case_1（标准）**: `我需要一个针对MRI核磁共振图像的医学图像分割模型，最好是PyTorch实现的，输出Mask图，准确率指标要高，语言要中文。`
+- **case_1 (standard)**: `I need a medical image-segmentation model for MRI scans, preferably implemented in PyTorch. It should output mask images, prioritize high accuracy, and use Chinese as the language.`
 
-      输出:["Domain: 医学图像", "Task: 图像分割", "Accuracy: 准确率", "Accuracy_range: 高", "is_local_train: null", "Graphics_card: null", "Input: 图片", "Output: 图片", "Size: null", "Library / Framework: PyTorch", "Input_Language: 中文", "Output_Language: 中文", "License: null"]
+Output: ["Domain: medical image", "Task: image segmentation", "Accuracy: accuracy", "Accuracy_range: high", "is_local_train: null", "Graphics_card: null", "Input: picture", "Output: picture", "Size: null", "Library / Framework: PyTorch", "Input_Language: Chinese", "Output_Language: Chinese", "License: null"]
 
-- **case_2（标准）**: `Is there a JAX implementation for satellite imagery segmentation or classification? Specifically, we are looking for a model that processes multispectral data to generate LULC (Land Use/Land Cover) maps, provided it allows for commercial use.`
+- **case_2 (standard)**: `Is there a JAX implementation for satellite imagery segmentation or classification? Specifically, we are looking for a model that processes multispectral data to generate LULC (Land Use/Land Cover) maps, provided it allows for commercial use.`
 
-      输出:["Domain: Remote Sensing", "Task: image to image", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: Image", "Output: Image", "Size: null", "Library / Framework: JAX", "Input_Language: English", "Output_Language: English", "License: commercial use"]
+Output: ["Domain: Remote Sensing", "Task: image to image", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: Image", "Output: Image", "Size: null", "Library / Framework: JAX", "Input_Language: English", "Output_Language: English", "License: commercial use"]
 
-- **case_3（模糊）**: `帮我找个能做智能客服的模型，随便什么框架都行。`
+- **case_3 (vague)**: `Find me a model for an intelligent customer-service assistant. Any framework is fine.`
 
-      输出:["Domain: 客服", "Task: 文字生成文字", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: 文字", "Output: 文字", "Size: null", "Library / Framework: null", "Input_Language: null", "Output_Language: English", "License: null"]
+Output: ["Domain: Customer Service", "Task: Text Generate Text", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: text", "Output: text", "Size: null", "Library / Framework: null", "Input_Language: null", "Output_Language: English", "License: null"]
 
-- **case_4（行业黑话）**: `实验室要做中文NER任务，给我推荐几个SOTA的BERT变体，必须支持多语言输出。`
+- **case_4 (industry jargon)**: `Our lab is working on a Chinese NER task. Recommend several state-of-the-art BERT variants that support multilingual output.`
 
-      输出:["Domain: 自然语言处理", "Task: 命名实体识别", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: 文字", "Output: 文字", "Size: null", "Library / Framework: null", "Input_Language: 中文", "Output_Language: 多语言", "License: null"]
+Output: ["Domain: Natural Language Processing", "Task: Named Entity Recognition", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: text", "Output: text", "Size: null", "Library / Framework: null", "Input_Language: Chinese", "Output_Language: Multilingual", "License: null"]
 
-- **case_5（口语）**: `我想找个做中文情感分析的，千万别给我推荐那种几百亿参数的LLM，跑不动，给我点轻量级的，准确率别太低就行。`
+- **case_5 (colloquial)**: `I need a model for Chinese sentiment analysis. Do not recommend an LLM with tens of billions of parameters because I cannot run it; suggest something lightweight with reasonable accuracy.`
 
-      输出:["Domain: 情感分析", "Task: 文字生成文字", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: 文字", "Output: 文字", "Size: 轻量级", "Library / Framework: null", "Input_Language: 中文", "Output_Language: English", "License: null"]
+Output: ["Domain: sentiment analysis", "Task: text generation text", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: text", "Output: text", "Size: lightweight", "Library / Framework: null", "Input_Language: Chinese", "Output_Language: English", "License: null"]
 
-- **case_6（口语）**: `给金融数据做预测，主要是处理时间序列分析的那种，找个基准模型。`
+- **case_6 (colloquial)**: `Find a baseline model for forecasting financial data, primarily for time-series analysis.`
 
-      输出:["Domain: 金融", "Task: 时间序列预测", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: 文字", "Output: 文字", "Size: null", "Library / Framework: null", "Input_Language: Chinese", "Output_Language: English", "License: null"]
-
-
+Output: ["Domain: Finance", "Task: Time Series Forecast", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: text", "Output: text", "Size: null", "Library / Framework: null", "Input_Language: Chinese", "Output_Language: English", "License: null"]
 
 
-  **2026/3/28待办**：
-- 前端模型参数以及范围都可以让用户选择并且提供默认值
-- 准备两套用户输入，一套精简版，一套自定义版
-- 加入【卡】的信息
-- 字符串List仅保留英语
+
+
+**2026/3/28 To-do**:
+- Front-end model parameters and ranges can be selected by users and provide default values.
+- Prepare two sets of user input, a simplified version and a customized version
+- Information about joining [Card]
+- The string List is reserved for English only

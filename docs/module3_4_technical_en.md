@@ -1,0 +1,311 @@
+# Module 3 & Module 4 Technical details (for technical review/defense)
+
+> Intended for technical readers. Covers the data structure of Module 3 (model retrieval/selection) and Module 4 (code generation),
+> Algorithms, trade-offs for each design choice, known limitations. The last section, "Anticipated Questions," prepares questions and answers that the professor may ask in advance.
+>
+> Corresponding codes: `retrieval/rag_retrieval.py` (M3), `recommender/` (recommender layer),
+> `module4_agent/` (M4), `pipeline.py` (arrangement + M2→M3 field mapping).
+
+> **Release status legend**:
+> - **✅ Current Implementation**: Code and offline tests are located at current `main`.
+> - **🔬 To be verified / Future plans**: Requires real data, GPU running or subsequent implementation.
+>
+> Recommender layer, rule recipe layer, cost measurement, `run_and_log` and pipeline
+> `--use-recommender` / `--use-recipe` are current implementations; their real data gains remain to be verified.
+
+---
+
+# Part A: Module 3: Model retrieval/selection
+
+## A.1 knowledge base (Knowledge Base) double-layer structure
+
+The core of Module 3 is a **manually curated knowledge base**, consisting of two layers:
+
+**① NetworkX directed graph (DiGraph) - expressing component relationships**
+- Node type: `backbone` / `pretrained_model` / `head` / `loss` / `optimizer`
+- Edge type:
+  - `has_pretrained`: backbone → its pre-trained checkpoint
+  - `compatible_with`: Can be used together (backbone↔head/loss/optimizer)
+  - `requires`: Fixed connection of integrated architecture (DETR/RT-DETR), head/loss cannot be replaced after arrival via `requires`
+  - `preferred_when`: Conditional preference ("When the conditions are met, A takes precedence over B")
+  - `alternative_to`: substitution relationship
+
+**② ChromaDB vector index - semantic retrieval**
+- Only embed the text description of **backbone** (embedding model: `all-MiniLM-L6-v2`)
+- pretrained node is reached through graph traversal, **no direct vector retrieval**
+
+**Current scale**: 14 backbone, 22+ HF pre-trained checkpoint, 7 head, 6 loss, 3 optimizer.
+
+### A.1.0 Why use "graph knowledge base" - comparison with other knowledge base solutions
+
+The essence of selection is: given the requirements, assemble a set of "mutually compatible and reasonable" configurations from a bunch of components. There are a lot of **hard relationships** between components (which head can be matched with which backbone, head of DETR cannot be replaced, which checkpoint has which backbone). The core of the selection of knowledge base depends on whether it can express these relationships in the first category. Comparison of alternative solutions:
+
+| plan | Can we express hard compatibility relationship? | Combined storage cost | explainable | free description matching | Main questions |
+|---|---|---|---|---|---|
+| **Flat table / full configuration list** (one complete set per row config) | No (implicit) | **Combination Explosion** 14×22×7×6×3, most illegal | weak | no | Either it's exhaustive (unmaintainable, a lot of junk lines), or it's just a curated combination (losing the ability to reorganize); changing a line of compatibility requires a lot of actions. |
+| **Pure vector RAG** (embed all components and select based on similarity) | **No** - Similar ≠ Compatible | Low | Weak (black box neighbor) | **powerful** | Unable to express `requires`/`compatible_with`; combinations that "look related but cannot be matched" will be retrieved; `requires` (DETR head cannot be replaced) cannot be forced by similarity at all |
+| **Relational DB / SQL** (many-to-many join table) | yes | Low | middle | no | Compatibility can be expressed, but "backbone→checkpoint→head→loss follow requires and then compatible" is a **recursive multi-hop traversal**, SQL is awkward to write; for small curation KB is a heavy weapon |
+| **Figure KB (this project)** | **Yes, and a first-class citizen** | **Low** (stored component + edge, O (component + relationship)) | **Strong** (Traversing the path is the reason) | Passed to vector layer (see below) | Coverage subject to manual maintenance |
+| **Pure LLM** (ask GPT directly to recommend config) | no |: | weak | powerful | Uncertain, unauditable, will** fabricate non-existent checkpoint / illegal combination**, unconstrained enforcement, every query costs money (i.e. MLE-STAR formula, see Part C) |
+
+**Figure KB's core advantages (why you finally chose it)**:
+1. **Hard structure constraints are first-class citizens** - `requires` (integrated architecture fixed connection), `compatible_with` (legal replacement), `has_pretrained` (to checkpoint) are all typed edges, **directly encoding domain rules** rather than "trying luck" by similarity.
+2. **Retrieval = graph traversal, algorithm and data structure isomorphism**: Select backbone → along `has_pretrained` to get checkpoint → along `requires` and then `compatible_with` to parse head/loss/optimizer. The combination is generated by traversal, not saved, to avoid combination explosion from the root.
+3. **Naturally explainable** - The path ** traveled is the ** reason for recommendation ("Choose this head because backbone `requires` it"), audit/defense friendly.
+4. **Easy to expand** - adding a component = adding a node + several edges, no need to copy the entire row like a flat table.
+
+**The price of honesty**: (a) Coverage is limited by manual curation (→ "Automatic expansion" to be done); (b) Errors in edge maintenance will **silently** produce wrong combinations (→ Use `test_golden.py` golden return to cover); (c) The vector layer has limited signal-to-noise ratio for short descriptions (see A.2 limitations).
+
+**Why use NetworkX (memory graph) instead of Neo4j (graph database)**: KB is extremely small in scale (dozens of nodes), is fully rebuilt by `build_graph` when the process starts, and is **incorporated into git version management in code form**. Memory DiGraph requires no service, no network, and no query language overhead. The value of Neo4j lies in millions of nodes/persistence/concurrency - currently none of them are needed, and their introduction will only increase the operation and maintenance burden. If "automatic database expansion" pushes the scale to 10,000 and requires persistence, re-evaluate.
+
+**Why the vector layer only embeds backbone Description**: pretrained/head/loss is reached through graph traversal, which is determined by the structure and does not require semantic retrieval; only "user free description ↔ which backbone to choose" is a soft matching problem, so only vector indexes are built for backbone.
+
+**Why choose `all-MiniLM-L6-v2` for the embedding model**: Compare the hosted embedding APIs (such as OpenAI text-embedding-3) - MiniLM **Local running** (no API cost/delay/privacy concerns), 384 dimensions, fast; the match is just "a paragraph" ↔ 14 candidates", the marginal accuracy of large models is not worth the cost and dependence. Compared to the larger local models (bge-large / e5) - more accurate but heavier, this size is overprovisioned. Chroma and embedding function are pluggable and can be replaced in one row if needed in the future.
+
+### A.1.1 node field (schema)
+
+`backbone` node:
+- `task_type`: Supported task list
+- `tier`: **By mission** role dict, `"default"`/`"accuracy_upgrade"`/`"special_case"`
+- `scratch_viable_from`: Minimum data_size required for training from scratch (`small`/`medium`/`large`/`None`)
+- `domain_transfer`: `strong`/`moderate`/`weak` (collected, **not yet used for scoring** - known gap)
+- `capabilities`: Such as `["zero_shot","few_shot","open_vocabulary"]` (currently only DINOv2/CLIP has)
+
+`pretrained_model` node:
+- `size_tier`:`nano`/`small`/`base`/`large`/`xlarge`
+- `finetune_strategy`:`full`/`head_only`/`either`
+- `freeze_viable`:bool
+- `params_M`: Number of parameters (millions)
+- `flops_g`: GFLOPs@224 (**new**, for cost model)
+- `recommended_when`: dict (defined but **not yet consumed** - known gap)
+
+### A.1.2 conditional format (EDGE_CONDITIONS)
+
+The condition is stored as **structured dict**, not a string:
+```python
+{"condition": {"all": ["real_time=True", "edge_deployment=True"]}}  # AND
+{"condition": {"any": ["cross_modal=True", "zero_shot=True"]}}      # OR
+```
+`_matches_condition(condition, input_json) -> bool` Evaluates the input. Legal key Example: `real_time=True`, `edge_deployment=True`, `class_imbalance=True`, `zero_shot=True`, etc.
+
+## A.2 retrieval pipeline (Hybrid, Scheme C)
+
+`retrieve_top3_hybrid(input_json, graph, collection)` six steps:
+
+**Step 1: scale band filtering (scale-band)** `_determine_scale_band(input_json)` The acceptable range of `size_tier` derived from hard constraints:
+- `edge_deployment` or `real_time` → `{nano, small}` (hard constraints)
+- `data_size=small` → `{nano, small, base}` (high risk of overfitting for large models and small data)
+- `data_size=large` and `priority=accuracy` → `{base, large}`
+- Rest → All
+
+`_get_eligible_pairs(...)` produces the `(backbone_id, checkpoint_id|None)` pair. backbone selection criteria: supports `task_type`, and (checkpoint exists in scale-band) or (`scratch_viable_from` allows the current data_size, at this time checkpoint=None means training from scratch).
+
+**Step 2: tier filter (`_filter_by_tier`)**
+- `default`: Always reserved
+- `accuracy_upgrade`: reserved only for `priority=accuracy`
+- `special_case`: requires one of its activation constraints (`_SPECIAL_CASE_REQUIRES`, **any-of semantics**, such as `clip_vit` activated in `cross_modal` or `zero_shot`)
+- `zero_shot=True`: **Hard Filter** - Only `capabilities` and backbone containing `zero_shot` pass
+
+**Step 3: Structured Scoring (`_score_backbone`)** data_size Match (0-2) + priority vs Complexity (0-2) + `preferred_when` Bonus (+1.5 per entry)
++ `few_shot` capability Bonus (+1.5). Normalized to [0,1].
+
+**Step 4: Vector scoring** The input is converted into natural language, and cosine similarity (all-MiniLM) is done with the backbone description. Normalized to [0,1].
+
+**Step 5: Weighted merge** `structured × 0.6 + vector × 0.4` → Sort by Top 3.
+
+**Step 6: Graph traversal assembly** For each Top-3 backbone: use Step 1 to preselect checkpoint; parse through `requires` and then `compatible_with` edges head/loss/optimizer; `_recommend_training` gives the training strategy.
+
+**Why "mixed" rather than pure vectors or pure rules** (contrast):
+
+| plan | Hard constraints (budget/zero_shot/scale band) | free description | Main questions |
+|---|---|---|---|
+| **Pure vector RAG** | **Unable to force**: The similarity does not understand "must be ≤12M parameter" | powerful | The signal-to-noise ratio of the short description is low; the search "looks like" rather than "true compliance"; there is no concept of compatibility |
+| **Pure rules scoring** | powerful | **Weak** - The requirement cannot be caught if it is not encoded into flag ("low latency on drones" relies on precise constraint bits) | Crisp, long tail poor coverage |
+| **Mix (this project)** | Rules are responsible (filtering + structured points) | Vectors are responsible (soft semantics) | The weights need to be calibrated (see below) |
+
+Take advantage of each: **hard constraints + structure** are handed over to rules (scale-band/tier/ budget filtering + `_score_backbone`), **soft semantics** are handed over to vectors. Both channels do what they are good at.
+
+**Design Tradeoffs**:
+- **60/40 weight**: Structured signals (rules) are more credible, vectors are used as assists/tie breakers. (Known problem: The vector is based on "a paragraph description", the signal noise is large, accounting for 40% is high - see limitations.)
+- **Scoring is a manual heuristic**: data_size 3 bins, priority 3 values - coarse graining results in an **approximate tie** (observed efficientnet 0.691 vs dinov2 0.67), Module 1 Output jitter will flip the ranking. Credited as an improvement.
+
+## A.3 cost model + constraint awareness (new)
+
+**Motivation**: Regardless of deployment constraints, the original system may push a large model that cannot fit into the target device.
+
+**Cost Model** (`estimate_cost`):
+```
+params = params_M of checkpoint node
+flops_g = flops_g@224 × (image_size / 224)²   # Scale with resolution area
+```
+`flops_g` is centrally maintained in the `_CHECKPOINT_FLOPS_G` table and injected into the node when `build_graph`.
+
+**Budget filter** (`_within_budget`): `constraints` of input can contain numerical budget `max_params_m` / `max_flops_g` (+ `image_size`). Following the **checkpoint candidate screening** two places (`cps_in_band` of `_select_checkpoint` and `_get_eligible_pairs`) - the over-budget checkpoint was eliminated, so **backbone was automatically downgraded to the largest variant within the budget** (such as ResNet50→ResNet18). The entire process remains unchanged when there is no budget (backward compatibility).
+
+**KB expansion**: To supplement the small budget range, `resnet18_imagenet` (small) and `efficientnet_lite0` (edge) are added.
+
+**Why use analytical cost tables instead of measured or learned predictors** (Comparison):
+- vs **Target hardware measured latency**: most accurate, but requires user equipment, non-deterministic, slow - and we cannot get user equipment.
+- vs **Learning Cost Predictor** (HW-NAS-Bench style): More accurate per hardware, but requires training data + model - over-engineering for a "budget gate".
+- **Static params/FLOPs table (this project)**: deterministic, transparent, dependency-free, and sufficient for budget gating. Limitation: `flops@224 × resolution²` is only an approximation; it ignores video memory and actual kernel efficiency. It is suitable for **filtering**, not for promising exact latency.
+
+**Honest positioning**: The cost model and budget filtering belong to the current implementation and only guarantee "keeping the budget"; "Budget sorting by accuracy optimal" requires real history or LogME signal, and its effect still needs to be verified.
+
+## A.4 Training Strategy Analysis (`_recommend_training`)
+
+If the `finetune_strategy` of the checkpoint node is `"either"`, the specific strategy is determined by **context analysis**:
+- `task_type == feature_extraction` → `head_only` (Feature extraction requires frozen features)
+- `few_shot=True` or `data_size == small` → `head_only` (large ViT will overfit when fully fine-tuned with small data)
+- Otherwise → `full` (enough data classification uses full fine-tuning to compete for quality)
+
+**Motivation**: Observe that DINOv2 keeps losing to EfficientNet - the root cause is that DINOv2 is fixed as frozen linear probe, while EfficientNet is fully trimmed. Freezing probes are naturally weaker than full fine-tuning on fine-grained tasks. After changing to context analysis, DINOv2 can also be fully fine-tuned in the general category to level the competition (with the group LR of Module 4, see B.5).
+
+## A.5 recommender layer (recommender/, current implementation)
+
+> **Status**: The entire section (A.5.1-A.5.5) of code is located in the current release. Offline testing verifies software contracts,
+> But "the more history, the better the sorting" still requires real log proof.
+
+The search for Module 3 gives a short list of candidates; the **recommender layer** does "iterative, interpretable" reranking on it (opt-in, `use_recommender`).
+
+**A.5.1 dataset fingerprint** (`fingerprint.py`) `dataset_fingerprint(m2_report, m3_input)` → Semantic signal: task_type, num_classes, data_size, total_images, class_imbalance, resolution_tier, color_mode. `fingerprint_distance(a,b)`: task_type different → ∞ (hard gate); otherwise weighted distance (number of categories log difference weight 2.0, data_size 1.5, resolution/imbalance/color 0.5 each).
+
+**A.5.2 result memory** (`outcome_memory.py`) JSONL log, each `(fingerprint, config, result, cost)`. `query_similar(fingerprint, k, backbone)` returns the most similar history record. It is both a retrieval source and training data for future learning predictors.
+
+**A.5.3 three-layer sorting** (`ranker.py`)
+- **memory**: Similarity-weighted version of backbone History metric (kNN, accumulated)
+- **logme**: LogME mobility score on frozen features of this dataset (cold start, dataset specific)
+- **heuristic**: KB structured + vector points (bottom) sorting: those with memory (according to prediction metric) > those with logme (according to LogME) > only heuristic (retain the original order). Each candidate is accompanied by an explanation string (naming the nearest similar dataset + its score / or cold start description).
+
+**A.5.4 LogME** (`logme.py`) LogME (You et al., ICML 2021): Given frozen features + labels, estimate the linear model's log The largest evidence, **without training** is to predict "ranking after fine-tuning". Pure numpy implementation, verified monotonicity (separable feature score is higher). Feature extraction (loading backbone + forward) is the responsibility of the caller, outputting `{backbone: logme}` to feed the sorter.
+
+**Why choose LogME as cold start migration signal** (compared to other solutions):
+- vs **True·Full-scale fine-tuning of each candidate**: It is the gold standard, but **extremely expensive** - losing the entire "low cost" selling point.
+- vs **linear probe** (train a linear probe and then compare the accuracy): You need to train the probe (although it is cheap, it is still training); and it measures "frozen accuracy" rather than "fine-tuned ranking".
+- vs **Other training-free transferability measures** (LEEP / NCE / H-score): LogME does not rely on the source label space, is universal for regression/classification, and has robust ranking correlation in the literature.
+- **LogME**: One-time forward feature acquisition is enough, closed estimation, no training, and special test "after fine-tuning" ranking - most consistent with the goal of "cheap + cold start". After memory accumulation, its weight decreases but does not return to zero (new data/new backbone always cold start).
+
+**A.5.5 formula layer** (`recipe.py`, hyperparameter recommendation) `recommend_recipe(backbone, finetune_strategy, data_size, m2_report, task_type)` gives HP according to the rules:
+- **Hard constraints**: DINOv2 patch-14 → image_size takes 14 multiples
+- **Routine**: Freeze lr 1e-3; CNN full quantity 3e-4; transformer full quantity 1e-3(head)+`backbone_lr_scale` 0.01; Small data strong enhancement; early stop patience press data_size
+- Only key generated for code consumption is produced; v1 is reserved for `_llm_recipe_proposal` (LLM proposal + rule guardrail, stub)
+
+**Design Philosophy**: Hyperparameter rules are mostly mechanism-based and recognized by the industry (not as dependent on guesswork as selecting an architecture), so **regularization is reliable**; Recipe = Default by coding experts, no hyperparameter search (search is expensive, and it is the home of competing products).
+
+## A.6 Module 3 Known limitations (automatically listed)
+
+- The `preferred_when` edge of the loss node has been consumed; the pretrained condition signal is not yet complete for sorting
+- head/optimizer of `_select_components` uses `candidates[0]` (sequence dependent, fragile)
+- `domain_transfer`, `recommended_when` have been collected but not consumed
+- The vector index only covers backbone (head/loss is not semantically searchable)
+- Coarse-grained structured scoring → approximate tie (cost/constraint filtering and recommender rearrangement already provide relief; real gain to be verified)
+
+---
+
+# Part B: Module 4: Code generation
+
+## B.1 interface (Module 3 → Module 4 contract)
+
+`build_task_list(result, graph, fmt)` / `build_all_task_lists(...)` Convert the search output into a task list:
+- `fmt="structured"`: Fixed `action` type (load_pretrained / train_from_scratch / set_finetune_strategy / configure_head/loss/optimizer)
+- `fmt="nl"`: Natural language task list + `model_config` metadata dict
+
+Before `pipeline.py` is handed over to M4, inject each `model_config` with: `num_classes`, `dataset_id`, `evaluation_metric`, `recommended_epochs`, `offline_smoke`; and `--use-recipe` recipe hyperparameter when turned on.
+
+## B.2 workflow (`workflow.run_workflow`)
+
+```
+task_lists → spec_builder → Code generation → reviewer (static check)
+→ smoke harness (run run.py/run_experiments.py) → refinement loop (optional)
+→ Write module4_summary.json
+```
+
+## B.3 configuration transfer (spec_builder + schemas)
+
+- `build_training_specs(candidates)`: `merged = {**task_overrides, **model_config}`, extracted backbone/head/loss/optimizer/finetune_strategy/lr/image_size/... structure `TrainingSpec`, **keep `raw_model_config` intact**.
+- `TrainingSpec.to_config()`: `asdict(self)` + put `raw_model_config` back into `config["model_config"]`.
+- The generated `run.py` uses `normalize_config` **flatten model_config to the top layer** → generate code `get_value(config, key, default)` and read it at the top layer.
+
+**Key**: Because of this "model_config transparent pocket + flattening", any fields injected by pipeline (such as `evaluation_metric`) are automatically caught downstream, **Module 4 does not need to be modified**.
+
+## B.4 code generation (template vs LLM)
+
+| document | source |
+|---|---|
+| `model.py` | LLM generated (equipped with provider and successful) / otherwise template `_model_py` |
+| train/evaluate/infer/utils/model_utils/run/run_experiments/smoke_data etc. | **Forever Certainty Template** |
+
+**Why is it "template + LLM mixed" instead of pure LLM / pure template / directly to the framework ** (comparison):
+
+| plan | reliability | Flexibility (adapting to new architectures) | cost | Main questions |
+|---|---|---|---|---|
+| **Pure LLM generates the complete set** (all 8 files are written by the model) | Low | high | High (more than token) | If there is an error in any file, it will not run; it is difficult to verify; there is a huge chance of failure. |
+| **Pure template** (without adjustment LLM) | high | **Low** | 0 | Unable to adapt model structure to new backbone/head; stiff |
+| **Give a fixed framework/library** (user calls function) | high | Low | 0 | Users cannot get the code that can be independently edited and owned by themselves (the value of codegen lies in this) |
+| **Template + LLM (this project)** | high | High only at model.py | Low (only 1 file) | LLM still needs to be verified + full disclosure (already done) |
+
+Core idea: ** Minimize the "explosion radius" of LLM's unreliability** - 7 deterministic templates support the reliable skeleton, and only the variable point of "model structure" is given to LLM, and after verification + the template will be returned if it fails. Reliability is given to the template and flexibility is given to LLM.
+
+**LLM path (`llm_codegen.py`)**:
+- provider Abstract: qwen / openai / vertex / none, env Toggle
+- `_response_text`: Robust extraction (SDK object / dict / plain string / nested choices / responses API)
+- `_chat_completion`: temperature=0 call, **rejected (such as gpt-5.x only allowed by default) automatically go to temperature and try again**
+- `_validate_model_python`: Reject HTML gateway page + `ast.parse` Legal + Must define `build_model`
+- `generate_model_py`: **Self-correction loop** - wrong content (illegal Python / missing build_model) feed the error back to LLM and try again (default 2 times, env `M4_MODEL_PY_ATTEMPTS`); transmission error (no content) immediately exit the template; Retire the template when the number of times is exhausted (**The template is the reliable lower limit, not "give up as soon as an error is reported"**)
+
+**LLM model.py Contract** (prompt mandatory): Use `model_utils.load_backbone`/`apply_freeze`, export `build_model(config)`, forward return type is strict (classification naked tensor, detection dict, segmentation [B, C, H, W], feature L2 normalization).
+> Known silent pits: prompt is not forced to name submodule `self.backbone`/`self.head`,
+> If LLM deviates, the feature cache + grouping LR will not be triggered (no error will be reported but DINOv2 may return to catastrophic forgetting). Already added to the to-do list.
+
+## Inside the training code generated by B.5 (train.py template)
+
+- **Real dataloader**: HF dataset + local CSV (Kaggle); detection/segmentation temporary fallback synthetic data
+- **Freeze backbone → Feature Cache**: Detect backbone fully frozen (head_only), **Pump the feature once + cache to disk**, and then only train head on the cache (≈ one data traversal instead of N times), and use deterministic preprocessing (standard linear-probe protocol)
+- **Group learning rate** (`_build_optimizer`): fine-tuned transformer backbone (vit/swin/dino/clip/...) with low LR (`backbone_lr_scale` default 0.01, ≈1e-5), head LR is fully used; CNN/ is frozen and remains in a single group → **Prevent catastrophic forgetting when the full amount of fine-tuning is large ViT** (matched with A.4)
+- checkpoint/ breakpoint continued training, val every round, early stop, AMP, cosine scheduler, class weights, label smoothing
+- `evaluate` is calculated as `evaluation_metric` (accuracy/macro_f1/roc_auc/qwk/log_loss)
+
+## B.6 cost measurement (cost_meter, currently implemented)
+
+> **STATUS**: `cost_meter.py` and its instrumentation are currently released.
+
+Process-level accumulated LLM calls/token, training runs/epochs, wall clock. Instrumentation at the LLM call site at Module 1/Module 4 (guarded, in no way affects calls). The `cost` field recorded in outcome_memory → supports the "Quality vs Cost" comparison.
+
+---
+
+# Part C: Expected professor questions + answers
+
+> Note: The software paths involved in the following answers are all in the current release; involve model quality, continuous learning gain or real
+> Claims about Kaggle performance still need to be supported by real experiments.
+
+**Q1: The essence of your selection is heuristic scoring of rules + vectors. Why is it better than LLM agent? ** A: We don't claim to be better in terms of "naked points/performance" - agentic searches (like MLE-STAR) will be stronger. Our differences are **structural**: (1) Cost - one-time recommendation vs repeated trial and error training to reduce search overhead; (2) Interpretable - each recommendation can be attached with an evidence chain; (3) Accumulation - outcome_memory provides a cross-task memory mechanism, and its gain is to be verified by real logs; (4) Constraint awareness - choose the best within the deployment budget (✅). These are the corners that the way agent works is structurally impossible.
+
+**Q2: Won't manual knowledge bases become outdated/narrow coverage? ** A: Yes, this is the real price. Mitigation: (1) The recommender learns from the results and weakens its dependence on the accuracy of KB; (2) "Automatic expansion" has been planned - pouring new backbone from HF/papers-with-code into the persistence structure graph (combined with the real-time performance of agent + our structure/interpretability).
+
+**Q3: The structured scoring is so rough, how can you ensure that you choose the right one? ** A: Acknowledging coarse graining leads to a near-tie (observed efficientnet vs dinov2 close). Triple mitigation: Constraint/cost filtering first tightens candidates; the recommender uses historical measurement/LogME rearrangement (data set specific, more accurate than heuristic); approximate tie relies on cost-aware tiebreak (under planning). The root cause (heuristic weights are not calibrated) has been included in the improvement items, and it is planned to use catalog to evaluate harness data-driven calibration.
+
+**Q4: What is LogME and why use it instead of real training or linear probe? ** A: LogME estimates the separability of frozen features to labels (log maximum evidence for linear models), ** without training ** i.e. predicts fine-tuned rankings. Cheaper than linear probe (no training probe needed), and specialized in predicting "after fine-tuning" rather than "frozen accuracy". It is a cold start signal (when the memory is empty), and its weight decreases as the memory accumulates but never returns to zero (new data/new backbone total cold start).
+
+**Q5: Why was DINOv2 always worse before? How did you fix it? ** A: The root cause is that it is fixed to freeze linear probe, while CNN is fully fine-tuned - the freeze probe is naturally weak on fine-grained tasks. Two-piece set of revision methods: (A) Module 3 `either` analyzed by context (classification of sufficient data → full); (B) Module 4 groups LR (fine-tuning Use ~1e-5 for transformer backbone, otherwise using the high LR of head will result in catastrophic forgetting). Both must be done at the same time, otherwise it will be worse to just do A.
+
+**Q6: How are the evaluation indicators determined? Hardcoded? ** A: No. Module 1 Extract `evaluation_metric` (accuracy/macro_f1/roc_auc/qwk/log_loss, including aliases such as AUC→roc_auc) from natural language, bring it into m3_input through merge, and inject pipeline model_config, generate the code and consume it. Therefore, "Rate by AUC"/"Grading Consistency (QWK)" will use the correct indicator, rather than uniformly accuracy.
+
+**Q7: Why do you recommend the hyperparameter (recipe)? What level can it reach? ** A: Three layers of basis: hard constraints (backbone facts, lookup table) + industry fine-tuning practices (encoding rules, evidence-based) + (v1) memory + LLM calibration. Super-parameter rules are mostly mechanical (for example, pre-training requires low LR = catastrophic forgetting is a real phenomenon), so regularization is reliable. Horizontal positioning: **Strong default (first guess if you know the skill), the standard task is a few points away from fine tuning, and the more you use it, the more accurate it is by relying on memory, but it is not as good as the complete hyperparameter search**. This can be measured using AIDE compared to harness (rule vs LLM-recipe vs AIDE, quality × cost).
+
+**Q8: What should I do if the code generation fails? How to ensure reliability? ** A: multi-layer: template generates training skeleton (deterministic and reliable); LLM only writes model.py and is verified (ast.parse + must contain build_model + reject HTML); If failed, first **self-correction and retry** (feed back errors, bounded) and then return to the template; the template is the lower limit of reliability. After generation, there are also reviewer static checks + smoke tests.
+
+**Q9: What is the relationship with skrub DataOps? ** A: The whole pipeline (M1→M3) and another skrub DataOps DAG packaging (`skrub_pipeline.py`), can be `describe_steps()` Output text graphics, `draw_graph()` out of SVG/PNG, meeting the requirement of "pipeline uses DataOps abstraction + can display calculation diagrams". Each DAG node calls the real module function, which is the "graph view" of pipeline, currently covering M1→M3.
+
+**Q10: Why does the knowledge base use graphs instead of vector databases/flat tables/relational libraries? ** A (see A.1.0 comparison table for details): The core is that there are a large number of **hard compatibility relationships** between components, and the knowledge base must be able to express them first-class. **Pure vector library** only understands similarity and does not understand "can it match", so it will introduce a combination that "looks like but is illegal", and cannot force `requires` of DETR (head cannot be replaced); **flat table** will explode in combinations (14×22×7×6×3, most of which are illegal), and changing a compatibility requires a lot of lines; **relational database** can express compatibility, but "following requires and then compatible multi-hop analysis" is a recursive traversal. SQL is awkward to write, and KB is a heavy weapon for small curation. **The graph** turns `requires`/`compatible_with`/`has_pretrained` into typed edges. **Retrieval means traversal, and combination is generated by traversal** (no storage → no explosion). **The path traveled is the reason for recommendation** (interpretable). To add components, just add nodes + edges. The vector is not discarded, but **downgraded to an auxiliary channel** (only the backbone description is embedded, accounting for 40%) that specializes in soft matching of "free description → choose which backbone" - using graphs for structure and vectors for semantics, each performing its own duties. Let's be honest about the cost: the pictures are curated manually, the coverage is limited (→automated KB expansion to be done), and errors will occur silently if you make mistakes (→Golden Regression Testing).
+
+---
+
+## Attachment: Index of key documents
+
+| document | content | state |
+|---|---|---|
+| `retrieval/rag_retrieval.py` | M3 KB + Search + Cost Model + Training Strategy Analysis | ✅ Current releases |
+| `module4_agent/{workflow,spec_builder,code_generator,llm_codegen,schemas}.py` | M4 | ✅ Current releases |
+| `pipeline.py` | Orchestration + M2→M3 Field Mapping + Injection | ✅ Current releases |
+| `skrub_pipeline.py` | DataOps calculation chart | ✅ Current releases |
+| `recommender/{fingerprint,outcome_memory,ranker,logme,recipe}.py` | Recommender layer + recipe layer | ✅ Current releases |
+| `cost_meter.py` / `run_and_log.py` | Cost measurement/batch running records | ✅ Current releases |

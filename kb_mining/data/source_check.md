@@ -1,70 +1,56 @@
-# source_check.md — Meta Kaggle 数据源地基验证（§0.5）
+# source_check.md: Meta Kaggle Data source foundation verification (§0.5)
 
-**验证日期**：2026-07-03　**结论**：✅ 链路通，采用 Meta Kaggle 官方 dump，不走备选方案。
+**Verification date**: 2026-07-03 **Conclusion**: ✅ Link link, use Meta Kaggle official dump, do not use the alternative.
 
-harvest.py **按本文件的实际列名编码**，不按 kb_mining_plan 的"预期链路"编码。
+harvest.py **is encoded according to the actual listing in this document**, not according to the "expected link" of kb_mining_plan.
 
-## 下载的文件（`kaggle/meta-kaggle`，逐文件 `dataset_download_file`）
+## Downloaded files (`kaggle/meta-kaggle`, file-by-file `dataset_download_file`)
 
-| 文件 | 大小 | 载入方式 |
+| document | size | Loading method |
 |---|---|---|
-| `Competitions.csv` | 149.6 MB | 可 `usecols` 全量载入 |
-| `ForumTopics.csv` | 70.4 MB | 可 `usecols` 全量载入 |
-| `ForumMessages.csv` | **1.70 GB** | **必须 `chunksize` 流式**，按 Id 集合过滤 |
+| `Competitions.csv` | 149.6 MB | Can load `usecols` in full |
+| `ForumTopics.csv` | 70.4 MB | Can load `usecols` in full |
+| `ForumMessages.csv` | **1.70 GB** | **Requires `chunksize` streaming**, filter by Id collection |
 
-下载不产生 `.zip`——kaggle 2.2.3 的 `dataset_download_file` 直接落 `.csv`。
+The download does not generate `.zip` - `dataset_download_file` of kaggle 2.2.3 directly falls into `.csv`.
 
-## 实际列名（以本次 dump 为准）
+## Actual listing (subject to dump this time)
 
-- **Competitions.csv**：`Id, Slug, Title, ForumId, EnabledDate, DeadlineDate,
-  TotalTeams, HostSegmentTitle, Overview, DatasetDescription`（后两列内嵌竞赛
-  描述正文——特征卡初填**不必爬竞赛网页**）。
-- **ForumTopics.csv**：`Id, ForumId, FirstForumMessageId, Title, Score,
-  TotalMessages, CreationDate`。
-- **ForumMessages.csv**：`Id, ForumTopicId, PostUserId, PostDate,
-  ReplyToForumMessageId, Message, RawMarkdown, Medal, MedalAwardDate`。
+- **Competitions.csv**: `Id, Slug, Title, ForumId, EnabledDate, DeadlineDate, TotalTeams, HostSegmentTitle, Overview, DatasetDescription` (the competition description text is embedded in the last two columns - initial filling of the feature card **no need to crawl the competition webpage**).
+- **ForumTopics.csv**:`Id, ForumId, FirstForumMessageId, Title, Score, TotalMessages, CreationDate`.
+- **ForumMessages.csv**:`Id, ForumTopicId, PostUserId, PostDate, ReplyToForumMessageId, Message, RawMarkdown, Medal, MedalAwardDate`.
 
-## 确认可行的 JOIN 链（比计划设想的更短）
+## Confirmation of viable JOIN chain (shorter than planned)
 
 ```
-Competitions.ForumId  ==  ForumTopics.ForumId          # 按 catalog slug 定位竞赛论坛
-ForumTopics.FirstForumMessageId  ==  ForumMessages.Id  # 直接外键指向楼主首帖！
+Competitions.ForumId  ==  ForumTopics.ForumId          # Press catalog slug Positioning Competition Forum
+ForumTopics.FirstForumMessageId  ==  ForumMessages.Id  # Direct foreign key points to the original poster of the original poster!
 ```
 
-**关键优化（harvest 据此实现）**：`FirstForumMessageId` 是指向楼主首帖的直接
-外键，**不需要按 `ForumTopicId` 分组扫 ForumMessages**。正确做法：
+**Key optimization (harvest is implemented based on this)**: `FirstForumMessageId` is a direct foreign key to the first post of the original poster. **There is no need to group and scan ForumMessages** by `ForumTopicId`. Correct approach:
 
-1. Competitions 过滤出 catalog 里的竞赛 → 得 `ForumId` 集合；
-2. ForumTopics 过滤这些 ForumId + 标题正则筛 solution 帖 → 得
-   `FirstForumMessageId` 集合（连同 rank/score/title）；
-3. ForumMessages **单次 chunksize 流式**，`Id ∈ 该集合` 即取正文——1.70 GB 只
-   扫一遍，命中集合很小（每竞赛 ≤10）。
+1. Competitions filters out the competitions in catalog → gets the `ForumId` set;
+2. ForumTopics filter these ForumId + title regex filter solution posts → get `FirstForumMessageId` collection (together with rank/score/title);
+3. ForumMessages **Single chunksize streaming**, `Id ∈ 该集合` takes the text immediately - 1.70 GB only scans once, the hit set is very small (≤10 per competition).
 
-## 正文格式
+## Text format
 
-- 正文优先用 **`RawMarkdown`**（markdown，喂 LLM 更干净），空则回退 `Message`（HTML）。
-- 注意：RawMarkdown 里仍可能内嵌 HTML 标签（如 `<b>`）和图片链接，extract 的
-  截断/引用校验需容忍。
-- `PostDate` 格式 `MM/DD/YYYY HH:MM:SS`（→ posts.jsonl 的 `post_date` 取 `YYYY-MM-DD`）。
+- For text, use **`RawMarkdown`** (markdown, LLM is cleaner), and if empty, fall back to `Message` (HTML).
+- Note: HTML tags (such as `<b>`) and image links may still be embedded in RawMarkdown, and the truncation/reference verification of extract needs to be tolerated.
+- `PostDate` format `MM/DD/YYYY HH:MM:SS` (→ `post_date` of posts.jsonl takes `YYYY-MM-DD`).
 
-## 端到端实证（cassava-leaf-disease-classification）
+## End-to-end demonstration (cassava-leaf-disease-classification)
 
-- ForumId **1000771**，论坛 833 帖，标题正则命中 **46 篇** solution 帖（远超 ≥5）。
-- 1st place（topic 221957 → FirstForumMessageId **1216990**）正文 **8222 字符**，
-  PostDate 02/24/2021，内容含 EfficientNet/ResNet/ResNext/ViT/DeiT/MobileNet、
-  "ensemble of four models"、best single "B4: 89.4%"——正是 extract 目标素材。
-- 假阳性观察：正则会误收 "Can't wait to see 1st team's solution"（许愿帖）、
-  "Top solutions in ..."（汇总帖）——交给 extract 的引用校验 / "非方案帖→unclear"
-  过滤，噪声可接受。
+- ForumId **1000771**, 833 forum posts, the regular title hit **46 posts** solution posts (far more than ≥5).
+- 1st place (topic 221957 → FirstForumMessageId **1216990**) Text **8222 characters**, PostDate 02/24/2021, content contains EfficientNet/ResNet/ResNext/ViT/DeiT/MobileNet, "ensemble of four models", best single "B4: 89.4%" - exactly the extract target material.
+- False positive observation: The regular rule will mistakenly receive "Can't wait to see 1st team's solution" (wishing post), "Top solutions in..." (summary post) - handed over to the reference verification of extract / "non-scheme post→unclear" filtering, the noise is acceptable.
 
-## 对 catalog 的连带修正（已回填真实值）
+## Joint correction to catalog (backfilled with true value)
 
-- 全部 14 竞赛的 `start/end` 用 dump 的 `EnabledDate/DeadlineDate` 真实值填入。
-- **`ubc-ocean` slug 错误 → 实际为 `UBC-OCEAN`（全大写）**。harvest 的 slug
-  过滤须大小写敏感或对齐 dump 原值。
-- `fathomnet-2025` 仅 **79 队**、`herbarium-2022-fgvc9` **134 队**、
-  `sorghum-id-fgvc-9` **252 队**——write-up 可能不足 5，由 harvest 召回政策定去留。
+- All 14 races of `start/end` are filled in with the true value of `EnabledDate/DeadlineDate` of dump.
+- **`ubc-ocean` slug error → actually `UBC-OCEAN` (all caps)**. The slug filter of harvest must be case-sensitive or aligned with the original value of dump.
+- `fathomnet-2025` is only available in **79 teams**, `herbarium-2022-fgvc9` **134 teams**, `sorghum-id-fgvc-9` **252 teams** - write-up may be less than 5, and is determined by the harvest recall policy.
 
-## 备选方案
+## Alternatives
 
-未触发。若未来 dump 结构变化导致链断，见 kb_mining_plan §0.5 的三级备选。
+Not triggered. If structural changes in dump cause chain breakage in the future, see the third-level alternative in kb_mining_plan §0.5.
