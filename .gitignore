@@ -41,6 +41,8 @@ colab_demo_output/
 workspace/
 chroma_db_kb/
 recommender/outcomes.jsonl
+pipeline_graph.png
+pipeline_graph.svg
 
 # Raw datasets and downloaded archives
 data/
