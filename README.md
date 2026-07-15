@@ -638,10 +638,26 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 
 ```text
 .
-|-- pipeline.py                       # integrated full-chain entry point
+|-- README.md                         # project guide and main reviewer entry point
+|-- CONTRIBUTIONS.md                  # history-backed module attribution
+|-- EXPERIMENTS.md                    # reproducible experiment commands
+|-- EXPERIMENTAL_RESULTS.md           # completed and pending results
+|-- requirements.txt / pyproject.toml  # dependency and packaging metadata
+|-- pipeline.py                       # integrated Module 1-to-4 entry point
+|-- run_for_testing.py                # convenient local full-pipeline runner
+|-- run_and_log.py                    # real run plus outcome-memory logging
+|-- run_kaggle_benchmark.py           # Kaggle benchmark project generation/training entry
+|-- kaggle_submit.py                  # Kaggle submission formatting/submission helper
+|-- skrub_pipeline.py                 # optional DataOps graph wrapper for the pipeline
 |-- features_extraction_api.py         # Module 1 requirement parsing
+|-- dataset_analyzer.py               # Module 2 dataset-analysis wrapper
+|-- env_loader.py                     # local .env loading helper
+|-- cost_meter.py                     # lightweight cost and runtime accounting
+|-- vision_benchmark_catalog.py        # benchmark metadata used by Kaggle workflows
 |-- ingestion/                         # dataset loading utilities
 |-- analyzer/                          # image statistics and dataset analysis
+|-- features/                          # image feature extraction utilities
+|-- processors/                        # image preprocessing helpers
 |-- retrieval/                         # Module 3 KB/RAG recommender
 |-- recommender/                       # outcome-memory reranking
 |-- recipe/                            # training recipe suggestions
@@ -651,13 +667,11 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 |-- experiments/mlestar_kaggle_benchmarks/ # isolated Python 3.11 experiment
 |-- experiments/notebook_runs/          # notebooks, per-cell logs, hashes, leaderboard records
 |-- docs/                              # design notes and API docs
-|-- CONTRIBUTIONS.md                  # history-backed module attribution
-|-- EXPERIMENTS.md                    # reproducible experiment commands
-|-- EXPERIMENTAL_RESULTS.md           # completed and pending results
-|-- jiaozi_fullchain.ipynb            # complete M1-to-M4 Colab demo
-|-- integration_update_colab.ipynb    # integration notebook
-|-- vision_benchmarks_colab.ipynb     # vision benchmark notebook
-`-- kaggle_benchmark_colab.ipynb      # Kaggle benchmark notebook
+|-- build_vision_benchmarks_notebook.py # utility that builds the benchmark Colab notebook
+|-- jiaozi_fullchain.ipynb             # complete M1-to-M4 Colab demo
+|-- integration_update_colab.ipynb     # integration notebook
+|-- vision_benchmarks_colab.ipynb      # vision benchmark notebook
+`-- kaggle_benchmark_colab.ipynb       # Kaggle benchmark notebook
 ```
 
 ## 14. Final Submission Checklist
