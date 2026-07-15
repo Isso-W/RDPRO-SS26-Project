@@ -14,7 +14,7 @@ Different competitions use different metrics, so raw ROC-AUC, QWK, log loss, Dic
 
 ## 1. Main Findings
 
-The results tell a mixed but useful story.
+Our results tell a mixed but useful story.
 
 - The GraphRAG-based pipeline has stored execution evidence for **ten image tasks**, covering ordinary classification, multi-label classification, object detection, and semantic segmentation.
 - **Eight tasks have leaderboard records for both the GraphRAG-based pipeline and the MLE-STAR-style baseline.** On the reported private scores, the GraphRAG-based pipeline performs better in the correct metric direction on **seven of eight** paired tasks. The baseline is stronger on **TGS Salt Identification**.
