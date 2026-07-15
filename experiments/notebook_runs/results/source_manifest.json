@@ -1,0 +1,17 @@
+{
+  "source_file": "RDPRO_Experiment - V2.csv",
+  "source_sha256": "b6117bf077ad653e8bb622510847dff282f97d073d5c9c2942baf2f25c9ba1d3",
+  "source_logical_rows": 32,
+  "source_columns": 20,
+  "result_table_header_row": 17,
+  "extracted_source_rows": "18-28",
+  "normalized_score_records": 19,
+  "normalization_notes": [
+    "The private user-supplied source table is not committed; this directory contains the normalized leaderboard fields used by the report.",
+    "These records are supplemental leaderboard evidence, not Kaggle API receipts and not notebook cell output.",
+    "Where the stored notebook already contains the same public and private score, the source adds leaderboard rank.",
+    "Where the stored notebook records a rejected, missing, or unexecuted submission, the source is treated as a later submission record and the historical notebook log remains unchanged.",
+    "The value 2018 in the MLE local-score cell for TGS Salt is treated as a shifted year, not as a validation score.",
+    "Denoising Dirty Documents is omitted because the source reports no score."
+  ]
+}

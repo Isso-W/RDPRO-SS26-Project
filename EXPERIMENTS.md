@@ -4,6 +4,8 @@ This file maps every checked-in experiment to its executable entry point and its
 
 Raw Kaggle data, credentials, submissions, checkpoints, and embedded competition images are not committed. Binary rich-media output was removed from the public evidence copies; textual output was retained. Source archive and notebook SHA-256 values are recorded in [`experiments/notebook_runs/manifest.json`](experiments/notebook_runs/manifest.json).
 
+The later leaderboard records supplied in `RDPRO_Experiment - V2.csv` are normalized at [`experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv`](experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv). Their source hash and normalization rules are in [`source_manifest.json`](experiments/notebook_runs/results/source_manifest.json). These rows supplement the cell logs; they do not replace them or claim that a later score appeared in an earlier notebook execution.
+
 ## Running a notebook for review
 
 The notebooks under [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/) are the reviewer-facing entry points. To rerun one in Colab:
@@ -58,6 +60,8 @@ The supplied MLE archive also contains two unexecuted templates. They are includ
 | --- | --- | --- |
 | RANZCR CLiP inference | [`ranzcr_clip_inference_template.ipynb`](experiments/notebook_runs/notebooks/mlestar/ranzcr_clip_inference_template.ipynb) | [`ranzcr_clip_inference_template.log`](experiments/notebook_runs/logs/mlestar/ranzcr_clip_inference_template.log) |
 | TGS Salt | [`tgs_salt_template.ipynb`](experiments/notebook_runs/notebooks/mlestar/tgs_salt_template.ipynb) | [`tgs_salt_template.log`](experiments/notebook_runs/logs/mlestar/tgs_salt_template.log) |
+
+The supplemental score table also reports later MLE-STAR leaderboard results for TGS Salt and Leaf Classification. Neither result has a corresponding executed notebook output in this repository, so they are labeled `supplemental_leaderboard_only` in the normalized file and discussed separately in `EXPERIMENTAL_RESULTS.md`.
 
 ## CE versus focal loss on class-imbalanced data
 

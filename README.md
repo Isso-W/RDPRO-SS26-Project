@@ -1,4 +1,6 @@
-# GraphRAG-based AutoML Benchmark Agent
+# Data Engineering for AI & ML [Project]
+
+## GraphRAG-based AutoML Benchmark Agent
 
 GraphRAG-based AutoML Benchmark Agent is our computer-vision AutoML prototype for the MLE-STAR-based course project. Given a task request and an image dataset, it recommends model configurations and generates runnable experiment code.
 
@@ -636,7 +638,7 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 |-- kb_mining/                         # evidence mining for KB updates
 |-- experiments/ab_loss_imbalance/      # paired loss experiment + Cassava records
 |-- experiments/mlestar_kaggle_benchmarks/ # isolated Python 3.11 experiment
-|-- experiments/notebook_runs/          # reviewer notebooks + per-cell logs + hashes
+|-- experiments/notebook_runs/          # notebooks, per-cell logs, hashes, leaderboard records
 |-- docs/                              # design notes and API docs
 |-- CONTRIBUTIONS.md                  # history-backed module attribution
 |-- EXPERIMENTS.md                    # reproducible experiment commands
@@ -654,6 +656,8 @@ For final project submission, the README should be accompanied by:
 - `README.md`: polished version of this project guide;
 - `CONTRIBUTIONS.md`: which member wrote which parts, with links to files or sections;
 - [`EXPERIMENTS.md`](EXPERIMENTS.md): exact competition-to-notebook mapping, rerun instructions, and per-cell log paths;
-- [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md): validation metrics, Kaggle receipts, failures and warnings, plus results that remain pending.
+- [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md): validation metrics, Kaggle receipts, supplemental leaderboard records, failures and warnings, plus results that remain pending.
 
 The reviewer notebooks under [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/) retain visible textual outputs. The matching files under [`experiments/notebook_runs/logs/`](experiments/notebook_runs/logs/) enumerate every code cell, including cells with no stored output or an error.
+
+Later leaderboard scores supplied outside the notebook archives are normalized in [`experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv`](experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv). The results report distinguishes these supplemental rows from scores that appear in stored cell output.

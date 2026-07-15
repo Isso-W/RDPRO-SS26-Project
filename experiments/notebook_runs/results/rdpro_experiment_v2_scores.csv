@@ -1,0 +1,20 @@
+workflow,competition,metric,public_score,private_score,rank,leaderboard_size,reported_rank_percent,source_csv_row,evidence_status,notebook_log
+Jiaozi,Plant Pathology 2020 - FGVC7,Mean ROC AUC,0.94719,0.94069,780,1318,59,18,supplemental_later_submission,logs/jiaozi/plant_pathology_2020.log
+Jiaozi,APTOS 2019 Blindness Detection,QWK,0.698035,0.865298,2022,2929,69,19,supplemental_later_submission,logs/jiaozi/aptos_2019.log
+Jiaozi,Dog Breed Identification,Multi-class Log Loss,0.42151,0.42151,591,1280,46,20,supplemental_later_submission,logs/jiaozi/dog_breed.log
+Jiaozi,Aerial Cactus Identification,ROC-AUC,0.9998,0.9998,455,1221,37,21,supplemental_later_submission,logs/jiaozi/aerial_cactus_inference.log
+Jiaozi,Dogs vs. Cats Redux: Kernels Edition,Binary Log Loss,0.06594,0.06594,152,1315,12,22,notebook_receipt_plus_rank,logs/jiaozi/dogs_vs_cats_redux.log
+Jiaozi,Histopathologic Cancer Detection,ROC-AUC,0.9599,0.9623,259,1149,23,23,notebook_receipt_plus_rank,logs/jiaozi/histopathologic_cancer.log
+Jiaozi,RANZCR CLiP - Catheter and Line Position Challenge,Mean ROC AUC,0.85209,0.86120,1337,1547,86,24,supplemental_later_submission,logs/jiaozi/ranzcr_clip_inference.log
+Jiaozi,TGS Salt Identification Challenge,Mean Average Precision over IoU thresholds 0.50:0.05:0.95,0.69426,0.72590,2499,3219,77,25,notebook_receipt_plus_rank,logs/jiaozi/tgs_salt.log
+Jiaozi,Global Wheat Detection,mAP@0.5:0.75,0.6624,0.5546,1364,1742,78,26,supplemental_later_submission,logs/jiaozi/global_wheat_detection.log
+Jiaozi,Ultrasound Nerve Segmentation,Dice Coefficient,0.47818,0.45699,798,1595,50,27,notebook_receipt_plus_rank,logs/jiaozi/ultrasound_nerve_segmentation.log
+MLE-STAR,Plant Pathology 2020 - FGVC7,Mean ROC AUC,0.91061,0.89453,1022,1318,78,18,notebook_receipt_plus_rank,logs/mlestar/plant_pathology_2020.log
+MLE-STAR,APTOS 2019 Blindness Detection,QWK,0.518347,0.783345,2390,2929,82,19,supplemental_later_submission,logs/mlestar/aptos_2019.log
+MLE-STAR,Dog Breed Identification,Multi-class Log Loss,1.45005,1.45005,884,1280,69,20,notebook_receipt_plus_rank,logs/mlestar/dog_breed.log
+MLE-STAR,Aerial Cactus Identification,ROC-AUC,0.9997,0.9997,504,1221,41,21,supplemental_later_submission,logs/mlestar/aerial_cactus.log
+MLE-STAR,Dogs vs. Cats Redux: Kernels Edition,Binary Log Loss,0.10219,0.10219,457,1315,35,22,notebook_receipt_plus_rank,logs/mlestar/dogs_vs_cats_redux.log
+MLE-STAR,Histopathologic Cancer Detection,ROC-AUC,0.9604,0.9521,507,1149,44,23,notebook_receipt_plus_rank,logs/mlestar/histopathologic_cancer.log
+MLE-STAR,RANZCR CLiP - Catheter and Line Position Challenge,Mean ROC AUC,0.82516,0.82809,1373,1547,89,24,supplemental_later_submission,logs/mlestar/ranzcr_clip.log
+MLE-STAR,TGS Salt Identification Challenge,Mean Average Precision over IoU thresholds 0.50:0.05:0.95,0.73788,0.77157,2141,3219,66,25,supplemental_leaderboard_only,logs/mlestar/tgs_salt_template.log
+MLE-STAR,Leaf Classification,Multi-class Log Loss,0.67531,0.67531,1145,1595,72,28,supplemental_leaderboard_only,
