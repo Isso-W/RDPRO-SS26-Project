@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  root-project:
+    name: Root project (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install root project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+      - name: Compile Python sources
+        run: python -m compileall -q .
+      - name: Run root unit and behavior tests
+        env:
+          M4_LLM_PROVIDER: none
+        run: |
+          python -m unittest test_pipeline.py -v
+          (cd retrieval && python -m unittest test_rag_retrieval.py test_golden.py -v)
+          python -m pytest module4_agent/tests recipe/tests kb_mining/tests \
+            experiments/ab_loss_imbalance/tests experiments/notebook_runs/test_evidence.py -q
+      - name: Run offline Module 4 smoke
+        env:
+          M4_LLM_PROVIDER: none
+        run: |
+          python -m module4_agent \
+            --input module4_agent/examples/sample_m3_output.json \
+            --output "${RUNNER_TEMP}/jiaozi-module4-smoke"
+      - name: Rebuild checked-in A/B summary
+        run: python -m experiments.ab_loss_imbalance.collect
+
+  standalone-experiment:
+    name: Standalone experiment (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: experiments/mlestar_kaggle_benchmarks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: experiments/mlestar_kaggle_benchmarks/pyproject.toml
+      - name: Install isolated experiment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[vision,dev]'
+      - name: Run isolated tests
+        run: python -m pytest -q
+      - name: Run synthetic no-submission experiment
+        run: python scripts/run_smoke_experiment.py --output-dir "${RUNNER_TEMP}/mlestar-smoke"

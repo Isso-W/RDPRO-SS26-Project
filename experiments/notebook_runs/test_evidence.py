@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from experiments.notebook_runs.export_evidence import ExportSpec, render_cell_log
+
 
 ROOT = Path(__file__).resolve().parent
 
@@ -38,6 +40,16 @@ def test_manifest_notebooks_and_cell_logs_are_consistent() -> None:
         assert sum(bool(cell.get("outputs")) for _, cell in code_cells) == record["output_cells"]
 
         log = log_path.read_text(encoding="utf-8")
+        destination = str(Path(record["notebook"]).relative_to("notebooks"))
+        spec = ExportSpec(
+            workflow=record["workflow"],
+            competition=record["competition"],
+            source=notebook_path,
+            destination=destination,
+            archive=record["source_archive"],
+            status=record["status"],
+        )
+        assert log == render_cell_log(notebook, spec, record["source_sha256"])
         for index, _ in code_cells:
             assert f"=== Cell {index} |" in log
 

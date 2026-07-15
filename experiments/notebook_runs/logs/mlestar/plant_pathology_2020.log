@@ -42,14 +42,14 @@ device: NVIDIA L4
 === Cell 9 | execution_count=12 | outputs=4 ===
 --- output 0 ---
 [stream:stdout]
-从 timm 官方 GitHub Release 下载 EfficientNet-B0……
+Downloading EfficientNet-B0 from the official timm GitHub release…
 --- output 1 ---
 [stream:stderr]
 100%|██████████| 20.4M/20.4M [00:00<00:00, 36.0MB/s]--- output 2 ---
 [stream:stdout]
 size MB: 20.38645076751709
 sha256: 3dd342dfa1fee25ae65e7bbdf8998cad6e45d6e77e69d580f0bd14d3eeb0b3f3
-EfficientNet-B0 官方权重下载及校验成功。
+EfficientNet-B0 official weights downloaded and verified successfully.
 --- output 3 ---
 [stream:stderr]
 
@@ -74,9 +74,9 @@ Plant stage-level resume patch installed.
 --- output 0 ---
 [stream:stdout]
 Dataset already present: /content/plant-pathology-2020-fgvc7
-RECOVERY AUDIT WARNING: baseline/resnet18 的 epoch_selection.json 仅保留 1/5 条记录；已通过完整 OOF、ID、列、数值及确定性 folds 校验。
+RECOVERY AUDIT WARNING: baseline/resnet18 epoch_selection.json retains only 1/5 records; full OOF, ID, column, numeric, and deterministic-fold validation passed.
 PARTIAL RESUME seed=13 phase=baseline model=resnet18 metric=0.931824508416
-RECOVERY AUDIT WARNING: initial/resnet18 的 epoch_selection.json 仅保留 1/5 条记录；已通过完整 OOF、ID、列、数值及确定性 folds 校验。
+RECOVERY AUDIT WARNING: initial/resnet18 epoch_selection.json retains only 1/5 records; full OOF, ID, column, numeric, and deterministic-fold validation passed.
 PARTIAL RESUME seed=13 phase=initial model=resnet18 metric=0.931824508416
 START seed=13 phase=initial model=efficientnet_b0
 Using local official EfficientNet-B0 weights: /content/pretrained_weights/efficientnet_b0_ra-3dd342df.pth

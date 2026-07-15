@@ -121,4 +121,15 @@ This validates generated code on synthetic inputs. It is not evidence of real-da
 
 [`experiments/notebook_runs/export_evidence.py`](experiments/notebook_runs/export_evidence.py) reproduces the public notebook copies, per-cell logs, and manifest from the four supplied archives. It strips embedded binary media, updates rerun setup cells, and retains textual output. The archives themselves are intentionally not committed.
 
+After a text-only edit to an already exported public notebook, refresh its derived cell logs and manifest metadata without needing the private source archives:
+
+```bash
+python experiments/notebook_runs/export_evidence.py \
+  --refresh-current \
+  --output experiments/notebook_runs
+python -m pytest experiments/notebook_runs/test_evidence.py -q
+```
+
+The evidence test reconstructs every log from the current Notebook JSON and requires an exact match, in addition to checking notebook hashes, cell counts, execution counts, output counts, and removal of embedded media.
+
 Do not commit `.env`, Kaggle tokens, raw competition data, checkpoints, generated projects, submission files, OOF/test predictions, or private Kaggle artifact handles.

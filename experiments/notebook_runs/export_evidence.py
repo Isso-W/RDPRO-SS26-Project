@@ -187,7 +187,7 @@ def output_text(output: dict) -> Iterable[str]:
         yield f"[{output_type}:no textual payload]\n"
 
 
-def write_cell_log(notebook: dict, path: Path, spec: ExportSpec, source_hash: str) -> None:
+def render_cell_log(notebook: dict, spec: ExportSpec, source_hash: str) -> str:
     sections = [
         f"Notebook: {spec.destination}\n",
         f"Competition: {spec.competition}\n",
@@ -212,10 +212,51 @@ def write_cell_log(notebook: dict, path: Path, spec: ExportSpec, source_hash: st
             sections.append(f"--- output {output_index} ---\n")
             sections.extend(output_text(output))
         sections.append("\n")
-    path.parent.mkdir(parents=True, exist_ok=True)
     cleaned = ANSI_ESCAPE.sub("", "".join(sections))
-    cleaned = "\n".join(line.rstrip() for line in cleaned.splitlines()).rstrip() + "\n"
-    path.write_text(cleaned, encoding="utf-8")
+    return "\n".join(line.rstrip() for line in cleaned.splitlines()).rstrip() + "\n"
+
+
+def write_cell_log(notebook: dict, path: Path, spec: ExportSpec, source_hash: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_cell_log(notebook, spec, source_hash), encoding="utf-8")
+
+
+def refresh_current_evidence(output: Path) -> None:
+    """Refresh logs and derived metadata after text-only edits to public notebooks."""
+
+    manifest_path = output / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for record in manifest:
+        notebook_path = output / record["notebook"]
+        log_path = output / record["cell_log"]
+        notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+        destination = str(Path(record["notebook"]).relative_to("notebooks"))
+        spec = ExportSpec(
+            workflow=record["workflow"],
+            competition=record["competition"],
+            source=notebook_path,
+            destination=destination,
+            archive=record["source_archive"],
+            status=record["status"],
+        )
+        write_cell_log(notebook, log_path, spec, record["source_sha256"])
+
+        code_cells = [cell for cell in notebook["cells"] if cell.get("cell_type") == "code"]
+        record["notebook_sha256"] = sha256(notebook_path)
+        record["code_cells"] = len(code_cells)
+        record["executed_code_cells"] = sum(
+            cell.get("execution_count") is not None for cell in code_cells
+        )
+        record["output_cells"] = sum(bool(cell.get("outputs")) for cell in code_cells)
+        record["error_cells"] = sum(
+            any(output.get("output_type") == "error" for output in cell.get("outputs", []))
+            for cell in code_cells
+        )
+
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    print(f"Refreshed {len(manifest)} notebook records in {output}")
 
 
 def specs(new_root: Path, prior_root: Path) -> list[ExportSpec]:
@@ -251,10 +292,21 @@ def specs(new_root: Path, prior_root: Path) -> list[ExportSpec]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--new-root", type=Path, required=True)
-    parser.add_argument("--prior-root", type=Path, required=True)
+    parser.add_argument("--new-root", type=Path)
+    parser.add_argument("--prior-root", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--refresh-current",
+        action="store_true",
+        help="refresh logs and manifest metadata from notebooks already under --output",
+    )
     args = parser.parse_args()
+
+    if args.refresh_current:
+        refresh_current_evidence(args.output)
+        return
+    if args.new_root is None or args.prior_root is None:
+        parser.error("--new-root and --prior-root are required unless --refresh-current is used")
 
     args.output.mkdir(parents=True, exist_ok=True)
     manifest = []

@@ -1853,16 +1853,16 @@ No submissions found
 === Cell 23 | execution_count=22 | outputs=3 ===
 --- output 0 ---
 [stream:stdout]
-找到以下权重文件：
+Found the following weight files:
   yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt  (49.70 MB)
   yolo_runs/agent_selected_yolov8_global_wheat/weights/last.pt  (49.70 MB)
 
-确认找到目标 YOLO 权重：
+Confirmed target YOLO weights:
 /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt
 
-打包前总大小：715.63 MB
-压缩包已生成： /content/jiaozi_generated_pipeline_bundle.zip
-压缩包大小：701.59 MB
+Total size before packaging: 715.63 MB
+Created archive: /content/jiaozi_generated_pipeline_bundle.zip
+Archive size: 701.59 MB
 --- output 1 ---
 [display_data:text/plain]
 <IPython.core.display.Javascript object>

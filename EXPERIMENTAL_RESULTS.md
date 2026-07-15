@@ -4,6 +4,8 @@ This report separates local validation, packaged inference, accepted Kaggle subm
 
 The supplemental table appears to describe submissions made after some archived notebook runs. When an archived run shows HTTP 400, no submit-cell execution, or no receipt, the later score is reported as supplemental evidence rather than rewritten into the historical cell log.
 
+The evaluation asks four questions: whether the generated pipelines obtain credible external scores, whether they cover several vision task types, whether they produce usable training/inference/submission artifacts, and whether the independent MLE-STAR-style search stages add consistent value over their selected baselines. The evidence below answers those questions without averaging incompatible metrics such as ROC-AUC, QWK, log loss, Dice, and thresholded IoU precision.
+
 ## Jiaozi pipeline runs
 
 | Competition | Stored validation result | Kaggle result | Evidence and limitation |
@@ -50,6 +52,25 @@ The source table includes two results with no corresponding executed notebook ev
 
 Source: normalized [`score table`](experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv) and [`source manifest`](experiments/notebook_runs/results/source_manifest.json).
 
+## Paired leaderboard comparison
+
+Eight competitions have a Jiaozi and MLE-STAR public/private score in the supplemental table. The table is useful for within-competition comparison, but its provenance boundary still applies: some values match archived Kaggle receipts, while others are later leaderboard records without a receipt in the stored Notebook.
+
+| Competition | Metric direction | Jiaozi private | MLE-STAR private | Reported winner |
+| --- | --- | ---: | ---: | --- |
+| Plant Pathology 2020 | Higher ROC-AUC is better | `0.94069` | `0.89453` | Jiaozi |
+| APTOS 2019 | Higher QWK is better | `0.865298` | `0.783345` | Jiaozi |
+| Dog Breed Identification | Lower log loss is better | `0.42151` | `1.45005` | Jiaozi |
+| Aerial Cactus Identification | Higher ROC-AUC is better | `0.9998` | `0.9997` | Jiaozi |
+| Dogs vs. Cats Redux | Lower log loss is better | `0.06594` | `0.10219` | Jiaozi |
+| Histopathologic Cancer Detection | Higher ROC-AUC is better | `0.9623` | `0.9521` | Jiaozi |
+| RANZCR CLiP | Higher mean ROC-AUC is better | `0.86120` | `0.82809` | Jiaozi |
+| TGS Salt Identification | Higher thresholded IoU precision is better | `0.72590` | `0.77157` | MLE-STAR |
+
+On these reported private scores, Jiaozi is higher or lower in the correct metric direction on seven of eight competitions; MLE-STAR leads on TGS Salt. The largest differences are Dog Breed log loss (`1.02854` lower for Jiaozi), APTOS private QWK (`0.081953` higher for Jiaozi), Plant private ROC-AUC (`0.04616` higher for Jiaozi), and TGS private score (`0.04567` higher for MLE-STAR). These are descriptive comparisons of the supplied leaderboard records, not statistical tests and not evidence that either system is universally better.
+
+Global Wheat Detection and Ultrasound Nerve Segmentation are Jiaozi-only coverage results in the supplied table. They demonstrate that the stored workflow reached detection and segmentation submission paths; they are not paired wins because no corresponding MLE-STAR score is present.
+
 ## Completed Cassava paired loss comparison
 
 The repository contains ten fold-level records: five folds for focal loss and the same five folds for cross entropy. Both arms use seed 42, EfficientNet-B0, 224-pixel inputs, five epochs, ordinary shuffled sampling, and the same fold-file SHA-256 value.
@@ -80,6 +101,17 @@ The following checks exercise software and experiment contracts but are not mode
 - JSON validation of all reviewer notebooks and manifest verification of every code/output cell.
 
 Exact commands are in `EXPERIMENTS.md` and the continuous-integration workflow. A passing synthetic run proves that the scripted path works; it does not constitute a public leaderboard result.
+
+## Interpretation and threats to validity
+
+- The strongest reported Jiaozi differences occur on classification and multi-label tasks, while MLE-STAR leads the supplied TGS Salt segmentation result. Aerial Cactus is nearly saturated for both systems, so its `0.0001` difference has little practical meaning.
+- Jiaozi's Global Wheat and Ultrasound results broaden task coverage, but their moderate private scores show that adapter availability is not the same as competition-level specialization.
+- Internal validation protocols differ between the two workflows. External scores are the clearest common surface, but several are supplemental records rather than receipts captured in the archived execution.
+- Public and private splits can disagree substantially, especially for APTOS and Global Wheat. No conclusion should rely on only one split.
+- Leaderboard ranks are retrospective. They do not imply medal, prize, or eligibility status.
+- Hardware, package versions, dataset availability, and checkpoint provenance were not controlled uniformly across all supplied runs. Runtime or cost superiority is therefore not claimed.
+- The Histopathologic Jiaozi log contains a backbone fallback warning. Its numeric result is retained, but it is not evidence of a verified DINOv3 execution.
+- Raw scores from different competitions are not averaged because their metrics and scales are incompatible.
 
 ## Still pending
 

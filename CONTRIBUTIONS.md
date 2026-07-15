@@ -23,7 +23,9 @@ The release was assembled from the fixed source snapshots `9d3f257`, `61e42e1`, 
 - Added and corrected DINOv3 pooling, partial fine-tuning, ablation selection, and training-backbone logging (`81793d5`, `9c5b8e2`, `9af7196`, `6977a01`).
 - Repaired full-chain retrieval tests and supplied the minimal knowledge-mining CSV fixtures (`8f3015b`).
 - Implemented the standalone benchmark reproduction through snapshot `0122829`, including its adapters, executor, metrics, tests, and GPU handling.
-- Principal paths: `retrieval/`, `recommender/`, `module4_agent/`, `kb_mining/tests/fixtures/`, and `experiments/mlestar_kaggle_benchmarks/`.
+- Prepared the public executed-Notebook evidence, per-cell logs, normalized leaderboard records, and experiment reports (`fc99cdb`, `b214883`).
+- Translated the public technical documentation and reviewer-facing Notebook text into English while preserving execution counts and numeric outputs (`6889be4`).
+- Principal paths: [`retrieval/`](retrieval/), [`recommender/`](recommender/), [`module4_agent/`](module4_agent/), [`kb_mining/tests/fixtures/`](kb_mining/tests/fixtures/), [`experiments/mlestar_kaggle_benchmarks/`](experiments/mlestar_kaggle_benchmarks/), [`experiments/notebook_runs/`](experiments/notebook_runs/), and [`docs/`](docs/).
 
 ## Haoyue Chen (`haoyue-chen`)
 

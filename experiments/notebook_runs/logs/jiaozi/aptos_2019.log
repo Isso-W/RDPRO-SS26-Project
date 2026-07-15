@@ -988,7 +988,7 @@ Kaggle CLI 2.2.3
 === Cell 23 | execution_count=16 | outputs=1 ===
 --- output 0 ---
 [stream:stdout]
-找到的 sample_submission：
+Found sample_submission:
 /content/data/aptos/aptos2019-blindness-detection/sample_submission.csv
 
 === Cell 24 | execution_count=17 | outputs=1 ===

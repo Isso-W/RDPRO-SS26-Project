@@ -4,6 +4,8 @@
 
 GraphRAG-based AutoML Benchmark Agent is our computer-vision AutoML prototype for the MLE-STAR-based course project. Given a task request and an image dataset, it recommends model configurations and generates runnable experiment code.
 
+Final public repository: [`Isso-W/RDPRO-SS26-Project`](https://github.com/Isso-W/RDPRO-SS26-Project). Because the repository is public, the instructor accounts `@sscdotopen` and `@leodom01` can access it without an invitation.
+
 The project follows the MLE-STAR idea of comparing candidate solutions and refining them with feedback. Our main adaptation is the entry point. Before code generation starts, the system first builds a small set of valid configurations for the benchmark tasks: `classification`, `object_detection`, and `image_segmentation`. These configurations then become the input to code generation and validation.
 
 We use MLE-style benchmark protocols as references for evaluation, fold control, and result reporting. They are design references, not runtime dependencies.
@@ -649,14 +651,18 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 `-- kaggle_benchmark_colab.ipynb      # Kaggle benchmark notebook
 ```
 
-## 14. Submission-Oriented Documents
+## 14. Final Submission Checklist
 
-For final project submission, the README should be accompanied by:
+The repository maps the instructor's required deliverables to these reviewer entry points:
 
-- `README.md`: polished version of this project guide;
-- `CONTRIBUTIONS.md`: which member wrote which parts, with links to files or sections;
-- [`EXPERIMENTS.md`](EXPERIMENTS.md): exact competition-to-notebook mapping, rerun instructions, and per-cell log paths;
-- [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md): validation metrics, Kaggle receipts, supplemental leaderboard records, failures and warnings, plus results that remain pending.
+| Required deliverable | Repository evidence |
+| --- | --- |
+| Project implementation source | [`pipeline.py`](pipeline.py), [`module4_agent/`](module4_agent/), [`retrieval/`](retrieval/), [`recipe/`](recipe/), and the module map in Sections 4-6 |
+| Reproducible scripted experimentation | [`experiments/ab_loss_imbalance/`](experiments/ab_loss_imbalance/), isolated [`experiments/mlestar_kaggle_benchmarks/`](experiments/mlestar_kaggle_benchmarks/), and reviewer [`experiments/notebook_runs/`](experiments/notebook_runs/) |
+| `README.md` | This project guide, including architecture, setup, commands, validation, and repository map |
+| `CONTRIBUTIONS.md` | [`CONTRIBUTIONS.md`](CONTRIBUTIONS.md), with history-backed member and file attribution |
+| `EXPERIMENTS.md` | [`EXPERIMENTS.md`](EXPERIMENTS.md), with scripts, exact commands, Notebook mapping, and per-cell logs |
+| `EXPERIMENTAL_RESULTS.md` | [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md), with local metrics, leaderboard records, evidence limitations, comparative discussion, and pending work |
 
 The reviewer notebooks under [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/) retain visible textual outputs. The matching files under [`experiments/notebook_runs/logs/`](experiments/notebook_runs/logs/) enumerate every code cell, including cells with no stored output or an error.
 
