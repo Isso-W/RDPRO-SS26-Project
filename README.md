@@ -642,9 +642,12 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 |-- CONTRIBUTIONS.md                  # history-backed module attribution
 |-- EXPERIMENTS.md                    # reproducible experiment commands
 |-- EXPERIMENTAL_RESULTS.md           # completed and pending results
+|-- .env.example                      # local environment template; real .env files are ignored
 |-- requirements.txt / pyproject.toml  # dependency and packaging metadata
+|-- configs/                          # default local pipeline configuration
 |-- pipeline.py                       # integrated Module 1-to-4 entry point
 |-- run_for_testing.py                # convenient local full-pipeline runner
+|-- test_pipeline.py                  # root pipeline behavior tests
 |-- run_and_log.py                    # real run plus outcome-memory logging
 |-- run_kaggle_benchmark.py           # Kaggle benchmark project generation/training entry
 |-- kaggle_submit.py                  # Kaggle submission formatting/submission helper
