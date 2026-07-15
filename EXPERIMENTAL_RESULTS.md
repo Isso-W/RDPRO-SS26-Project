@@ -8,8 +8,8 @@ We report the results in three groups:
 
 - GraphRAG-based pipeline runs on ten image benchmark tasks;
 - MLE-STAR reference runs used for comparison where matching evidence exists;
-- a controlled CE-versus-focal-loss experiment used to check one knowledge-base
-  refinement proposal.
+- a controlled Cassava experiment comparing cross entropy and focal loss, used
+  to check one proposed knowledge-base rule update.
 
 Different competitions use different metrics, so the report does not average
 ROC-AUC, QWK, log loss, Dice, mAP, and thresholded IoU precision into a single
@@ -111,16 +111,15 @@ The RANZCR inference and TGS Salt MLE-STAR notebooks contain no stored outputs.
 They remain templates in `EXPERIMENTS.md`; the RANZCR leaderboard value above is
 therefore supplemental rather than notebook output.
 
-## Supplemental MLE-STAR Leaderboard-Only Results
+## Supplemental MLE-STAR Leaderboard-Only Result
 
-The source table includes two MLE-STAR results with no corresponding executed
-notebook evidence in this repository. They are reported for completeness, not as
-reproduced runs.
+The source table includes one MLE-STAR result with no corresponding executed
+notebook evidence in this repository. It is reported for completeness, not as a
+reproduced run.
 
 | Competition | Kaggle result | Limitation |
 | --- | --- | --- |
 | TGS Salt Identification Challenge | Public `0.73788`, private `0.77157`; rank `2141/3219` (66%) | The checked-in MLE-STAR notebook is an unexecuted template. The source cell containing `2018` under the local-score heading is treated as a shifted year, not a validation result. |
-| Leaf Classification | Public `0.67531`, private `0.67531`; rank `1145/1595` (72%) | No corresponding notebook or cell log was supplied. |
 
 Source: normalized [`score table`](experiments/notebook_runs/results/rdpro_experiment_v2_scores.csv)
 and [`source manifest`](experiments/notebook_runs/results/source_manifest.json).
@@ -201,8 +200,8 @@ These checks verify the code and evidence pipeline, not model quality:
 
 - root unit tests and deterministic Module 4 synthetic smoke generation;
 - reconstruction of the Cassava verdict from the ten checked-in JSONL records;
-- standalone MLE-STAR benchmark unit tests and a synthetic Leaf Classification
-  run with submission disabled;
+- standalone MLE-STAR benchmark unit tests and an offline synthetic run with
+  submission disabled;
 - JSON validation of all reviewer notebooks and manifest verification of every
   code/output cell.
 
@@ -253,5 +252,5 @@ output.
 | --- | --- | --- |
 | SIIM-ISIC CE versus focal paired run | Pending | Dataset access, accepted rules, GPU time, and the complete paired fold matrix are required. |
 | Remaining real-data loss-comparison testbeds | Pending | No checked-in paired fold records exist. |
-| Detection, segmentation, and denoising standalone MLE-STAR adapters | Not implemented | These catalog entries fail explicitly rather than fabricate a result. |
+| Remaining detection and segmentation standalone MLE-STAR adapters | Not implemented | These catalog entries fail explicitly rather than fabricate a result. |
 | Fresh rerun of every reviewer notebook on current `main` | Pending | Stored outputs originate from the supplied archives; current-environment reruns require Kaggle data access, accepted rules, credentials, and GPU time. |

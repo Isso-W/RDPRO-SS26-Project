@@ -68,7 +68,7 @@ The supplied MLE archive also contains two unexecuted templates. They are includ
 | RANZCR CLiP inference | [`ranzcr_clip_inference_template.ipynb`](experiments/notebook_runs/notebooks/mlestar/ranzcr_clip_inference_template.ipynb) | [`ranzcr_clip_inference_template.log`](experiments/notebook_runs/logs/mlestar/ranzcr_clip_inference_template.log) |
 | TGS Salt | [`tgs_salt_template.ipynb`](experiments/notebook_runs/notebooks/mlestar/tgs_salt_template.ipynb) | [`tgs_salt_template.log`](experiments/notebook_runs/logs/mlestar/tgs_salt_template.log) |
 
-The supplemental score table also reports later MLE-STAR leaderboard results for TGS Salt and Leaf Classification. Neither result has a corresponding executed notebook output in this repository, so they are labeled `supplemental_leaderboard_only` in the normalized file and discussed separately in `EXPERIMENTAL_RESULTS.md`.
+The supplemental score table also reports a later MLE-STAR leaderboard result for TGS Salt. It has no corresponding executed notebook output in this repository, so it is labeled `supplemental_leaderboard_only` in the normalized file and discussed separately in `EXPERIMENTAL_RESULTS.md`.
 
 ## CE versus focal loss on class-imbalanced data
 
@@ -119,7 +119,7 @@ python -m pytest -q
 python scripts/run_smoke_experiment.py --output-dir /tmp/mlestar-smoke
 ```
 
-The scripted smoke fixes seed 13, uses synthetic Leaf Classification data, writes a configuration/environment/data-hash manifest, and asserts that no submission file is produced. It is an offline software check, not a Kaggle score.
+The scripted smoke fixes seed 13, uses synthetic image-classification data, writes a configuration/environment/data-hash manifest, and asserts that no submission file is produced. It is an offline software check, not a Kaggle score.
 
 ## Root pipeline and Module 4 smoke run
 
