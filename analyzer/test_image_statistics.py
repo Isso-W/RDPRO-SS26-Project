@@ -1,10 +1,10 @@
 """
-ImageStatisticsAnalyzer 标注格式检测测试
+Tests for ImageStatisticsAnalyzer annotation-format detection.
 
-覆盖: 分类、目标检测（dict-of-lists / list-of-dicts / flat columns）、
-       语义分割（mask image）、无标注降级
+Coverage: classification, object detection (dict-of-lists / list-of-dicts /
+flat columns), segmentation masks, and unlabeled fallback.
 
-运行: python -m pytest analyzer/test_image_statistics.py -v
+Run with: python -m pytest analyzer/test_image_statistics.py -v
 """
 
 import unittest
@@ -17,11 +17,11 @@ from analyzer.image_statistics import ImageStatisticsAnalyzer
 
 
 def _make_split(rows, columns):
-    """构造一个行为类似 HuggingFace Dataset split 的 mock 对象。
+    """Build a mock object that behaves like a Hugging Face Dataset split.
 
-    支持两种索引（与真实 HF Dataset 一致）：
-      - 整数 idx → 返回整行 dict
-      - 字符串 col → 返回该列的列表（不触碰其它列，模拟列访问不解码图像）
+    It supports the two indexing modes used by real HF datasets:
+      - integer idx returns a row dict
+      - string col returns a column list without decoding other columns
     """
     def _getitem(_self, key):
         if isinstance(key, str):
@@ -37,7 +37,7 @@ def _make_split(rows, columns):
 
 
 def _make_dataset(splits_dict):
-    """构造一个行为类似 HuggingFace DatasetDict 的 mock 对象。"""
+    """Build a mock object that behaves like a Hugging Face DatasetDict."""
     ds = MagicMock()
     ds.keys.return_value = list(splits_dict.keys())
     ds.__getitem__ = lambda self, key: splits_dict[key]
@@ -230,7 +230,7 @@ class TestSplitSelection(unittest.TestCase):
 
 
 class TestMergeWithNewFormats(unittest.TestCase):
-    """验证 pipeline.merge_modules 能正确处理新的 report 格式。"""
+    """Check that pipeline.merge_modules handles the newer report fields."""
 
     def test_segmentation_num_classes_preserved(self):
         from pipeline import merge_modules

@@ -1,13 +1,13 @@
-"""test_collect.py — 裁决逻辑：台级三判例 + 边界 + 大 SE 吞噬 + 双台合并全组合。"""
+"""Tests for per-testbed and merged CE-vs-focal arbitration rules."""
 
 from __future__ import annotations
 
 from experiments.ab_loss_imbalance import collect
 
 
-# ── 台级裁决 ────────────────────────────────────────────────────────────────
+# Per-testbed verdicts.
 def test_ce_clear_win():
-    # Δ̄≈0.02，抖动小 → 带=0.005 → CE_WINS
+    # dbar is about 0.02 with low variance, so the floor band gives CE_WINS.
     r = collect.testbed_verdict([0.020, 0.021, 0.019, 0.022, 0.018])
     assert r["verdict"] == "CE_WINS"
 
@@ -23,35 +23,35 @@ def test_small_effect_is_tie():
 
 
 def test_boundary_dbar_equals_band_is_ce_win():
-    # 全等 0.005 → std 0 → SE 0 → 带=max(0.005,0)=0.005；Δ̄=0.005 ≥ 带 → CE_WINS
+    # Exactly on the positive band boundary counts as CE_WINS.
     r = collect.testbed_verdict([0.005, 0.005, 0.005, 0.005, 0.005])
     assert r["band"] == 0.005 and r["dbar"] == 0.005
     assert r["verdict"] == "CE_WINS"
 
 
 def test_large_variance_swamps_modest_effect():
-    # Δ̄ 小正但折间抖动巨大 → 2·SE > Δ̄ → TIE（翻案必须跨过噪声）
+    # Large fold-to-fold variance can swamp a small positive effect.
     r = collect.testbed_verdict([0.02, -0.02, 0.03, -0.03, 0.02])
     assert r["band"] > abs(r["dbar"])
     assert r["verdict"] == "TIE"
 
 
 def test_insufficient_folds_is_tie():
-    assert collect.testbed_verdict([0.01])["verdict"] == "TIE"      # n<2 → 保守 TIE
+    assert collect.testbed_verdict([0.01])["verdict"] == "TIE"      # n<2 stays conservative
 
 
-# ── 双台合并 ────────────────────────────────────────────────────────────────
+# Merged verdicts.
 def test_merge_combinations():
     C, F, T = "CE_WINS", "FOCAL_WINS", "TIE"
-    assert collect.merge_verdicts([C, T]) == "CE_WINS"      # 一台胜一台平 → 胜
+    assert collect.merge_verdicts([C, T]) == "CE_WINS"
     assert collect.merge_verdicts([C, C]) == "CE_WINS"
-    assert collect.merge_verdicts([C, F]) == "TIE"          # 互相矛盾 → 现状赢
+    assert collect.merge_verdicts([C, F]) == "TIE"
     assert collect.merge_verdicts([F, T]) == "FOCAL_WINS"
     assert collect.merge_verdicts([T, T]) == "TIE"
     assert collect.merge_verdicts([F, F]) == "FOCAL_WINS"
 
 
-# ── 配对差提取 ──────────────────────────────────────────────────────────────
+# Paired-difference extraction.
 def _rec(bench, arm, fold, metric, val):
     return {"benchmark": bench, "arm": arm, "fold": fold, "val_metric": {metric: val}}
 
@@ -71,13 +71,13 @@ def test_paired_deltas_skips_unpaired_fold():
     recs = [
         _rec("siim_isic", "cross_entropy_loss", 0, "roc_auc", 0.91),
         _rec("siim_isic", "focal_loss", 0, "roc_auc", 0.90),
-        _rec("siim_isic", "cross_entropy_loss", 1, "roc_auc", 0.92),  # 折1缺 focal
+        _rec("siim_isic", "cross_entropy_loss", 1, "roc_auc", 0.92),  # fold 1 has no focal pair
     ]
     assert len(collect.paired_deltas(recs, "siim_isic", "roc_auc")) == 1
 
 
 def test_summarize_end_to_end_tie_when_one_side_empty():
-    # siim CE 全胜、cassava 无数据 → cassava TIE → 合并 CE_WINS
+    # SIIM-ISIC supports CE; cassava has no paired data, so the merge keeps CE_WINS.
     recs = [
         _rec("siim_isic", "cross_entropy_loss", f, "roc_auc", 0.92) for f in range(5)
     ] + [

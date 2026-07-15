@@ -15,7 +15,7 @@ from .executor import subprocess_env
 from .schemas import ExperimentResult, TrainingSpec
 
 
-# proxy_ 前缀强调这是本地启发式代理分数，不是真实 benchmark 指标
+# The proxy_ prefix marks local heuristic signals, not real benchmark metrics.
 METRIC_BY_TASK = {
     "classification": "proxy_accuracy",
     "object_detection": "proxy_mAP@0.5",

@@ -1,20 +1,22 @@
-"""configs.py — 冻结的实验矩阵 + 裁决常数（唯一事实源，预注册）。
+"""Frozen experiment matrix and decision constants.
 
-**判据先于实验写死。** 除 loss / fold_index 外，两臂一切相同（paired 5-fold）。
-详见 docs/ab_loss_imbalance_protocol.md §0/§2。
+The criteria are fixed before running the experiment. Apart from loss and
+fold_index, both arms are identical in the paired 5-fold setup. See
+docs/ab_loss_imbalance_protocol.md for the preregistered protocol.
 """
 
 from __future__ import annotations
 
-# ── 裁决常数（写死；改动 = 破坏预注册）───────────────────────────────────────
-MARGIN_FLOOR = 0.005          # 平局带下限；实际带宽 = max(MARGIN_FLOOR, 2*SE)
+# Decision constants. Changing these breaks the preregistered protocol.
+MARGIN_FLOOR = 0.005          # lower bound for tie band: max(MARGIN_FLOOR, 2*SE)
 N_FOLDS = 5
 GLOBAL_SEED = 42
 ARMS = ("focal_loss", "cross_entropy_loss")
 
-# 每台的主指标 + 次级观测（次级仅记录、不进裁决）。按台设：PR-AUC 是二分类
-# 概念，对多类不干净；cassava 主判据用 imbalance 敏感的 macro_f1（accuracy 对
-# 不平衡盲，会让该台按构造倾向 TIE），accuracy 降为次级对照。
+# Primary metric plus secondary observations per testbed. Secondary metrics are
+# recorded but not used for arbitration. PR-AUC is binary-first, so cassava uses
+# macro_f1 as the imbalance-sensitive primary metric and keeps accuracy as a
+# secondary reference.
 TESTBEDS: dict[str, dict] = {
     "siim_isic": {"metric": "roc_auc",  "image_size": 224, "epochs": 8,
                   "secondary_metrics": ["pr_auc"]},
@@ -22,10 +24,10 @@ TESTBEDS: dict[str, dict] = {
                   "secondary_metrics": ["accuracy"]},
 }
 
-# 除 loss / fold_index 外全部冻结。pretrained 已用 Module 3 对 efficientnet 场景
-# 的实际选择解析并硬编码（2026-07-05：build_graph() 中 efficientnet 的
-# has_pretrained checkpoint = efficientnet_b0_imagenet，size_tier=base）——冻结，
-# 不做动态解析，避免 KB 后续变动悄悄换掉实验地基。
+# Everything except loss and fold_index is frozen. The pretrained checkpoint is
+# the Module 3 efficientnet selection resolved on 2026-07-05
+# (efficientnet_b0_imagenet, size_tier=base). We keep it static so later KB
+# changes cannot silently move the experiment baseline.
 BASE: dict = {
     "backbone": "efficientnet",
     "pretrained": "efficientnet_b0_imagenet",
@@ -40,21 +42,21 @@ BASE: dict = {
     "finetune_strategy": "full",
     "freeze_backbone": False,
     "use_class_weights": False,
-    "sampler": "shuffle",     # 显式声明：无加权采样（loss×sampler 交互范围外）
+    "sampler": "shuffle",     # no weighted sampling; loss x sampler is out of scope
     "seed": GLOBAL_SEED,
     "cv": {"n_folds": N_FOLDS, "stratified": True, "shared_across_arms": True},
 }
 
-_PLACEHOLDER_MARKERS = ("XXXX", "placeholder", "<", "TODO", "占位")
+_PLACEHOLDER_MARKERS = ("XXXX", "placeholder", "<", "TODO", "\u5360\u4f4d")
 
 
 def fold_file_name(testbed: str) -> str:
-    """两臂共用的折文件名（paired 的载体）。"""
+    """Return the shared fold-file name for both paired arms."""
     return f"folds_{testbed}.json"
 
 
 def build_matrix(testbed: str) -> list[dict]:
-    """某台的 10 个 run config（2 臂 × 5 折）。差异字段仅 loss / fold_index。"""
+    """Return the 10 run configs for one testbed: 2 arms x 5 folds."""
     if testbed not in TESTBEDS:
         raise KeyError(f"unknown testbed: {testbed}")
     tb = TESTBEDS[testbed]
@@ -66,14 +68,14 @@ def build_matrix(testbed: str) -> list[dict]:
         "secondary_metrics": list(tb["secondary_metrics"]),
         "image_size": tb["image_size"],
         "epochs": tb["epochs"],
-        "fold_file": fold_file_name(testbed),   # 两臂同一文件 → paired
+        "fold_file": fold_file_name(testbed),   # same file for both arms
     }
     matrix = []
     for loss in ARMS:
         for fold_index in range(N_FOLDS):
             run = dict(frozen)
-            run["loss"] = loss             # ← 变量 1
-            run["fold_index"] = fold_index  # ← 变量 2
+            run["loss"] = loss              # variable 1
+            run["fold_index"] = fold_index  # variable 2
             matrix.append(run)
     return matrix
 

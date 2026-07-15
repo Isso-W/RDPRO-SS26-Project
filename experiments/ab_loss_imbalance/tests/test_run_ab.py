@@ -1,4 +1,4 @@
-"""test_run_ab.py — run_ab 的纯逻辑（算折 / 指标 bundle / 续跑），全离线。"""
+"""Offline tests for run_ab fold, metric, and resume helpers."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ def test_compute_folds_stratified_disjoint_and_complete():
     folds = run_ab.compute_folds(labels, ids, n_folds=5, seed=42)
     assert len(folds) == 5
     flat = [x for fold in folds for x in fold]
-    assert set(flat) == set(ids)                 # 并集 == 全部
-    assert len(flat) == len(set(flat))           # 两两不相交
-    assert all(isinstance(x, str) for x in flat)  # 按 id（字符串）存
+    assert set(flat) == set(ids)                 # union covers all ids
+    assert len(flat) == len(set(flat))           # folds are disjoint
+    assert all(isinstance(x, str) for x in flat)  # ids are stored as strings
 
 
 def test_compute_folds_deterministic():
@@ -56,7 +56,7 @@ def test_metric_bundle_multiclass_pr_auc_is_none():
     y_prob = [[0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8]]
     b = run_ab.metric_bundle(y_true, y_prob, ["macro_f1", "pr_auc"])
     assert b["macro_f1"] == 1.0
-    assert b["pr_auc"] is None            # PR-AUC 多类不干净 → None
+    assert b["pr_auc"] is None            # PR-AUC is left empty for multiclass
 
 
 def test_metric_bundle_accepts_y_score_alias():
@@ -68,7 +68,7 @@ def test_metric_bundle_accepts_y_score_alias():
 
 
 def test_metrics_for_matches_configs():
-    assert run_ab.metrics_for("cassava")[0] == "macro_f1"       # 主指标在首位
+    assert run_ab.metrics_for("cassava")[0] == "macro_f1"       # primary metric first
     assert "accuracy" in run_ab.metrics_for("cassava")
     assert run_ab.metrics_for("siim_isic")[0] == "roc_auc"
 
@@ -81,7 +81,7 @@ def test_completed_pairs_skips_finished(tmp_path):
         {"benchmark": "siim_isic", "arm": "focal_loss", "fold": 0, "val_metric": {"roc_auc": 0.9}},
     ]), encoding="utf-8")
     done = run_ab.completed_pairs(p, "cassava")
-    assert done == {("focal_loss", 0), ("cross_entropy_loss", 1)}   # 只算本台
+    assert done == {("focal_loss", 0), ("cross_entropy_loss", 1)}
 
 
 def test_parse_run_summary_extracts_final_json():

@@ -80,7 +80,8 @@ def run_workflow(
             iterations = iteration
             break
         if provider == "none":
-            # 模板生成是确定性的：再跑一轮产物完全相同，重试没有意义
+            # Template generation is deterministic, so another iteration would
+            # produce the same files.
             iterations = iteration
             break
     assert generated is not None

@@ -1,12 +1,15 @@
-"""aggregate.py — facts.jsonl → consensus.{json,md} + 三张侧表（纯函数，无 LLM）。
+"""Aggregate facts.jsonl into consensus files and side tables.
 
-共识 = 在"具有特征 T 的合格竞赛"内，family A 的加权得票占比（support）与
-覆盖竞赛数（breadth）。投票规则、资格过滤见 docs/kb_mining_protocol.md §4。
+Consensus is measured by support and breadth for family A within eligible
+competitions that have trait T. Voting rules and eligibility filters are
+documented in docs/kb_mining_protocol.md.
 
-判断留白的落定：
-  - 分母含 unknown（诚实分母 = 全部获胜模型选择；unknown 占比高本身是 KB 缺口
-    信号），但不为 unknown 发 consensus 行——它进 unknown_components 侧表。
-  - metric-learning 竞赛（catalog `loss_voting=False`）整场排除 loss 投票。
+Boundary choices:
+  - unknown stays in the denominator, because a high unknown share is itself a
+    KB coverage signal. It is not emitted as a consensus row; it goes to the
+    unknown_components side table.
+  - metric-learning competitions with catalog `loss_voting=False` are excluded
+    from loss voting.
 
 CLI:  python -m kb_mining.aggregate [--support-min 0.5] [--breadth-min 2]
 """
@@ -31,18 +34,18 @@ OUT_COOCC = Path("kb_mining/data/ensemble_cooccurrence.json")
 SUPPORT_MIN = 0.50
 BREADTH_MIN = 2
 
-# DOMINANCE 判据：组内头名相对第二名"够强 + 够广 + 够拉开"，即便 support < 0.5
-# 也认定为共识（碎片化任务里唯一能出可用 backbone 提案的判据）。
-DOMINANCE_RATIO_MIN = 1.5    # 头名 support / 第二名 support
-DOMINANCE_BREADTH_MIN = 3    # 头名跨竞赛数
-DOMINANCE_MARGIN_MIN = 0.10  # 头名 support − 第二名 support
+# Dominance accepts a clear group leader even when support is below 0.5. This
+# keeps fragmented tasks from losing useful backbone proposals.
+DOMINANCE_RATIO_MIN = 1.5    # top support / runner-up support
+DOMINANCE_BREADTH_MIN = 3    # number of competitions behind the top family
+DOMINANCE_MARGIN_MIN = 0.10  # top support minus runner-up support
 BOOLEAN_TRAITS = ("fine_grained", "class_imbalance", "medical", "multi_label")
 MIN_END = "2021-01"
 
 
-# ── 投票权重（纯函数）───────────────────────────────────────────────────────
+# Vote weights.
 def family_vote_weights(fact: dict) -> dict[str, float]:
-    """一篇 fact 内每个 family 的票重（含伪标签折扣）。families 已去重。"""
+    """Return per-family vote weights for one fact."""
     kind = fact.get("kind")
     best = fact.get("best_single_family")
     disc = 0.8 if fact.get("used_pseudo_labeling") else 1.0
@@ -59,7 +62,7 @@ def family_vote_weights(fact: dict) -> dict[str, float]:
 
 
 def loss_vote(fact: dict) -> tuple[str | None, float]:
-    """一篇 fact 的 loss 票（篇级：loss_kb + 该篇最高家族票重）。无 loss → (None,0)。"""
+    """Return the loss vote for one fact, or (None, 0.0)."""
     loss_kb = fact.get("loss_kb")
     if not loss_kb:
         return None, 0.0
@@ -69,23 +72,24 @@ def loss_vote(fact: dict) -> tuple[str | None, float]:
 
 
 def coexists(family: str, comp_start: str) -> bool:
-    """family 是否在竞赛开赛前已发布（共存性）。未知 family 一律放行。"""
+    """Return whether a family existed before the competition start date."""
     rel = catalog.FAMILY_RELEASE.get(family)
     if rel is None:
-        return True   # unknown：无法判定发布时间，放行（仅进分母/侧表，不发行）
+        return True   # unknown stays in denominator/side table only
     return rel < comp_start
 
 
-# ── 共识计算 ────────────────────────────────────────────────────────────────
+# Consensus computation.
 def compute_consensus(
     facts: list[dict],
     competitions: dict[str, dict],
     support_min: float = SUPPORT_MIN,
     breadth_min: int = BREADTH_MIN,
 ) -> list[dict]:
-    """对每个 (task_type, trait, component_type, kb_id) 产出一行共识（含未过阈值的）。
+    """Emit one row for each (task_type, trait, component_type, kb_id).
 
-    按 task_type 分池：检测 backbone 不与分类 backbone 在同一 trait 下竞争。
+    Pools are separated by task_type so, for example, detection backbones do not
+    compete with classification backbones under the same trait.
     """
     task_types = sorted({competitions[f["competition"]]["task_type"]
                          for f in facts if f["competition"] in competitions})
@@ -104,7 +108,7 @@ def compute_consensus(
 
 
 def _apply_dominance(rows, support_min, breadth_min) -> list[dict]:
-    """组内计算头名的 DOMINANCE，并据 (多数决 OR dominance) 设 passed。"""
+    """Mark rows as passed by majority or within-group dominance."""
     ranked = sorted(rows, key=lambda r: r["support"], reverse=True)
     for r in rows:
         r["dominance"] = False
@@ -130,7 +134,7 @@ def _apply_dominance(rows, support_min, breadth_min) -> list[dict]:
 
 def _backbone_consensus(facts, competitions, trait, support_min, breadth_min,
                         task_type) -> list[dict]:
-    """backbone 共识：车架 / 发动机各成一组，各自分母、各算 support（各比各的）。"""
+    """Compute backbone consensus in separate frame and engine groups."""
     votes = {"frame": defaultdict(float), "engine": defaultdict(float)}
     comps = {"frame": defaultdict(set), "engine": defaultdict(set)}
     evidence = {"frame": defaultdict(list), "engine": defaultdict(list)}
@@ -146,7 +150,7 @@ def _backbone_consensus(facts, competitions, trait, support_min, breadth_min,
         for kb_id, w, emittable, ev in _backbone_contribs(fact, comp):
             contributing_comps.add(fact["competition"])
             role = catalog.family_role(kb_id) if emittable else None
-            if role is None:          # unknown（或无角色）：只计 kb_coverage 分母
+            if role is None:          # unknown/no-role votes count for coverage only
                 unknown_votes += w
                 continue
             role_total[role] += w
@@ -174,7 +178,7 @@ def _backbone_consensus(facts, competitions, trait, support_min, breadth_min,
                 "n_competitions": len(contributing_comps),
                 "evidence": evidence[role][kb_id],
             })
-        rows.extend(_apply_dominance(group, support_min, breadth_min))  # 组内各比各的
+        rows.extend(_apply_dominance(group, support_min, breadth_min))
     return rows
 
 
@@ -221,15 +225,15 @@ def _loss_consensus(facts, competitions, trait, support_min, breadth_min,
 
 
 def _backbone_contribs(fact, comp):
-    """→ list[(kb_id, weight, is_emittable, evidence|None)]，含共存过滤。"""
+    """Return backbone contributions after coexistence filtering."""
     out = []
     weights = family_vote_weights(fact)
     raw_by_fam = _raw_models_by_family(fact)
     cite = (fact.get("citations") or [None])[0]
     for fam, w in weights.items():
         if not coexists(fam, comp["start"]):
-            continue   # 共存不过：不计票不计分母
-        emittable = fam in catalog.FAMILY_RELEASE   # 已知家族才发行
+            continue
+        emittable = fam in catalog.FAMILY_RELEASE
         ev = {"competition": fact["competition"], "rank": fact.get("rank"),
               "raw": ", ".join(raw_by_fam.get(fam, [])), "citation": cite} if emittable else None
         out.append((fam, w, emittable, ev))
@@ -238,7 +242,7 @@ def _backbone_contribs(fact, comp):
 
 def _loss_contribs(fact, comp):
     if not comp.get("loss_voting", True):
-        return []   # metric-learning 竞赛整场排除 loss 投票
+        return []   # exclude metric-learning competitions from loss voting
     loss_kb, w = loss_vote(fact)
     if not loss_kb or w == 0:
         return []
@@ -258,7 +262,7 @@ def _raw_models_by_family(fact) -> dict[str, list[str]]:
     return out
 
 
-# ── 三张侧表 ────────────────────────────────────────────────────────────────
+# Side tables.
 def build_side_tables(
     facts: list[dict],
     competitions: dict[str, dict] | None = None,
@@ -270,13 +274,13 @@ def build_side_tables(
     cooccur: dict[str, Counter] = defaultdict(Counter)
 
     for fact in facts:
-        comp_traits = None  # recipes 需要 trait；下面按竞赛特征展开
-        # unknown 模型
+        comp_traits = None  # recipes expand traits below
+        # Unknown models.
         for fam, raws in _raw_models_by_family(fact).items():
             if fam == "unknown":
                 for r in raws:
                     unknown_models[r] += 1
-        # unknown loss
+        # Unknown loss.
         loss_kb = fact.get("loss_kb")
         if loss_kb == "unknown" and fact.get("loss_raw"):
             r = fact["loss_raw"]
@@ -285,14 +289,14 @@ def build_side_tables(
             rec["count"] += 1
             rec["metric_learning"] = rec["metric_learning"] or bool(fact.get("loss_is_metric_learning"))
             rec["hybrid"] = rec["hybrid"] or catalog.is_hybrid_loss(r)
-        # ensemble 共现
+        # Ensemble co-occurrence.
         fams = [f for f in fact.get("families", []) if f in catalog.FAMILY_RELEASE]
         if fact.get("kind") == "ensemble" and len(fams) >= 2:
             for a, b in combinations(sorted(set(fams)), 2):
                 cooccur[a][b] += 1
                 cooccur[b][a] += 1
 
-    # recipes: (family, trait) → image_size 分布（用竞赛特征展开 trait）
+    # Recipes: (family, trait) -> image_size distribution.
     for fact in facts:
         comp = competitions.get(fact["competition"])
         if not comp:
@@ -305,7 +309,7 @@ def build_side_tables(
                 if comp["traits"].get(trait):
                     recipes[f"{fam}|{trait}"]["image_sizes"].append(size)
 
-    # recipes 收敛为 {key: {mode, distribution}}
+    # Collapse recipes to {key: {mode, distribution}}.
     recipes_out = {}
     for key, d in recipes.items():
         sizes = d["image_sizes"]
@@ -324,21 +328,21 @@ def build_side_tables(
     return unknown_out, recipes_out, cooccur_out
 
 
-# ── Markdown 渲染 ───────────────────────────────────────────────────────────
+# Markdown rendering.
 def render_md(rows: list[dict], competitions: dict[str, dict]) -> str:
     any_unverified = any(not c.get("traits_verified") for c in competitions.values())
-    lines = ["# consensus.md — 数据集特征 → 组件共识", ""]
+    lines = ["# Consensus: Dataset Traits to Components", ""]
     if any_unverified:
-        lines += ["> ⚠ 存在 `traits_verified=False` 的竞赛——特征卡尚未人工核对，"
-                  "以下共识为初判。逐竞赛核对后重跑本表。", ""]
-    lines += [f"> 阈值：support ≥ {SUPPORT_MIN}，breadth ≥ {BREADTH_MIN}。"
-              "`passed` 列标记是否达标。", ""]
+        lines += ["> Some competitions still have `traits_verified=False`. Treat these "
+                  "rows as preliminary until the feature cards are checked.", ""]
+    lines += [f"> Thresholds: support >= {SUPPORT_MIN}, breadth >= {BREADTH_MIN}. "
+              "The `passed` column marks rows that meet the rule.", ""]
 
-    # 每个显示组：(标题, 过滤器)。backbone 分车架/发动机两张子表。
+    # Display groups. Backbones are split into frame and engine subtables.
     groups = [
-        ("backbone·车架 frame", lambda r: r["component_type"] == "backbone"
+        ("backbone frame", lambda r: r["component_type"] == "backbone"
          and r.get("role") == "frame"),
-        ("backbone·发动机 engine", lambda r: r["component_type"] == "backbone"
+        ("backbone engine", lambda r: r["component_type"] == "backbone"
          and r.get("role") == "engine"),
         ("loss", lambda r: r["component_type"] == "loss"),
     ]
@@ -354,11 +358,11 @@ def render_md(rows: list[dict], competitions: dict[str, dict]) -> str:
                     continue
                 cov = sub[0].get("kb_coverage", 0.0)
                 share = sub[0].get("role_share")
-                extra = f"，本组占全部 backbone 票 {share:.0%}" if share is not None else ""
-                cov_note = f"（KB 覆盖率 {cov:.0%}{extra}）" if cov < 0.95 or share else ""
-                lines.append(f"## {trait} — {gname} {cov_note}")
+                extra = f", group share of backbone votes {share:.0%}" if share is not None else ""
+                cov_note = f"(KB coverage {cov:.0%}{extra})" if cov < 0.95 or share else ""
+                lines.append(f"## {trait} - {gname} {cov_note}")
                 lines.append("")
-                lines.append("| kb_id | support | breadth | votes/total | passed | raw（归并痕迹） |")
+                lines.append("| kb_id | support | breadth | votes/total | passed | raw aliases |")
                 lines.append("|---|---|---|---|---|---|")
                 for r in sub:
                     raws = sorted({e["raw"] for e in r["evidence"] if e.get("raw")
@@ -378,7 +382,7 @@ def render_md(rows: list[dict], competitions: dict[str, dict]) -> str:
     return "\n".join(lines)
 
 
-# ── 编排 ────────────────────────────────────────────────────────────────────
+# Orchestration.
 def run_aggregate(
     in_path: Path = DEFAULT_IN,
     support_min: float = SUPPORT_MIN,
@@ -405,7 +409,7 @@ def run_aggregate(
 
 
 def _cli() -> None:
-    ap = argparse.ArgumentParser(description="facts.jsonl → consensus + 侧表")
+    ap = argparse.ArgumentParser(description="facts.jsonl to consensus and side tables")
     ap.add_argument("--in", dest="in_path", type=Path, default=DEFAULT_IN)
     ap.add_argument("--support-min", type=float, default=SUPPORT_MIN)
     ap.add_argument("--breadth-min", type=int, default=BREADTH_MIN)

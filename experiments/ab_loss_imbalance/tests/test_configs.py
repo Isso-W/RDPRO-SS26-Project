@@ -1,4 +1,4 @@
-"""test_configs.py — 冻结矩阵 / paired / 无占位符 三项机器可查保证。"""
+"""Machine-checkable guards for the frozen matrix and paired folds."""
 
 from __future__ import annotations
 
@@ -14,19 +14,19 @@ def test_matrix_size(testbed):
 
 @pytest.mark.parametrize("testbed", list(configs.TESTBEDS))
 def test_only_loss_and_fold_vary(testbed):
-    """两两之间除 loss / fold_index 外所有键值相等——防手滑引入第二个变量。"""
+    """Only loss and fold_index may vary across runs."""
     matrix = configs.build_matrix(testbed)
     varying = {"loss", "fold_index"}
     keys = set(matrix[0]) - varying
     for run in matrix[1:]:
         assert set(run) - varying == keys
         for k in keys:
-            assert run[k] == matrix[0][k], f"{k} 在矩阵内不一致：引入了额外变量"
+            assert run[k] == matrix[0][k], f"{k} changed inside the matrix"
 
 
 @pytest.mark.parametrize("testbed", list(configs.TESTBEDS))
 def test_arms_share_one_fold_file(testbed):
-    """两臂引用同一 fold_file（paired 的载体）。"""
+    """Both arms must reference the same fold file."""
     matrix = configs.build_matrix(testbed)
     assert len({run["fold_file"] for run in matrix}) == 1
 
@@ -56,7 +56,7 @@ def test_base_freezes_non_loss_training_choices():
 
 
 def test_cassava_primary_is_macro_f1():
-    # 预注册：cassava 主判据 macro_f1（accuracy 降次级）
+    # Preregistered: cassava uses macro_f1 as primary, accuracy as secondary.
     assert configs.TESTBEDS["cassava"]["metric"] == "macro_f1"
     assert "accuracy" in configs.TESTBEDS["cassava"]["secondary_metrics"]
     assert configs.TESTBEDS["siim_isic"]["metric"] == "roc_auc"

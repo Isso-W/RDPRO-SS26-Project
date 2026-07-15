@@ -1,8 +1,9 @@
-"""extract.py — posts.jsonl → facts.jsonl（LLM 抽取 + 校验 + 别名映射）。
+"""Extract facts from posts.jsonl into facts.jsonl.
 
-核心 extract_post(post, llm_fn) 可注入 llm_fn(system, user)->str，生产走真实
-client、测试注入 canned 响应。LLM 只吐 raw 字符串，KB id 映射由代码用 catalog
-别名表做（不让 LLM 输出 KB id，降低幻觉面）。
+extract_post(post, llm_fn) accepts an injectable llm_fn(system, user)->str.
+Production uses a real client; tests inject canned responses. The LLM returns
+raw strings only. KB id mapping is handled by catalog aliases in code, which
+keeps model hallucinations away from KB identifiers.
 
 CLI:  python -m kb_mining.extract [--limit N]
 """
@@ -22,7 +23,7 @@ DEFAULT_IN = Path("kb_mining/data/posts.jsonl")
 DEFAULT_OUT = Path("kb_mining/data/facts.jsonl")
 DEFAULT_REJECTS = Path("kb_mining/data/extract_rejects.jsonl")
 
-# 截断：正文超 12k 字符时保留前 9k + 后 3k（配置在开头、分数表在结尾）
+# Long posts keep the first 9k and last 3k characters.
 TRUNC_LIMIT = 12_000
 TRUNC_HEAD = 9_000
 TRUNC_TAIL = 3_000
@@ -63,21 +64,21 @@ Rules:
 """
 
 
-# ── 文本处理 ────────────────────────────────────────────────────────────────
+# Text handling.
 def truncate_text(text: str) -> str:
-    """超长正文保留头 9k + 尾 3k。"""
+    """Keep the head and tail of very long posts."""
     if len(text) <= TRUNC_LIMIT:
         return text
     return text[:TRUNC_HEAD] + "\n...[TRUNCATED]...\n" + text[-TRUNC_TAIL:]
 
 
 def _norm_ws(s: str) -> str:
-    """空白归一（用于引用子串匹配）。"""
+    """Normalize whitespace for citation substring matching."""
     return re.sub(r"\s+", " ", s or "").strip().lower()
 
 
 def _strip_fences(raw: str) -> str:
-    """去掉 LLM 偶发的 ```json ... ``` 围栏。"""
+    """Strip occasional ```json ... ``` fences from provider output."""
     s = raw.strip()
     if s.startswith("```"):
         s = re.sub(r"^```[a-zA-Z]*\n?", "", s)
@@ -85,21 +86,21 @@ def _strip_fences(raw: str) -> str:
     return s
 
 
-# ── 校验 ────────────────────────────────────────────────────────────────────
+# Validation.
 def validate_extraction(data: dict, text: str) -> str | None:
-    """校验 LLM 输出。通过返回 None，否则返回拒绝原因字符串。"""
+    """Validate an LLM extraction. Return None when accepted."""
     if not isinstance(data, dict):
         return "not_a_dict"
     if data.get("kind") not in VALID_KINDS:
         return "bad_kind"
     members = data.get("members")
     if not isinstance(members, list) or not members:
-        return "empty_members"      # 含非方案帖（unclear + []）
+        return "empty_members"      # includes non-solution posts marked unclear
     if len(members) > MAX_MEMBERS:
         return "too_many_members"
     if not all(isinstance(m, dict) and m.get("raw_model") for m in members):
         return "malformed_member"
-    # 引用校验：至少一条 citation 在正文中能找到（空白归一后子串匹配）
+    # At least one citation must be found in the source text after whitespace normalization.
     cites = data.get("citations") or []
     norm_text = _norm_ws(text)
     if not any(c and _norm_ws(c) in norm_text for c in cites):
@@ -107,11 +108,11 @@ def validate_extraction(data: dict, text: str) -> str | None:
     return None
 
 
-# ── 别名映射后处理 ───────────────────────────────────────────────────────────
+# Alias-mapping postprocess.
 def postprocess(data: dict) -> dict:
-    """把 LLM 的 raw 字段映射为 KB id：家族去重、image_size 众数、loss/best 映射。"""
+    """Map raw LLM fields to KB ids and derived fact fields."""
     members = data.get("members", [])
-    # 家族去重 + 每家族 image_size 众数
+    # Deduplicate families and keep the modal image size per family.
     fam_sizes: dict[str, list[int]] = {}
     families_order: list[str] = []
     for m in members:
@@ -144,9 +145,9 @@ def postprocess(data: dict) -> dict:
     }
 
 
-# ── 单篇抽取 ────────────────────────────────────────────────────────────────
+# Single-post extraction.
 def classify_post(post: dict, llm_fn: Callable[[str, str], str]) -> dict:
-    """抽取单篇 → {"ok": bool, "fact": dict|None, "reason": str|None}。"""
+    """Extract one post and return {ok, fact, reason}."""
     text = post.get("text", "")
     user = truncate_text(text)
     raw = llm_fn(SYSTEM_PROMPT, user)
@@ -158,19 +159,19 @@ def classify_post(post: dict, llm_fn: Callable[[str, str], str]) -> dict:
     if reason:
         return {"ok": False, "fact": None, "reason": reason}
     parsed = postprocess(data)
-    # fact = post 行 + 解析结果（raw 全保留）
+    # fact = post row + parsed fields, preserving raw fields.
     fact = {**post, **parsed}
-    fact.pop("text", None)   # 正文不入 facts（体积大，需要时回 posts.jsonl 查）
+    fact.pop("text", None)   # keep large text in posts.jsonl, not facts.jsonl
     return {"ok": True, "fact": fact, "reason": None}
 
 
 def extract_post(post: dict, llm_fn: Callable[[str, str], str]) -> dict | None:
-    """抽取单篇 → fact dict，拒绝则 None（计划规定的公开签名）。"""
+    """Public helper: return a fact dict, or None when the post is rejected."""
     return classify_post(post, llm_fn)["fact"]
 
 
 def remap_fact(fact: dict) -> dict:
-    """用当前别名表对一条已有 fact 重新映射（免 LLM）。raw 字段已保留在 fact 中。"""
+    """Remap one existing fact with the current alias tables, without an LLM call."""
     data = {
         "kind": fact["kind"],
         "members": fact.get("members_raw", []),
@@ -182,13 +183,13 @@ def remap_fact(fact: dict) -> dict:
         "citations": fact.get("citations"),
     }
     parsed = postprocess(data)
-    # 保留 post 级字段（competition/topic_id/rank/...），覆盖解析字段
+    # Keep post-level fields such as competition/topic_id/rank.
     post_fields = {k: v for k, v in fact.items() if k not in parsed}
     return {**post_fields, **parsed}
 
 
 def remap_facts(path: Path = DEFAULT_OUT) -> int:
-    """就地重映射 facts.jsonl（别名表更新后调用，无需重跑 LLM）。返回条数。"""
+    """Remap facts.jsonl in place after alias-table updates."""
     facts = [json.loads(l) for l in path.open(encoding="utf-8") if l.strip()]
     remapped = [remap_fact(f) for f in facts]
     with path.open("w", encoding="utf-8") as fh:
@@ -198,9 +199,9 @@ def remap_facts(path: Path = DEFAULT_OUT) -> int:
     return len(remapped)
 
 
-# ── 生产 LLM 客户端 ─────────────────────────────────────────────────────────
+# Production LLM client.
 def make_real_llm_fn() -> Callable[[str, str], str]:
-    """复用 Module 1 的 provider/client，返回 llm_fn(system, user)->str。"""
+    """Reuse Module 1 provider/client and return llm_fn(system, user)->str."""
     from features_extraction_api import _client_for_provider, _provider
 
     client, model = _client_for_provider(_provider())
@@ -224,7 +225,7 @@ def make_real_llm_fn() -> Callable[[str, str], str]:
     return llm_fn
 
 
-# ── 编排 ────────────────────────────────────────────────────────────────────
+# Orchestration.
 def run_extract(
     in_path: Path = DEFAULT_IN,
     out_path: Path = DEFAULT_OUT,
@@ -232,7 +233,7 @@ def run_extract(
     llm_fn: Callable[[str, str], str] | None = None,
     limit: int | None = None,
 ) -> tuple[int, int]:
-    """posts.jsonl → facts.jsonl + extract_rejects.jsonl。返回 (facts, rejects)。"""
+    """Run posts.jsonl -> facts.jsonl + extract_rejects.jsonl."""
     llm_fn = llm_fn or make_real_llm_fn()
     posts = [json.loads(l) for l in in_path.open(encoding="utf-8") if l.strip()]
     if limit:
@@ -243,7 +244,7 @@ def run_extract(
     for post in posts:
         try:
             r = classify_post(post, llm_fn)
-        except Exception as e:  # LLM 调用异常也记为拒绝，不中断全量
+        except Exception as e:  # record LLM failures as rejects and continue
             r = {"ok": False, "fact": None, "reason": f"exception:{type(e).__name__}"}
         if r["ok"]:
             facts.append(r["fact"])
@@ -265,7 +266,7 @@ def run_extract(
     print(f"[extract] facts={len(facts)} rejects={len(rejects)} "
           f"reject_rate={rate:.1%}")
     if rate >= 0.30:
-        print("[extract] [WARN] 拒绝率 >= 30%，prompt 或截断策略可能要调")
+        print("[extract] [WARN] reject_rate >= 30%; review the prompt or truncation policy")
     return len(facts), len(rejects)
 
 
@@ -274,7 +275,7 @@ def _cli() -> None:
     ap.add_argument("--in", dest="in_path", type=Path, default=DEFAULT_IN)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--rejects", type=Path, default=DEFAULT_REJECTS)
-    ap.add_argument("--limit", type=int, default=None, help="只处理前 N 篇（试跑）")
+    ap.add_argument("--limit", type=int, default=None, help="Process only the first N posts")
     args = ap.parse_args()
     run_extract(args.in_path, args.out, args.rejects, limit=args.limit)
 

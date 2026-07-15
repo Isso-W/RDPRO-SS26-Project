@@ -1,28 +1,30 @@
 """
-Module 3 知识库 — CV任务专用
-任务: Image Classification | Object Detection | Image Segmentation | Feature Extraction
-结构: 组件图（NetworkX）+ 语义向量索引（ChromaDB）
+Module 3 knowledge base for computer-vision tasks.
 
-节点类型:
-  backbone        — 模型架构（粗粒度）
-  pretrained_model — HuggingFace 具体 checkpoint，通过 has_pretrained 边关联到 backbone
-  head            — 输出头
-  loss            — 损失函数
-  optimizer       — 优化器
+Tasks: Image Classification | Object Detection | Image Segmentation |
+Feature Extraction
 
-边类型:
-  compatible_with  — 可以搭配使用
-  has_pretrained   — backbone → 对应的预训练 checkpoint
-  alternative_to   — 可以互相替换
-  preferred_when   — 某条件下更优（edge attr: condition）
+Structure: component graph (NetworkX) + semantic vector index (ChromaDB)
+
+Node types:
+  backbone         - coarse model architecture
+  pretrained_model - Hugging Face checkpoint linked to a backbone
+  head             - output head
+  loss             - loss function
+  optimizer        - optimizer
+
+Edge types:
+  compatible_with  - components can be used together
+  has_pretrained   - backbone to a pretrained checkpoint
+  alternative_to   - interchangeable alternatives
+  preferred_when   - preference under a condition (edge attr: condition)
 """
 
 import json
 
 
 def _patch_torch_metadata():
-    """某些 torch 安装方式下 importlib.metadata.version("torch") 返回 None，
-    sentence-transformers 导入时解析版本号会崩溃。在导入 chromadb 前打补丁。"""
+    """Patch torch metadata for environments where package metadata is missing."""
     import importlib.metadata
     if getattr(importlib.metadata.version, "_torch_patched", False):
         return
@@ -46,7 +48,7 @@ import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 1. 组件节点
+# 1. Component nodes.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 COMPONENTS = [
@@ -419,10 +421,10 @@ COMPONENTS = [
         ),
     },
 
-    # ── Pretrained Model Checkpoints（HuggingFace）────────────────────────────
-    # freeze_viable: 冻结 backbone 只训 head 是否可行
-    # finetune_strategy: "full" 全量更新 | "partial" 解冻尾部层 |
-    #                    "head_only" 推荐冻结骨干 | "either" 两种均可
+    # Pretrained model checkpoints (Hugging Face).
+    # freeze_viable: whether backbone-freezing with a trainable head is viable.
+    # finetune_strategy: "full" updates all parameters; "partial" unfreezes
+    # late layers; "head_only" freezes the backbone; "either" allows both.
 
     {
         "id": "resnet50_imagenet",
@@ -1011,11 +1013,11 @@ COMPONENTS = [
     },
 
     # ── Heads ─────────────────────────────────────────────────────────────────
-    # params_scale: head 自身的参数量级
-    #   "none"     — 无可训练参数（纯池化）
-    #   "minimal"  — 单线性层或轻量 MLP，数据量要求低
-    #   "moderate" — 多层 CNN/MLP head，需要一定数据
-    #   "heavy"    — transformer decoder 级别，数据量要求高
+    # params_scale: parameter scale of the head itself.
+    #   "none"     - no trainable parameters, e.g. pooling only
+    #   "minimal"  - single linear layer or lightweight MLP
+    #   "moderate" - multi-layer CNN/MLP head
+    #   "heavy"    - transformer-decoder scale
 
     {
         "id": "classification_head",
@@ -1146,7 +1148,7 @@ COMPONENTS = [
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 2. 边定义
+# 2. Edge definitions.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 EDGES = [
@@ -1236,13 +1238,13 @@ EDGES = [
     ("yolo26", "adam",                        "compatible_with"),
     ("yolo26", "sgd_momentum",                "compatible_with"),
 
-    # detr（head 和 loss 固定，不可替换）
+    # DETR has fixed head/loss choices.
     ("detr", "detection_head_transformer",     "requires"),
     ("detr", "hungarian_matching_loss",        "requires"),
     ("detr", "adamw",                          "compatible_with"),
     ("detr", "detr_resnet50_coco",            "has_pretrained"),
 
-    # rt_detr（head 和 loss 固定，不可替换）
+    # RT-DETR has fixed head/loss choices.
     ("rt_detr", "detection_head_transformer",  "requires"),
     ("rt_detr", "hungarian_matching_loss",     "requires"),
     ("rt_detr", "adamw",                       "compatible_with"),
@@ -1322,7 +1324,7 @@ EDGES = [
     ("siglip2", "siglip2_base_224",            "has_pretrained"),
     ("siglip2", "siglip2_so400m_384",          "has_pretrained"),
 
-    # ── alternative_to（双向）─────────────────────────────────────────────────
+    # alternative_to edges are bidirectional.
     ("swin_transformer", "convnext",           "alternative_to"),
     ("convnext",         "swin_transformer",   "alternative_to"),
     ("swin_transformer", "vit",               "alternative_to"),
@@ -1426,16 +1428,16 @@ EDGE_CONDITIONS = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3. 模拟 Module 1 输出（实际由 Module 1 提供）
+# 3. Sample Module 1 output. Real inputs are provided by Module 1.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Module 1 输出 schema：
+# Module 1 output schema:
 # {
 #   "task_type":   str   — classification | object_detection | image_segmentation | feature_extraction
 #   "data_size":   str   — small | medium | large
 #   "priority":    str   — speed | accuracy | balanced
-#   "constraints": dict  — 布尔标志位
-#   "description": str   — 自由文本，用于向量检索
+#   "constraints": dict  - boolean flags
+#   "description": str   - free text used for vector retrieval
 # }
 
 MODULE1_EXAMPLES = {
@@ -1495,14 +1497,15 @@ MODULE1_EXAMPLES = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4. 图 + 向量索引构建
+# 4. Graph and vector-index construction.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def build_graph() -> nx.DiGraph:
     G = nx.DiGraph()
     for c in COMPONENTS:
         G.add_node(c["id"], **c)
-    # 注入 GFLOPs@224（成本模型用），集中维护在 _CHECKPOINT_FLOPS_G
+    # Inject GFLOPs@224 for the cost model. Values are maintained centrally in
+    # _CHECKPOINT_FLOPS_G.
     for cid, flops in _CHECKPOINT_FLOPS_G.items():
         if cid in G:
             G.nodes[cid]["flops_g"] = flops
@@ -1514,7 +1517,7 @@ def build_graph() -> nx.DiGraph:
 
 
 def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collection:
-    """向量索引只对 backbone 建立；pretrained_model 通过图遍历关联。"""
+    """Index backbones only; pretrained models are attached through graph traversal."""
     client = chromadb.PersistentClient(path=persist_path)
     ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
     collection = client.get_or_create_collection("cv_backbones", embedding_function=ef)
@@ -1523,7 +1526,7 @@ def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collect
     existing_ids = set(collection.get()["ids"])
     new_count = sum(1 for b in backbones if b["id"] not in existing_ids)
 
-    # upsert 而非 add：description 修改后旧 embedding 会被覆盖刷新
+    # Use upsert so changed descriptions refresh stale embeddings.
     if backbones:
         collection.upsert(
             ids=[b["id"] for b in backbones],
@@ -1547,11 +1550,11 @@ def build_vector_index(persist_path: str = "./chroma_db_kb") -> chromadb.Collect
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 5. 混合检索（方案 C）
+# 5. Hybrid retrieval.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _matches_condition(condition: dict, input_json: dict) -> bool:
-    """判断 preferred_when 边的条件是否与输入匹配。condition 格式：{"all": [...]} 或 {"any": [...]}"""
+    """Return whether a preferred_when condition matches the input."""
     c = input_json.get("constraints", {})
     checks = {
         "real_time=True":                c.get("real_time", False),
@@ -1581,7 +1584,7 @@ def _matches_condition(condition: dict, input_json: dict) -> bool:
 
 
 def _input_to_query_text(input_json: dict) -> str:
-    """把结构化输入转成自然语言，用于向量检索。"""
+    """Convert structured input into text for vector retrieval."""
     task = input_json["task_type"].replace("_", " ")
     size = input_json.get("data_size", "medium")
     priority = input_json.get("priority", "balanced")
@@ -1619,15 +1622,15 @@ def _input_to_query_text(input_json: dict) -> str:
 
 def _score_backbone(backbone_id: str, input_json: dict, graph: nx.DiGraph) -> float:
     """
-    结构化打分（0–6 分制，归一化前）:
-      data_size 匹配     0–2 分
-      priority vs complexity  0–2 分
-      preferred_when 命中  每条 +1.5 分
+    Structured score before normalization:
+      data_size match              0-2 points
+      priority vs complexity       0-2 points
+      preferred_when match         +1.5 points each
     """
     node = graph.nodes[backbone_id]
     score = 0.0
 
-    # ── data_size 匹配 ─────────────────────────────────────────────
+    # data_size match.
     size_order = ["small", "medium", "large"]
     req = input_json.get("data_size", "medium")
     backbone_sizes = node.get("data_size", [])
@@ -1652,15 +1655,15 @@ def _score_backbone(backbone_id: str, input_json: dict, graph: nx.DiGraph) -> fl
     else:
         score += (1 - abs(c_val - 2) / 2)  # medium→1, low/high→0.5
 
-    # ── preferred_when 命中加分 ────────────────────────────────────
+    # preferred_when bonuses.
     for succ in graph.successors(backbone_id):
         edge = graph[backbone_id][succ]
         if edge.get("relation") == "preferred_when":
             if _matches_condition(edge.get("condition", {}), input_json):
                 score += 1.5
 
-    # ── capabilities 软加分（few_shot）────────────────────────────
-    # zero_shot 由 _filter_by_tier 硬过滤；few_shot 在此软加分
+    # Soft capability bonus for few_shot. zero_shot is hard-filtered by
+    # _filter_by_tier.
     caps = node.get("capabilities", [])
     if input_json.get("constraints", {}).get("few_shot") and "few_shot" in caps:
         score += 1.5
@@ -1675,15 +1678,16 @@ def _select_components(
     graph: nx.DiGraph,
 ) -> dict[str, str | None]:
     """
-    对 head / loss / optimizer 各选一个最优项，考虑 constraints。
-    规则优先级高于 compatible_with 边的顺序。
+    Choose one head, loss, and optimizer while respecting constraints.
+    Rules take precedence over compatible_with edge order.
     """
     neighbors = list(graph.successors(backbone_id))
     c = input_json.get("constraints", {})
     result: dict[str, str | None] = {}
 
     for ctype in ("head", "loss", "optimizer"):
-        # requires 边优先：集成架构（DETR 等）的固定组件
+        # Required edges win first; integrated architectures such as DETR have
+        # fixed components.
         required = [
             n for n in neighbors
             if graph[backbone_id][n]["relation"] == "requires"
@@ -1703,12 +1707,12 @@ def _select_components(
             result[ctype] = None
             continue
 
-        chosen = candidates[0]  # default: 第一个兼容项
+        chosen = candidates[0]  # default: first compatible item
 
         if ctype == "loss":
-            # Phase B：preferred_when 边消费（候选间两两偏好，条件匹配则胜者上位）。
-            # backbone 打分只用边的源+条件；此处是候选内选择，目标有意义。
-            # candidates 顺序即遍历顺序，首个命中者胜（与 candidates[0] 的确定性一致）。
+            # Phase B consumes preferred_when edges between component candidates.
+            # Backbone scoring only uses source+condition; here the target matters.
+            # Iteration order is deterministic, so the first matching winner applies.
             edge_pick = None
             for cand in candidates:
                 for succ in graph.successors(cand):
@@ -1723,8 +1727,9 @@ def _select_components(
 
             if edge_pick is not None:
                 chosen = edge_pick
-            # 以下硬编码规则作为 fallback 保留：覆盖边尚未表达的情形（bce_dice、
-            # hungarian）；等挖掘产出的边补齐后再另行清理。
+            # Keep a small fallback for cases not yet expressed as graph edges
+            # (bce_dice, hungarian). These can be removed once KB-mined edges
+            # cover the same rules.
             elif c.get("class_imbalance") and "focal_loss" in candidates:
                 chosen = "focal_loss"
             elif task_type == "image_segmentation":
@@ -1742,10 +1747,10 @@ def _select_components(
 
 _SIZE_TIER_ORDER = ["nano", "small", "base", "large", "xlarge"]
 
-# special_case backbone → 触发它出现所需的 constraint 字段（任一命中即激活）
-# 不在此表里的 special_case backbone 视为"宽松特殊"，无约束也保留
-# clip_vit 同时响应 zero_shot：CLIP 是零样本分类的首选模型，
-# 仅靠 cross_modal 激活会把它挡在纯零样本查询之外
+# Constraints that enable a special_case backbone. Any matching field activates
+# the backbone. Special cases not listed here are kept as broad alternatives.
+# clip_vit also responds to zero_shot; otherwise pure zero-shot classification
+# would be blocked when cross_modal is false.
 _SPECIAL_CASE_REQUIRES: dict[str, tuple[str, ...]] = {
     "mobilenet_v3": ("edge_deployment",),
     "unet":         ("medical",),
@@ -1755,13 +1760,13 @@ _SPECIAL_CASE_REQUIRES: dict[str, tuple[str, ...]] = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 成本模型 + 预算过滤（约束感知选型，Phase 1+2）
+# Cost model and budget-aware filtering.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-_REF_IMAGE_SIZE = 224  # flops_g 以 224×224 为基准，其它分辨率按面积平方缩放
+_REF_IMAGE_SIZE = 224  # flops_g is referenced to 224x224 and area-scaled.
 
-# 各分类 checkpoint 在 224×224 下的 GFLOPs（近似值，供预算过滤用）。
-# params_M 已在节点上；FLOPs 集中放这里，build_graph 时注入为节点的 flops_g。
+# Approximate classification-checkpoint GFLOPs at 224x224 for budget filtering.
+# params_M lives on nodes; FLOPs are injected as flops_g during build_graph().
 _CHECKPOINT_FLOPS_G = {
     "resnet50_imagenet":         4.1,
     "resnet18_imagenet":         1.8,
@@ -1791,12 +1796,12 @@ def _input_image_size(input_json: dict) -> int:
 
 
 def estimate_cost(checkpoint_id: str | None, input_json: dict, graph: nx.DiGraph) -> dict:
-    """估算某 checkpoint 在输入分辨率下的成本。
+    """Estimate checkpoint cost at the requested input resolution.
 
-    返回 {'params_m': float|None, 'flops_g': float|None}。
-    params_M 来自节点；flops_g 以 224 为基准按 (image_size/224)^2 缩放。
-    缺字段则对应项为 None（成本未知，预算过滤时放行）。head 成本通常远小于
-    backbone，这里以 backbone/checkpoint 为主，暂不计入。
+    Returns {'params_m': float|None, 'flops_g': float|None}. params_M comes
+    from nodes; flops_g is scaled from the 224 baseline by (image_size/224)^2.
+    Missing values stay as None and pass budget filtering. Head cost is usually
+    much smaller than backbone cost, so it is not included here.
     """
     if checkpoint_id is None or checkpoint_id not in graph:
         return {"params_m": None, "flops_g": None}
@@ -1810,9 +1815,9 @@ def estimate_cost(checkpoint_id: str | None, input_json: dict, graph: nx.DiGraph
 
 
 def _within_budget(checkpoint_id: str | None, input_json: dict, graph: nx.DiGraph) -> bool:
-    """checkpoint 是否在 max_params_m / max_flops_g 预算内。
+    """Return whether a checkpoint fits max_params_m / max_flops_g budgets.
 
-    无预算 → True。成本未知（None）→ True（放行，宽松）。
+    No budget returns True. Unknown costs also pass, keeping the filter lenient.
     """
     c = input_json.get("constraints", {})
     max_params = c.get("max_params_m")
@@ -1835,9 +1840,9 @@ def _select_checkpoint(
     scale_band: list[str] | None = None,
 ) -> str | None:
     """
-    从 has_pretrained 边中选出最合适的 checkpoint。
-    若指定 scale_band，只在该尺寸范围内选；
-    根据 priority / constraints 确定目标 size_tier，选最接近的变体。
+    Select the best checkpoint from has_pretrained edges.
+    If scale_band is set, only checkpoints in that band are considered.
+    priority and constraints define the target size_tier.
     """
     neighbors = list(graph.successors(backbone_id))
     candidates = [
@@ -1877,11 +1882,11 @@ def _select_checkpoint(
 
 def _determine_scale_band(input_json: dict) -> list[str]:
     """
-    根据输入信号确定可接受的 checkpoint 尺寸范围。
-      edge/real_time  → 只允许 nano / small（硬约束）
-      data=small      → 最多 base（large 模型小数据过拟合风险高）
-      large+accuracy  → 优先 base / large
-      其余            → 不限制
+    Determine the acceptable checkpoint scale range from input signals.
+      edge/real_time  -> nano / small only
+      data=small      -> up to base; large models risk overfitting
+      large+accuracy  -> prefer base / large
+      otherwise       -> no scale limit
     """
     priority  = input_json.get("priority", "balanced")
     data_size = input_json.get("data_size", "medium")
@@ -1903,11 +1908,11 @@ def _get_eligible_pairs(
     graph: nx.DiGraph,
 ) -> list[tuple[str, str | None]]:
     """
-    返回 (backbone_id, checkpoint_id | None) 对。
-    backbone 进入候选的条件：
-      - 支持 task_type，且
-      - 在 scale_band 内有 checkpoint，或
-      - scratch_viable_from 允许当前 data_size（checkpoint=None）
+    Return (backbone_id, checkpoint_id | None) pairs.
+    A backbone is eligible when:
+      - it supports the task_type, and
+      - it has a checkpoint inside scale_band, or
+      - scratch_viable_from allows the current data_size
     """
     size_order = ["small", "medium", "large"]
     data_size  = input_json.get("data_size", "medium")
@@ -1949,12 +1954,12 @@ def _filter_by_tier(
     graph: nx.DiGraph,
 ) -> list[tuple[str, str | None]]:
     """
-    按 tier 过滤候选：
-      default          → 始终保留
-      accuracy_upgrade → 仅 priority=accuracy 时保留
-      special_case     → 需要对应 constraint 激活（_SPECIAL_CASE_REQUIRES），
-                         不在表里的 special_case 无条件保留（宽松特殊）
-                         特例：yolov8 做 image_segmentation 需要 real_time 或 edge_deployment
+    Filter candidates by tier:
+      default          -> always keep
+      accuracy_upgrade -> keep only for priority=accuracy
+      special_case     -> keep when enabled by _SPECIAL_CASE_REQUIRES; unlisted
+                          special cases remain broad alternatives. YOLOv8
+                          segmentation requires real_time or edge_deployment.
     """
     priority = input_json.get("priority", "balanced")
     c        = input_json.get("constraints", {})
@@ -1962,7 +1967,7 @@ def _filter_by_tier(
 
     result = []
     for backbone_id, checkpoint_id in pairs:
-        # zero_shot 硬过滤：必须有 zero_shot capability
+        # zero_shot is a hard filter.
         if zero_shot and "zero_shot" not in graph.nodes[backbone_id].get("capabilities", []):
             continue
 
@@ -1991,7 +1996,7 @@ def _filter_by_tier(
                 if any(c.get(k) for k in prompt_signals):
                     result.append((backbone_id, checkpoint_id))
             else:
-                # 宽松特殊：无严格约束要求，保留为备选
+                # Broad special case: no strict constraint required.
                 result.append((backbone_id, checkpoint_id))
 
     return result
@@ -2004,10 +2009,10 @@ def _recommend_training(
     graph: nx.DiGraph,
 ) -> dict:
     """
-    返回训练策略建议：
-      scratch_viable    — 当前数据量下从头训练是否可行
-      finetune_strategy — "full" | "head_only" | "either"（来自 checkpoint 节点）
-      freeze_viable     — 是否可以冻结骨干只训 head
+    Return training-strategy metadata:
+      scratch_viable    - whether training from scratch is viable
+      finetune_strategy - "full" | "head_only" | "either" from checkpoint node
+      freeze_viable     - whether backbone freezing is viable
     """
     node = graph.nodes[backbone_id]
     data_size = input_json.get("data_size", "medium")
@@ -2068,13 +2073,12 @@ def retrieve_top3_hybrid(
     w_structured: float = 0.6,
 ) -> list[dict]:
     """
-    混合检索流程：
-      Step 1  规模带过滤 — scale_band → eligible pairs → tier filter
-              (backbone, checkpoint) 作为原子单元进入候选
-      Step 2  结构化打分 — data_size、priority、preferred_when
-      Step 3  向量打分 — 输入转自然语言后与 backbone description 做相似度
-      Step 4  加权合并排序 → Top 3
-      Step 5  图遍历拼装 head / loss / optimizer / pretrained
+    Hybrid retrieval flow:
+      Step 1  scale-band filtering -> eligible (backbone, checkpoint) pairs
+      Step 2  structured score from data_size, priority, and preferred_when
+      Step 3  vector score between query text and backbone descriptions
+      Step 4  weighted merge and top-3 ranking
+      Step 5  graph traversal for head, loss, optimizer, and pretrained fields
     """
     task_type = input_json["task_type"]
 
@@ -2087,34 +2091,34 @@ def retrieve_top3_hybrid(
     eligible  = [bb for bb, _ in pairs]
     pair_map  = dict(pairs)
 
-    # Step 2: 结构化分数（归一化到 [0, 1]）
+    # Step 2: structured scores normalized to [0, 1].
     raw_struct = {bid: _score_backbone(bid, input_json, graph) for bid in eligible}
     max_s = max(raw_struct.values()) or 1.0
     struct_scores = {k: v / max_s for k, v in raw_struct.items()}
 
-    # Step 3: 向量分数（归一化到 [0, 1]，距离越小分越高）
+    # Step 3: vector scores normalized to [0, 1].
     query_text = _input_to_query_text(input_json)
     vr = collection.query(query_texts=[query_text], n_results=collection.count())
     raw_vec = dict(zip(vr["ids"][0], vr["distances"][0]))
 
-    # 只保留 eligible 里的结果
+    # Keep only eligible results.
     raw_vec = {k: v for k, v in raw_vec.items() if k in eligible}
     if raw_vec:
         min_d, max_d = min(raw_vec.values()), max(raw_vec.values())
         span = max_d - min_d if max_d > min_d else 1.0
-        # 距离越小 → 分数越高（线性翻转）
+        # Smaller distance means higher score.
         vec_scores = {k: 1.0 - (v - min_d) / span for k, v in raw_vec.items()}
     else:
         vec_scores = {}
 
-    # Step 4: 加权合并
+    # Step 4: weighted merge.
     final_scores = {
         bid: w_structured * struct_scores.get(bid, 0) + w_vector * vec_scores.get(bid, 0)
         for bid in eligible
     }
     top3 = sorted(final_scores, key=lambda x: final_scores[x], reverse=True)[:3]
 
-    # Step 5: 图遍历拼装
+    # Step 5: graph traversal assembly.
     configurations = []
     for backbone_id in top3:
         neighbors = list(graph.successors(backbone_id))
@@ -2150,7 +2154,7 @@ def retrieve_top3_hybrid(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 6. Module 4 接口 — 任务清单生成
+# 6. Module 4 interface: task-list generation.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _node_facts(graph: nx.DiGraph, node_id: str | None) -> dict | None:
@@ -2216,10 +2220,10 @@ def build_task_list(
     data_stats: dict | None = None,
 ) -> dict:
     """
-    将单条 retrieve_top3_hybrid 结果转换为 Module 4 可消费的任务清单。
+    Convert one retrieve_top3_hybrid result into a Module 4 task list.
 
-    fmt="structured" — 结构化 JSON，适合确定性代码模板填充
-    fmt="nl"         — 自然语言任务列表 + 元数据，适合 LLM agent prompt
+    fmt="structured" - structured JSON for deterministic templates
+    fmt="nl"         - natural-language task list plus metadata for prompts
     """
     backbone_id   = result["backbone"]
     checkpoint_id = result.get("pretrained")
@@ -2386,7 +2390,7 @@ def build_all_task_lists(
     input_json: dict | None = None,
     data_stats: dict | None = None,
 ) -> list[dict]:
-    """Top 3 结果全部转换为任务清单，rank 字段标注排名。"""
+    """Convert all top-3 results into task lists and attach rank fields."""
     out = []
     for rank, result in enumerate(results, 1):
         tl = build_task_list(result, graph, fmt=fmt, input_json=input_json, data_stats=data_stats)
@@ -2397,7 +2401,7 @@ def build_all_task_lists(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 7. 输出格式化
+# 7. Output formatting.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def print_results(input_json: dict, results: list[dict], graph: nx.DiGraph) -> None:
@@ -2448,7 +2452,7 @@ def print_results(input_json: dict, results: list[dict], graph: nx.DiGraph) -> N
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 7. 运行示例
+# 8. Example run.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":

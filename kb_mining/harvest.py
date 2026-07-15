@@ -1,14 +1,16 @@
-"""harvest.py — Meta Kaggle dump → data/posts.jsonl。
+"""Harvest solution posts from the Meta Kaggle dump into data/posts.jsonl.
 
-链路（已由 data/source_check.md 实证，非计划的"预期链路"）：
+Verified join chain from data/source_check.md:
 
     Competitions.ForumId  ==  ForumTopics.ForumId
-    ForumTopics.FirstForumMessageId  ==  ForumMessages.Id   # 直接外键指向楼主首帖
+    ForumTopics.FirstForumMessageId  ==  ForumMessages.Id
 
-因此收正文只需：先从 ForumTopics 收一批 FirstForumMessageId，再对 1.7GB 的
-ForumMessages **单次 chunksize 流式**按 Id 过滤——不按 ForumTopicId 分组。
+The text collection path is therefore simple: collect FirstForumMessageId values
+from ForumTopics, then stream the 1.7GB ForumMessages CSV once by chunksize and
+filter by Id. No ForumTopicId grouping is needed.
 
-核心函数纯粹、可注入、可离线测试；下载/LLM 二级召回是仅有的外部依赖。
+Core helpers are pure, injectable, and offline-testable. Downloading and the
+optional LLM second-tier recall are the only external dependencies.
 
 CLI:
     python -m kb_mining.harvest [--dump-dir DIR] [--force-download] [--list-recent]
@@ -26,34 +28,34 @@ import pandas as pd
 
 from kb_mining import catalog
 
-# ── 常量 ────────────────────────────────────────────────────────────────────
+# Constants.
 DEFAULT_DUMP_DIR = Path("kb_mining/data/meta_kaggle")
 DEFAULT_OUT = Path("kb_mining/data/posts.jsonl")
 META_FILES = ("Competitions.csv", "ForumTopics.csv", "ForumMessages.csv")
 
 MAX_POSTS_PER_COMP = 10
-SECOND_TIER_TOPN = 30          # 二级召回：按 Score 取论坛前 N 帖交 LLM 判别
-RECALL_KEEP_MIN = 3            # < 此值 → 剔除该竞赛
-RECALL_FULL_MIN = 5            # >= 此值 → 正常；[KEEP_MIN, FULL_MIN) → 保留 + warning
-FORUM_MSG_CHUNK = 100_000      # ForumMessages 流式 chunk
+SECOND_TIER_TOPN = 30          # top-scored forum topics checked by LLM recall
+RECALL_KEEP_MIN = 3            # below this, drop the competition
+RECALL_FULL_MIN = 5            # below this, keep with warning
+FORUM_MSG_CHUNK = 100_000      # ForumMessages streaming chunk size
 
-# solution 帖判定（对 topic 标题）
+# Solution-post detection from topic titles.
 RANK_RE = re.compile(r"\b(\d{1,3})(st|nd|rd|th)\s+place\b|\bplace\s+(\d{1,3})\b", re.I)
 SOLUTION_RE = re.compile(r"solution|write.?up|summary", re.I)
 
 
-# ── 下载 ────────────────────────────────────────────────────────────────────
+# Download.
 def ensure_dump(dump_dir: Path, force: bool = False) -> None:
-    """确保三个 Meta Kaggle CSV 就位；缺失（或 force）则用 Kaggle API 下载。"""
+    """Ensure the three Meta Kaggle CSV files exist, downloading if needed."""
     dump_dir.mkdir(parents=True, exist_ok=True)
     missing = [f for f in META_FILES if not (dump_dir / f).exists()]
     if not missing and not force:
-        print(f"[harvest] dump 已就位于 {dump_dir}，跳过下载（--force-download 重取）。")
+        print(f"[harvest] dump already exists at {dump_dir}; skipping download.")
         return
     try:
         from ingestion.kaggle_loader import _authenticate
     except ImportError:
-        # 后台/非仓库根 cwd 下 ingestion 可能不可导入，内联等价实现
+        # Keep the script usable when ingestion is not importable from cwd.
         def _authenticate():
             from kaggle.api.kaggle_api_extended import KaggleApi
             api = KaggleApi(); api.authenticate()
@@ -61,14 +63,14 @@ def ensure_dump(dump_dir: Path, force: bool = False) -> None:
     api = _authenticate()
     targets = META_FILES if force else missing
     for f in targets:
-        print(f"[harvest] 下载 {f} ...", flush=True)
+        print(f"[harvest] downloading {f} ...", flush=True)
         api.dataset_download_file("kaggle/meta-kaggle", f, path=str(dump_dir))
-    print("[harvest] 下载完成。")
+    print("[harvest] download complete.")
 
 
-# ── 纯函数：标题解析 ─────────────────────────────────────────────────────────
+# Pure helper: title parsing.
 def parse_rank(title: str) -> int | None:
-    """从 topic 标题解析名次；无名次 → None。"""
+    """Parse a rank from a topic title, or return None."""
     if not title:
         return None
     m = RANK_RE.search(title)
@@ -79,18 +81,18 @@ def parse_rank(title: str) -> int | None:
 
 
 def is_solution_title(title: str) -> bool:
-    """标题是否像 solution 帖（命中名次 或 solution/writeup/summary）。"""
+    """Return whether a topic title looks like a solution/writeup post."""
     if not title:
         return False
     return bool(RANK_RE.search(title) or SOLUTION_RE.search(title))
 
 
-# ── 竞赛 → ForumId ──────────────────────────────────────────────────────────
+# Competition to ForumId mapping.
 def competition_forumids(
     competitions_df: pd.DataFrame,
     competitions: dict[str, dict],
 ) -> dict[int, str]:
-    """{ForumId(int) -> slug}，仅 catalog 里的竞赛。slug 大小写敏感（对齐 dump 原值）。"""
+    """Return {ForumId(int): slug} for competitions in the catalog."""
     wanted = {c["slug"] for c in competitions.values()}
     out: dict[int, str] = {}
     for _, r in competitions_df.iterrows():
@@ -99,12 +101,12 @@ def competition_forumids(
     return out
 
 
-# ── ForumTopics → solution 帖记录 ───────────────────────────────────────────
+# ForumTopics to solution-topic records.
 def select_solution_topics(
     topics_df: pd.DataFrame,
     forumid_to_slug: dict[int, str],
 ) -> list[dict]:
-    """筛出属于目标论坛、且标题像 solution 的 topic 记录（含 rank/score/首帖 id）。"""
+    """Select target-forum topics that look like solution posts."""
     records: list[dict] = []
     for _, r in topics_df.iterrows():
         fid = r["ForumId"]
@@ -130,7 +132,7 @@ def cap_per_competition(
     records: list[dict],
     max_posts: int = MAX_POSTS_PER_COMP,
 ) -> list[dict]:
-    """每竞赛按 (rank 升序, rank None 排后, score 降序) 取前 max_posts 篇。"""
+    """Keep top records per competition by rank and score."""
     by_comp: dict[str, list[dict]] = {}
     for rec in records:
         by_comp.setdefault(rec["competition"], []).append(rec)
@@ -142,15 +144,16 @@ def cap_per_competition(
     return out
 
 
-# ── ForumMessages 流式取正文 ────────────────────────────────────────────────
+# Stream ForumMessages and collect bodies.
 def stream_message_bodies(
     messages_path: Path,
     want_ids: set[int],
     chunksize: int = FORUM_MSG_CHUNK,
 ) -> dict[int, dict]:
-    """单次流式扫 ForumMessages，返回 {message_id -> {text, post_date}}。
+    """Stream ForumMessages once and return {message_id: {text, post_date}}.
 
-    正文优先 RawMarkdown，空则回退 Message；post_date 归一为 YYYY-MM-DD。
+    RawMarkdown is preferred; Message is used as fallback. post_date is
+    normalized to YYYY-MM-DD.
     """
     if not want_ids:
         return {}
@@ -184,14 +187,14 @@ def _norm_date(raw) -> str | None:
         return None
 
 
-# ── 二级召回（LLM 判别）─────────────────────────────────────────────────────
+# Second-tier recall, optionally LLM-judged.
 def second_tier_topics(
     topics_df: pd.DataFrame,
     forum_id: int,
     exclude_topic_ids: set[int],
     top_n: int = SECOND_TIER_TOPN,
 ) -> list[dict]:
-    """某论坛按 Score 取前 top_n 个未入选 topic，供 LLM 判别是否名次方案帖。"""
+    """Return top-scored unselected topics for optional LLM judging."""
     sub = topics_df[topics_df["ForumId"] == forum_id].copy()
     sub = sub[~sub["Id"].isin(exclude_topic_ids)]
     sub = sub[~sub["FirstForumMessageId"].isna()]
@@ -205,7 +208,7 @@ def second_tier_topics(
     } for _, r in sub.iterrows()]
 
 
-# ── 编排 ────────────────────────────────────────────────────────────────────
+# Orchestration.
 def run_harvest(
     dump_dir: Path = DEFAULT_DUMP_DIR,
     out_path: Path = DEFAULT_OUT,
@@ -215,10 +218,10 @@ def run_harvest(
     keep_min: int = RECALL_KEEP_MIN,
     full_min: int = RECALL_FULL_MIN,
 ) -> list[dict]:
-    """全流程：CSV → 筛帖 → 取正文 → 召回政策 → 写 posts.jsonl。返回 posts。
+    """Run CSV filtering, text collection, recall policy, and posts.jsonl write.
 
-    judge_fn(title, snippet)->bool 为二级召回的 LLM 判别器；None 则跳过二级召回。
-    keep_min / full_min 为召回政策阈值（默认取模块常量）。
+    judge_fn(title, snippet)->bool is the optional second-tier judge. keep_min
+    and full_min control the recall policy.
     """
     competitions = competitions or catalog.COMPETITIONS
     comp_df = pd.read_csv(dump_dir / "Competitions.csv",
@@ -233,7 +236,7 @@ def run_harvest(
     primary = select_solution_topics(topics_df, forumid_to_slug)
     capped = cap_per_competition(primary)
 
-    # 二级召回：一级不足 RECALL_FULL_MIN 篇的竞赛
+    # Second-tier recall for competitions below the full threshold.
     per_comp: dict[str, list[dict]] = {}
     for rec in capped:
         per_comp.setdefault(rec["competition"], []).append(rec)
@@ -245,7 +248,7 @@ def run_harvest(
                 continue
             exclude = {r["topic_id"] for r in have}
             cands = second_tier_topics(topics_df, forum_id, exclude)
-            # 取候选正文片段供判别
+            # Fetch candidate snippets for judging.
             snip_ids = {c["first_message_id"] for c in cands}
             snips = stream_message_bodies(dump_dir / "ForumMessages.csv", snip_ids,
                                           chunksize=chunksize)
@@ -258,7 +261,7 @@ def run_harvest(
                     c["rank"] = parse_rank(c["topic_title"])
                     per_comp.setdefault(slug, []).append(c)
 
-    # 召回政策：< RECALL_KEEP_MIN 剔除
+    # Recall policy: drop competitions below RECALL_KEEP_MIN.
     kept: list[dict] = []
     dropped: list[str] = []
     warned: list[str] = []
@@ -271,7 +274,7 @@ def run_harvest(
             warned.append(f"{slug} ({len(recs)})")
         kept.extend(recs)
 
-    # 取正文
+    # Fetch full bodies.
     want_ids = {r["first_message_id"] for r in kept}
     bodies = stream_message_bodies(dump_dir / "ForumMessages.csv", want_ids,
                                    chunksize=chunksize)
@@ -296,13 +299,13 @@ def run_harvest(
         for p in posts:
             fh.write(json.dumps(p, ensure_ascii=False) + "\n")
 
-    # 汇总
-    print(f"[harvest] 写出 {len(posts)} 篇到 {out_path}")
-    print(f"[harvest] 竞赛保留 {len(slug_to_forumid) - len(dropped)}/{len(slug_to_forumid)}")
+    # Summary.
+    print(f"[harvest] wrote {len(posts)} posts to {out_path}")
+    print(f"[harvest] kept {len(slug_to_forumid) - len(dropped)}/{len(slug_to_forumid)} competitions")
     if warned:
-        print(f"[harvest] [WARN] 篇数不足 {full_min} 但保留: {', '.join(warned)}")
+        print(f"[harvest] [WARN] kept with fewer than {full_min} posts: {', '.join(warned)}")
     if dropped:
-        print(f"[harvest] [DROP] 篇数 < {keep_min} 已剔除: {', '.join(dropped)}")
+        print(f"[harvest] [DROP] fewer than {keep_min} posts: {', '.join(dropped)}")
     return posts
 
 
@@ -312,11 +315,11 @@ def _cli() -> None:
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--force-download", action="store_true")
     ap.add_argument("--list-recent", action="store_true",
-                    help="只枚举近期 CV 竞赛候选（供人工挑选补进 catalog），不 harvest")
+                    help="List recent CV competition candidates without harvesting")
     args = ap.parse_args()
 
     if args.list_recent:
-        ensure_dump(args.dump_dir)  # 只需 Competitions.csv，但一并确保
+        ensure_dump(args.dump_dir)
         for d in catalog.list_recent_cv_candidates(args.dump_dir):
             print(f"{d['teams']:6d}  {d['end']}  {d['slug']:50s} {d['title'][:50]}")
         return

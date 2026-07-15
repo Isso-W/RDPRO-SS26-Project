@@ -1,7 +1,9 @@
-"""run_ab.py — 驱动 A/B：算折 → 生成工程 → 按 (臂, 折) 顺序训练 → 落 outcomes。
+"""Driver for the CE-vs-focal A/B run.
 
-真训练需 GPU + 数据下载（Kaggle）。纯逻辑（算折、指标 bundle）抽成可离线测试的
-函数；编排部分调用 prepare_project + 子进程跑生成工程的 run.py。
+Real training requires a GPU and downloaded Kaggle data. Pure logic such as
+fold generation and metric bundling is factored into offline-testable helpers.
+The orchestration path calls prepare_project and runs the generated run.py in a
+subprocess.
 
 CLI: python -m experiments.ab_loss_imbalance.run_ab --testbed cassava [--data-root ...]
      [--output ...] [--only focal_loss:3]
@@ -22,10 +24,10 @@ RESULTS = Path("experiments/ab_loss_imbalance/results")
 OUTCOMES = RESULTS / "outcomes.jsonl"
 
 
-# ── 纯逻辑：分层折 ───────────────────────────────────────────────────────────
+# Pure logic: stratified folds.
 def compute_folds(labels: list, ids: list, n_folds: int = configs.N_FOLDS,
                   seed: int = configs.GLOBAL_SEED) -> list[list[str]]:
-    """分层 5 折 → 每折的 val 样本 id 列表（按 id 存，行序无关）。"""
+    """Return validation sample ids for each stratified fold."""
     from sklearn.model_selection import StratifiedKFold
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
     folds: list[list[str]] = [[] for _ in range(n_folds)]
@@ -50,9 +52,9 @@ def sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-# ── 纯逻辑：指标 bundle（从 val 预测算 macro_f1 / roc_auc / pr_auc / ...）─────
+# Pure logic: metric bundle from validation predictions.
 def metric_bundle(y_true: list, y_prob: list, metrics: list[str]) -> dict:
-    """从 val 预测算一束指标。y_prob 为 [N, C] 概率矩阵。"""
+    """Compute requested metrics from validation predictions."""
     import numpy as np
     from sklearn.metrics import (accuracy_score, average_precision_score,
                                  cohen_kappa_score, f1_score, roc_auc_score)
@@ -71,7 +73,7 @@ def metric_bundle(y_true: list, y_prob: list, metrics: list[str]) -> dict:
                 out[m] = float(roc_auc_score(yt, yp[:, 1]) if binary
                                else roc_auc_score(yt, yp, multi_class="ovr"))
             elif m == "pr_auc":
-                # PR-AUC 是二分类概念；多类不干净 → None（次级指标，允许缺）
+                # PR-AUC is binary-first; leave it empty for multiclass runs.
                 out[m] = float(average_precision_score(yt, yp[:, 1])) if binary else None
             elif m == "qwk":
                 out[m] = float(cohen_kappa_score(yt, preds, weights="quadratic"))
@@ -87,7 +89,7 @@ def metrics_for(testbed: str) -> list[str]:
     return [tb["metric"], *tb["secondary_metrics"]]
 
 
-# ── 续跑：已完成的 (臂, 折) 跳过 ─────────────────────────────────────────────
+# Resume support: skip completed (arm, fold) pairs.
 def completed_pairs(outcomes_path: Path, testbed: str) -> set[tuple]:
     done = set()
     if outcomes_path.exists():
@@ -150,7 +152,7 @@ def run_training_command(command: list[str], cwd: Path) -> str:
     return output
 
 
-# ── 编排（需 GPU + 数据；此处不在离线环境执行）──────────────────────────────
+# Orchestration path; requires GPU/data and is not used by offline unit tests.
 def run_matrix(testbed: str, data_root: str, output_dir: str,
                only: tuple | None = None) -> None:
     from run_kaggle_benchmark import prepare_project
@@ -160,7 +162,7 @@ def run_matrix(testbed: str, data_root: str, output_dir: str,
     info = res["info"]
     project = Path(output_dir) / "module4_code"
 
-    # 1) 算折（幂等：已存在则复用，绝不重切）
+    # 1) Compute folds once and reuse them.
     import pandas as pd
     frame = pd.read_csv(info["train_csv"])
     ids = frame[info["image_column"]].tolist()
@@ -173,7 +175,7 @@ def run_matrix(testbed: str, data_root: str, output_dir: str,
         )
     fold_sha = sha256_of(fold_path)
 
-    # 2) 冻结 base config（backbone/pretrained 来自 configs.BASE，不用 Module 3 动态选）
+    # 2) Freeze the base config from configs.BASE; no dynamic Module 3 selection.
     base_cfg = _frozen_config(testbed, info, fold_path)
     done = completed_pairs(OUTCOMES, testbed)
 
@@ -275,7 +277,7 @@ def _cli() -> None:
     ap.add_argument("--testbed", required=True, choices=list(configs.TESTBEDS))
     ap.add_argument("--data-root", default="./kaggle_data")
     ap.add_argument("--output", default="./ab_runs")
-    ap.add_argument("--only", default=None, help="臂:折，如 focal_loss:3（单跑试链路）")
+    ap.add_argument("--only", default=None, help="arm:fold, for example focal_loss:3")
     args = ap.parse_args()
     run_matrix(args.testbed, args.data_root, f"{args.output}/{args.testbed}",
                only=_parse_only(args.only))

@@ -1,4 +1,4 @@
-"""test_decide.py — 用真实 build_graph()，注入假 retrieve_fn（无需 chroma）。"""
+"""Tests for decide.py with real build_graph and fake retrieval."""
 
 from __future__ import annotations
 
@@ -57,10 +57,10 @@ def test_five_tiers_each_hit_once():
 
 def test_conflict_marked_on_reverse_edge():
     g = build_graph()
-    # 让反向边 mobilenet_v3 -> efficientnet 的条件与将建议的新边条件相交
+    # Make the reverse edge overlap the condition of the proposed new edge.
     g["mobilenet_v3"]["efficientnet"]["condition"] = {"any": ["medical=True"]}
     fn = fake_retrieve({"medical": "mobilenet_v3"})
-    # kb_id=efficientnet, medical → 档 3 新边 (efficientnet, mobilenet_v3, {any:[medical=True]})
+    # kb_id=efficientnet, medical -> tier-3 edge to mobilenet_v3.
     row = make_row("medical", "backbone", "efficientnet", "c_med_small")
     prop = decide.classify_row(row, g, fn, TCOMP)
     assert prop["tier"] == 3
@@ -69,8 +69,7 @@ def test_conflict_marked_on_reverse_edge():
 
 
 def test_cross_role_backbone_produces_no_edge():
-    # 检测里 engine 编码器共识(efficientnet) vs RAG top-1 frame 检测器(yolov8)
-    # → 跨角色，归档 5，不提边。
+    # Detection engine consensus (efficientnet) vs RAG top-1 detector frame (yolov8).
     g = build_graph()
     fn = fake_retrieve({"medical": "yolov8"})
     row = {"trait": "medical", "component_type": "backbone", "kb_id": "efficientnet",
@@ -79,7 +78,7 @@ def test_cross_role_backbone_produces_no_edge():
                          "citation": "x"}]}
     prop = decide.classify_row(row, g, fn, TCOMP)
     assert prop["tier"] == 5
-    assert "跨角色" in prop["action"]
+    assert "Cross-role" in prop["action"]
 
 
 def test_detection_loss_demoted_to_finding():
@@ -91,7 +90,7 @@ def test_detection_loss_demoted_to_finding():
                          "citation": "x"}]}
     prop = decide.classify_row(row, g, fn, TCOMP)
     assert prop["tier"] == 6 and prop["kind"] == "finding"
-    assert "组合损失" in prop["action"]
+    assert "composite losses" in prop["action"]
 
 
 def test_seg_frame_in_detection_is_finding():
@@ -104,12 +103,12 @@ def test_seg_frame_in_detection_is_finding():
                          "citation": "x"}]}
     prop = decide.classify_row(row, g, fn, TCOMP)
     assert prop["tier"] == 6 and prop["kind"] == "finding"
-    assert "分割网解检测" in prop["action"]
+    assert "cross-task pattern" in prop["action"]
 
 
 def test_cross_condition_reverse_edge_conflict():
     g = build_graph()
-    # 反向边 mobilenet_v3->efficientnet 的条件用 class_imbalance（与将建议的 medical 不相交）
+    # Reverse edge condition is class_imbalance, disjoint from the proposed medical edge.
     g["mobilenet_v3"]["efficientnet"]["condition"] = {"any": ["class_imbalance=True"]}
     fn = fake_retrieve({"medical": "mobilenet_v3"})
     row = {"trait": "medical", "component_type": "backbone", "kb_id": "efficientnet",
@@ -119,7 +118,7 @@ def test_cross_condition_reverse_edge_conflict():
     prop = decide.classify_row(row, g, fn, TCOMP)
     assert prop["tier"] == 3
     assert prop["conflict"] is True
-    assert "跨条件" in prop["note"]      # 跨条件反向对也判 CONFLICT
+    assert "order-dependent" in prop["note"]
 
 
 def test_stacking_warning():
@@ -140,4 +139,4 @@ def test_confirmed_needs_no_apply():
                                g, fn, TCOMP)
     assert prop["tier"] == 0
     assert prop["conflict"] is False
-    assert "archetype_top3_after" not in prop      # 档 0 不试应用
+    assert "archetype_top3_after" not in prop

@@ -1,11 +1,13 @@
-"""decide.py — consensus.json × 现有 KB → data/proposals.md（五档决策）。
+"""Turn mined consensus rows into human-reviewed KB proposals.
 
-**只写建议，不改任何 KB 数据。** 对每条 passed 共识行，用原型查询打到现有
-检索管道，按五档归类（0 confirmed / 1 field-fix / 2 edge-tune / 3 new-edge /
-4 schema-ext），并附冲突检查与堆叠纪律告警。
+This module writes suggestions only; it does not modify KB data. For each
+passed consensus row, it runs an archetype query against the current retrieval
+pipeline and classifies the result into proposal tiers:
+0 confirmed, 1 field-fix, 2 edge-tune, 3 new-edge, 4 schema-ext.
+It also records conflict checks and edge-stacking warnings.
 
-retrieve_fn(query, graph)->list[config] 可注入：生产包 retrieve_top3_hybrid，
-测试注入假检索（无需 chroma）。
+retrieve_fn(query, graph)->list[config] is injectable. Production uses
+retrieve_top3_hybrid; tests use fake retrieval without Chroma.
 
 CLI:  python -m kb_mining.decide
 """
@@ -24,7 +26,7 @@ from kb_mining import catalog
 DEFAULT_CONSENSUS = Path("kb_mining/data/consensus.json")
 OUT_MD = Path("kb_mining/data/proposals.md")
 
-# 必须与 rag_retrieval._matches_condition 的 checks 键集合一致
+# Must stay aligned with rag_retrieval._matches_condition check keys.
 VALID_CONDITION_KEYS = {
     "real_time=True", "edge_deployment=True", "class_imbalance=True",
     "cross_modal=True", "no_text_modality=True", "medical=True",
@@ -34,10 +36,10 @@ VALID_CONDITION_KEYS = {
 
 TIER_NAMES = {
     0: "confirmed", 1: "field-fix", 2: "edge-tune", 3: "new-edge", 4: "schema-ext",
-    5: "cross-role（无对应 RAG 槽位）", 6: "finding（不提边）",
+    5: "cross-role/no matching RAG slot", 6: "finding/no edge proposal",
 }
 
-# 分割元架构：出现在检测任务里即"用分割网解检测"，记 finding
+# Segmentation frames appearing in detection consensus are recorded as findings.
 _SEG_FRAMES = {"unet", "segformer", "mask2former"}
 
 
@@ -45,10 +47,10 @@ def trait_key(trait: str) -> str:
     return f"{trait}=True"
 
 
-# ── 原型查询 ────────────────────────────────────────────────────────────────
+# Archetype queries.
 def archetype_query(trait: str, data_size: str = "medium",
                     task_type: str = "classification") -> dict:
-    """某 (task_type, trait) 的原型查询。fine_grained 非合法 constraint 键，写入也被忽略。"""
+    """Build an archetype query for one (task_type, trait) pair."""
     return {
         "task_type": task_type,
         "data_size": data_size,
@@ -85,14 +87,14 @@ def _existing_preferred_edges(graph, src: str) -> list[tuple]:
     return out
 
 
-# ── 五档归类 ────────────────────────────────────────────────────────────────
+# Tiered classification.
 def classify_row(
     row: dict,
     graph,
     retrieve_fn: Callable[[dict, object], list[dict]],
     competitions: dict,
 ) -> dict:
-    """对一条 passed 共识行归类，返回 proposal dict。"""
+    """Classify one passed consensus row into a proposal dict."""
     trait = row["trait"]
     ctype = row["component_type"]
     A = row["kb_id"]
@@ -111,84 +113,85 @@ def classify_row(
             "by_dominance": bool(row.get("dominance")),
             "conflict": False, "note": ""}
 
-    # finding-A：检测 loss 是组合损失（分类头 + 分割/回归加权求和），压平成单票是
-    # 伪象——只记 finding，不提边（看 raw：BCE{4-class} + [0.75*lovasz+0.25*BCE] 之类）。
+    # Finding A: detection losses are often composite. Flattening them into a
+    # single CE/focal vote would be misleading, so record a finding only.
     if ctype == "loss" and task_type == "object_detection":
         prop.update(tier=6, kind="finding", action=(
-            f"检测任务的 loss 共识（'{A}' support={row.get('support')}）来自组合损失，"
-            f"压平成单票是伪象，不代表 CE/focal 之间的选择——记为 finding，不提边。"))
+            f"The detection loss consensus ('{A}', support={row.get('support')}) "
+            f"comes from composite losses. Treat it as a finding, not a CE/focal edge."))
         return prop
 
-    # finding-B：分割架构（U-Net/SegFormer/Mask2Former）出现在检测任务共识里——
-    # 这是"用分割网解检测赛"的路径，KB 目前无法表达；记 finding，不改分割任务的边。
+    # Finding B: segmentation frames used for detection are a cross-task pattern
+    # that the current KB schema cannot express cleanly.
     if ctype == "backbone" and task_type == "object_detection" and A in _SEG_FRAMES:
         prop.update(tier=6, kind="finding", action=(
-            f"分割架构 '{A}' 出现在检测任务共识（support={row.get('support')}，"
-            f"breadth={row.get('breadth')}）——'用分割网解检测赛'的路径，KB 无法表达此"
-            f"跨任务用法；记为 finding，不动分割边。"))
+            f"Segmentation frame '{A}' appears in detection consensus "
+            f"(support={row.get('support')}, breadth={row.get('breadth')}). "
+            f"Record the cross-task pattern as a finding and leave segmentation edges unchanged."))
         return prop
 
-    # 档 5：跨角色——backbone 共识的角色与 RAG top-1 的角色不同（如检测里 engine
-    # 编码器共识 vs RAG 选的 frame 检测器）。RAG 未建模该角色槽位，无对应决策，不提边。
+    # Tier 5: cross-role consensus. For example, a detection consensus may name
+    # an encoder engine while RAG selects a detector frame.
     if ctype == "backbone":
         row_role = row.get("role")
         top1_role = catalog.family_role(top1) if top1 else None
         if row_role and top1_role and row_role != top1_role:
             prop.update(tier=5, action=(
-                f"跨角色：'{A}'（{row_role}）与当前 top-1 '{top1}'（{top1_role}）角色不同。"
-                f"RAG 对 {task_type} 只选 {top1_role}，未建模 {row_role} 槽位——"
-                f"本条共识暂无对应 RAG 决策，不提边。"))
+                f"Cross-role consensus: '{A}' ({row_role}) differs from current top-1 "
+                f"'{top1}' ({top1_role}). RAG currently selects the {top1_role} slot for "
+                f"{task_type}, so this row has no matching RAG decision slot."))
             return prop
 
-    # 档 0：已确认
+    # Tier 0: already confirmed.
     if top1 == A:
-        prop.update(tier=0, action=f"'{A}' 已是 {trait} 原型查询的 top-1，无需改动。")
+        prop.update(tier=0, action=f"'{A}' is already top-1 for the {trait} archetype query.")
         return prop
 
-    # 档 1：field-fix（仅 backbone，检查 data_size 列表）
+    # Tier 1: field fix for backbone data_size.
     if ctype == "backbone" and A in graph:
         node_sizes = graph.nodes[A].get("data_size", [])
         if node_sizes and ds not in node_sizes:
             prop.update(tier=1,
-                        action=f"'{A}' 节点 data_size={node_sizes} 不含证据竞赛众数档 "
-                               f"'{ds}'；建议补入 '{ds}'。")
+                        action=f"'{A}' has data_size={node_sizes}, but evidence points to "
+                               f"'{ds}'. Add '{ds}' to the node if the evidence checks out.")
             _annotate_apply(prop, graph, retrieve_fn, query, ctype,
                             edge=None, field=(A, "data_size", ds))
             return prop
 
-    # 档 2：edge-tune（A 已有 preferred_when 边，但条件不含 T）
+    # Tier 2: tune an existing preferred_when edge.
     existing = _existing_preferred_edges(graph, A)
     if existing and all(key not in _condition_keys(cond) for _, _, cond in existing):
         tgt, cond = existing[0][1], existing[0][2]
         prop.update(tier=2,
-                    action=f"'{A}' 已有 preferred_when 边 → '{tgt}'（条件 {cond}）；"
-                           f"建议把 '{key}' 并入该边条件（all→any 或加键）。")
+                    action=f"'{A}' already has a preferred_when edge to '{tgt}' "
+                           f"with condition {cond}. Add '{key}' to that condition.")
         _annotate_apply(prop, graph, retrieve_fn, query, ctype,
                         edge=(A, tgt, {"any": sorted(_condition_keys(cond) | {key})}))
         return prop
 
-    # 档 3：new-edge（T 是合法 condition 键）
+    # Tier 3: add a new edge when the trait is a valid condition key.
     if key in VALID_CONDITION_KEYS:
         target = top1 or "<current top-1>"
         prop.update(tier=3,
-                    action=f"新增边 ('{A}', '{target}', preferred_when)，条件 "
-                           f"{{'any': ['{key}']}}；目标=当前 top-1（打分不消费目标，纯语义）。")
+                    action=f"Add edge ('{A}', '{target}', preferred_when) with "
+                           f"{{'any': ['{key}']}}. The target is the current top-1; "
+                           f"the scoring path uses the source and condition.")
         _annotate_apply(prop, graph, retrieve_fn, query, ctype,
                         edge=(A, target, {"any": [key]}))
         return prop
 
-    # 档 4：schema-ext（T 非合法 condition 键，如 fine_grained）
+    # Tier 4: schema extension for traits that are not valid condition keys.
     target = top1 or "<current top-1>"
     prop.update(tier=4,
-                action=f"'{key}' 非合法 constraint 键。建议：①constraints 加键 '{trait}' "
-                       f"②Module 1 prompt 同步产出该键 ③再加档 3 的边 "
-                       f"('{A}', '{target}', preferred_when, {{'any': ['{key}']}})。"
-                       f"影响面：Module 1 + 输入 schema + 检索。")
+                action=f"'{key}' is not a valid constraint key. Add '{trait}' to the "
+                       f"input schema, teach Module 1 to emit it, then add the edge "
+                       f"('{A}', '{target}', preferred_when, {{'any': ['{key}']}}). "
+                       f"Impact area: Module 1, input schema, and retrieval.")
     return prop
 
 
 def _annotate_apply(prop, graph, retrieve_fn, query, ctype, edge=None, field=None):
-    """试应用到 graph 副本、重跑原型查询，记录 top-3 变化 + 反向边冲突。"""
+    """Apply a proposal on a graph copy and record top-3 changes/conflicts."""
     g2 = copy.deepcopy(graph)
     if field is not None:
         node_id, fld, val = field
@@ -200,22 +203,22 @@ def _annotate_apply(prop, graph, retrieve_fn, query, ctype, edge=None, field=Non
         src, tgt, cond = edge
         if src in g2 and tgt in g2:
             g2.add_edge(src, tgt, relation="preferred_when", condition=cond)
-            # 反向边冲突：只要存在反向的 (tgt, src, preferred_when) 就是冲突——
-            # 条件相交（同 trait）固然冲突；条件不相交（跨条件，如 medical vs
-            # class_imbalance）也冲突：在同时满足两条件的查询下两边同时命中、方向
-            # 相反，Phase B 按候选顺序取首个命中 → 行为顺序依赖。
+            # A reverse preferred_when edge is a conflict. Even disjoint
+            # conditions can conflict when a query satisfies both conditions,
+            # making Phase B order-dependent.
             if g2.has_edge(tgt, src) and g2[tgt][src].get("relation") == "preferred_when":
                 rev_keys = _condition_keys(g2[tgt][src].get("condition", {}))
                 new_keys = _condition_keys(cond)
                 prop["conflict"] = True
                 if rev_keys & new_keys:
-                    prop["note"] = (f"CONFLICT：已存在反向边 '{tgt}'→'{src}' 且条件相交"
-                                    f"（{sorted(rev_keys & new_keys)}），需短训 A/B 仲裁，暂不应用。")
+                    prop["note"] = (f"CONFLICT: reverse edge '{tgt}' -> '{src}' already exists "
+                                    f"with overlapping conditions {sorted(rev_keys & new_keys)}. "
+                                    f"Run a short A/B check before applying.")
                 else:
-                    prop["note"] = (f"CONFLICT：存在跨条件反向边 '{tgt}'→'{src}'（条件 "
-                                    f"{sorted(rev_keys)}），与本边（{sorted(new_keys)}）在"
-                                    f"同时满足两条件的查询下方向相反，Phase B 顺序依赖；"
-                                    f"需短训 A/B 仲裁，暂不应用。")
+                    prop["note"] = (f"CONFLICT: reverse edge '{tgt}' -> '{src}' exists with "
+                                    f"conditions {sorted(rev_keys)}. Together with this edge "
+                                    f"({sorted(new_keys)}), queries satisfying both conditions "
+                                    f"would become order-dependent. Run a short A/B check first.")
     try:
         after = [c.get("backbone") for c in retrieve_fn(query, g2)]
     except Exception:
@@ -223,51 +226,51 @@ def _annotate_apply(prop, graph, retrieve_fn, query, ctype, edge=None, field=Non
     prop["archetype_top3_after"] = after
     if after is not None and after != prop["archetype_top3_before"]:
         prop["note"] = (prop["note"] + " " if prop["note"] else "") + \
-            f"若应用，原型 top-3：{prop['archetype_top3_before']} → {after}。"
+            f"If applied, archetype top-3 changes from {prop['archetype_top3_before']} to {after}."
 
 
-# ── 堆叠纪律 ────────────────────────────────────────────────────────────────
+# Edge-stacking checks.
 def stacking_warnings(proposals: list[dict]) -> list[str]:
-    """档 3/4 建议里，同一源 backbone 获 >1 条新挖掘边 → 告警（应合并为一条 any 边）。"""
+    """Warn when one source backbone receives multiple mined edges."""
     by_src: dict[str, list[str]] = defaultdict(list)
     for p in proposals:
         if p["tier"] in (3, 4) and p["component_type"] == "backbone":
             by_src[p["kb_id"]].append(p["trait"])
-    return [f"backbone '{src}' 将获 {len(traits)} 条挖掘边（traits: {', '.join(traits)}）"
-            f"——应合并为一条 `any` 边，避免 bonus 堆叠。"
+    return [f"backbone '{src}' would receive {len(traits)} mined edges "
+            f"(traits: {', '.join(traits)}); merge them into one `any` edge to avoid bonus stacking."
             for src, traits in by_src.items() if len(traits) > 1]
 
 
-# ── Markdown ────────────────────────────────────────────────────────────────
+# Markdown rendering.
 def render_md(proposals: list[dict], warnings: list[str]) -> str:
-    lines = ["# proposals.md — KB 改动建议（五档决策）", "",
-             "> 本文件仅为建议；KB 数据由人看完后另行提交。", ""]
+    lines = ["# KB Update Proposals", "",
+             "> This file contains suggestions only. KB data should be edited separately after review.", ""]
     if warnings:
-        lines.append("## ⚠ 堆叠纪律告警")
+        lines.append("## Edge-Stacking Warnings")
         lines += [f"- {w}" for w in warnings] + [""]
 
     def emit(p):
         flag = " **[CONFLICT]**" if p["conflict"] else ""
         dom = " **[DOMINANCE]**" if p.get("by_dominance") else ""
-        lines.append(f"- **[{p.get('task_type','classification')} · {p['component_type']}] "
-                     f"{p['kb_id']}** ×「{p['trait']}」{flag}{dom}")
+        lines.append(f"- **[{p.get('task_type','classification')} / {p['component_type']}] "
+                     f"{p['kb_id']}** x `{p['trait']}`{flag}{dom}")
         lines.append(f"  - {p['action']}")
         if p.get("note"):
             lines.append(f"  - {p['note']}")
 
-    for tier in (0, 1, 2, 3, 4, 5):    # 提案（含跨角色隔离）
+    for tier in (0, 1, 2, 3, 4, 5):
         sub = [p for p in proposals if p["tier"] == tier]
         if not sub:
             continue
-        lines.append(f"## 档 {tier} — {TIER_NAMES[tier]}（{len(sub)} 条）")
+        lines.append(f"## Tier {tier} - {TIER_NAMES[tier]} ({len(sub)})")
         lines.append("")
         for p in sub:
             emit(p)
         lines.append("")
 
-    findings = [p for p in proposals if p["tier"] == 6]   # findings：不提边的观察
+    findings = [p for p in proposals if p["tier"] == 6]
     if findings:
-        lines.append(f"## Findings（{len(findings)} 条，仅记录，不改 KB）")
+        lines.append(f"## Findings ({len(findings)}, record only)")
         lines.append("")
         for p in findings:
             emit(p)
@@ -275,7 +278,7 @@ def render_md(proposals: list[dict], warnings: list[str]) -> str:
     return "\n".join(lines)
 
 
-# ── 生产检索包装 ────────────────────────────────────────────────────────────
+# Production retrieval wrapper.
 def make_real_retrieve_fn():
     from retrieval.rag_retrieval import build_vector_index, retrieve_top3_hybrid
     repo_root = Path(__file__).resolve().parent.parent
@@ -287,7 +290,7 @@ def make_real_retrieve_fn():
     return retrieve_fn
 
 
-# ── 编排 ────────────────────────────────────────────────────────────────────
+# Orchestration.
 def run_decide(
     consensus_path: Path = DEFAULT_CONSENSUS,
     graph=None,
@@ -312,7 +315,7 @@ def run_decide(
     print(f"[decide] proposals={len(proposals)} by_tier="
           + " ".join(f"{TIER_NAMES[t]}={by_tier[t]}" for t in sorted(by_tier)))
     if warnings:
-        print(f"[decide] [WARN] 堆叠告警 {len(warnings)} 条（见 proposals.md 顶部）")
+        print(f"[decide] [WARN] {len(warnings)} edge-stacking warnings; see proposals.md")
     return proposals
 
 

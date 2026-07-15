@@ -1,6 +1,7 @@
 """
-RAG Retrieval 测试套件
-运行方式: python test_rag_retrieval.py
+RAG retrieval test suite.
+
+Run with: python test_rag_retrieval.py
 """
 
 import unittest
@@ -337,7 +338,7 @@ class TestBehavior(unittest.TestCase):
         results = self._run(inp)
         self.assertGreater(len(results), 0)
         capable = {"dinov2", "dinov3", "clip_vit", "siglip2", "sam3"}
-        # 至少有一个 capable backbone 出现在结果里
+        # At least one few-shot-capable backbone should appear.
         found = capable & {r["backbone"] for r in results}
         self.assertTrue(found, f"No few_shot-capable backbone in results: {self._backbones(results)}")
 
@@ -400,7 +401,7 @@ class TestBehavior(unittest.TestCase):
 
 
 class TestBudget(unittest.TestCase):
-    """约束感知选型：max_params_m / max_flops_g 预算过滤（Phase 1+2）。"""
+    """Constraint-aware selection for max_params_m / max_flops_g budgets."""
 
     @classmethod
     def setUpClass(cls):
@@ -421,7 +422,7 @@ class TestBudget(unittest.TestCase):
                                      f"{r['backbone']}/{r.get('pretrained')} over param budget")
 
     def test_param_budget_downgrades_checkpoint(self):
-        # resnet 在无预算时选 resnet50(25M)，预算内应降级到 resnet18(11.7M)
+        # ResNet normally picks resnet50; a 12M budget should downgrade to resnet18.
         inp = _make_input(priority="balanced", max_params_m=12)
         picks = {r["backbone"]: r.get("pretrained") for r in self._run(inp)}
         if "resnet" in picks:
@@ -435,16 +436,16 @@ class TestBudget(unittest.TestCase):
                 self.assertLessEqual(cost["flops_g"], 2.0)
 
     def test_no_budget_keeps_heavy_models(self):
-        # 无预算时，重型 backbone（dinov2/86M）可以出现
+        # Without a budget, heavier backbones such as DINOv2 may appear.
         without = {r["backbone"] for r in self._run(_make_input(priority="balanced"))}
         within = {r["backbone"] for r in self._run(_make_input(priority="balanced", max_params_m=12))}
-        # 预算把候选收紧（子集或更小），且无预算集合不小于有预算集合
+        # A budget narrows the candidate set.
         self.assertGreaterEqual(len(without), len(within))
 
     def test_flops_scales_with_image_size(self):
         small = estimate_cost("resnet18_imagenet", _make_input(image_size=224), self.G)
         large = estimate_cost("resnet18_imagenet", _make_input(image_size=448), self.G)
-        # 448 是 224 的 2 倍边长 → 面积 4 倍
+        # 448 has twice the side length of 224, so area scales by 4.
         self.assertAlmostEqual(large["flops_g"], small["flops_g"] * 4, delta=0.1)
 
 
@@ -454,7 +455,7 @@ class TestTaskList(unittest.TestCase):
     def setUpClass(cls):
         cls.G   = build_graph()
         cls.col = build_vector_index()
-        # 用 cross_modal 场景：CLIP 必然出现，checkpoint 有明确数据
+        # Use a cross-modal case so CLIP appears with a concrete checkpoint.
         cls.results = retrieve_top3_hybrid(
             _make_input(
                 task_type="feature_extraction",
@@ -492,7 +493,7 @@ class TestTaskList(unittest.TestCase):
         self.assertTrue(load["hf_id"])
 
     def test_structured_scratch_path_no_hf_id(self):
-        # 构造一个 scratch 结果（pretrained=None）
+        # Build a scratch result with no pretrained checkpoint.
         fake = dict(self.top)
         fake["pretrained"] = None
         tl = build_task_list(fake, self.G, fmt="structured")
@@ -577,7 +578,7 @@ class TestTaskList(unittest.TestCase):
 
 
 class TestPhaseBLossEdges(unittest.TestCase):
-    """Phase B：_select_components 消费 loss 节点间的 preferred_when 边。"""
+    """Phase B: _select_components consumes preferred_when loss edges."""
 
     def _loss_for(self, graph, constraints):
         if __package__:
@@ -588,11 +589,11 @@ class TestPhaseBLossEdges(unittest.TestCase):
         return _select_components("resnet", "classification", q, graph)["loss"]
 
     def test_edge_path_fires_distinctly_from_hardcoded(self):
-        # 硬要求：证明边路径确实活着，而非硬编码 fallback。
-        # medical 下硬编码给 cross_entropy；加一条合成边 focal→CE(medical) 后应翻成
-        # focal —— focal 只可能来自边，据此证明死边已激活。
+        # Prove the edge path is active, not only the fallback rule. Medical
+        # normally falls back to cross_entropy; after adding a synthetic
+        # focal->CE edge, focal can only come from graph-edge selection.
         base = self._loss_for(build_graph(), {"medical": True})
-        self.assertEqual(base, "cross_entropy_loss")  # 无边时的默认/硬编码结果
+        self.assertEqual(base, "cross_entropy_loss")  # default without the edge
 
         g = build_graph()
         g.add_edge("focal_loss", "cross_entropy_loss",
@@ -600,7 +601,7 @@ class TestPhaseBLossEdges(unittest.TestCase):
         self.assertEqual(self._loss_for(g, {"medical": True}), "focal_loss")
 
     def test_class_imbalance_picks_focal_via_edge(self):
-        # 现实 KB 边 focal→CE(class_imbalance) 现在经 Phase B 生效
+        # The real KB edge focal->CE(class_imbalance) is consumed by Phase B.
         self.assertEqual(self._loss_for(build_graph(), {"class_imbalance": True}),
                          "focal_loss")
 

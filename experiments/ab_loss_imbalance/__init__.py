@@ -1,5 +1,5 @@
-"""A/B 仲裁实验：class_imbalance 下 CE vs focal。
+"""A/B arbitration experiment: CE vs focal under class_imbalance.
 
-预注册规格见 docs/ab_loss_imbalance_protocol.md。判据在 configs.py 里冻结，
-先于实验写死，不得事后更改。
+The preregistered specification is in docs/ab_loss_imbalance_protocol.md.
+Decision rules are frozen in configs.py before the experiment runs.
 """

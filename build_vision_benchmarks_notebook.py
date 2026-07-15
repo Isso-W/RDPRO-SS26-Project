@@ -27,32 +27,35 @@ def code(source: str) -> dict:
 cells = [
     markdown(
         """
-# Jiaozi: GPT-5.5 生成并训练 14 个视觉任务
+# Vision Benchmarks: Generate and Train 14 Tasks with GPT-5.5
 
-这个 notebook 会删除 Colab 中旧的 `/content/Jiaozi`，拉取最新的
-`main` 分支，然后完成：
+This notebook removes the old `/content/Jiaozi` folder in Colab, pulls the
+latest `main` branch, and then:
 
-1. 选择一个比赛或公开数据集。
-2. 使用配置的 `gpt-5.5` 生成 `model.py`。
-3. 下载 Kaggle 数据或加载 Hugging Face 数据。
-4. 在 GPU 上训练、评估并保存 checkpoint。
+1. Selects one competition or public dataset.
+2. Uses the configured `gpt-5.5` model to generate `model.py`.
+3. Downloads Kaggle data or loads a Hugging Face dataset.
+4. Trains and evaluates on GPU, then saves checkpoints.
 
-四个指定 Kaggle 比赛：
+Four Kaggle competitions:
 
 - `cassava`: Cassava Leaf Disease Classification
 - `state_farm`: State Farm Distracted Driver Detection
 - `siim_isic`: SIIM-ISIC Melanoma Classification
 - `diabetic_retinopathy`: Diabetic Retinopathy Detection
 
-另外十个可直接加载的数据集：
+Ten directly loadable datasets:
 
 - `cifar10`, `cifar100`, `food101`, `beans`, `cats_vs_dogs`
 - `stanford_cars`, `caltech101`, `eurosat`, `mnist`, `oxford_pets`
 
-只需在下一格修改 `BENCHMARK_KEY`。Kaggle 比赛必须先在网页上接受比赛规则。
-State Farm、SIIM-ISIC 和 Diabetic Retinopathy 数据较大，免费 Colab 可能需要较长下载时间和更多磁盘空间。
+Change only `BENCHMARK_KEY` in the next cell to switch tasks. Kaggle
+competitions require accepting the competition rules on the Kaggle website.
+State Farm, SIIM-ISIC, and Diabetic Retinopathy are large and may need more
+download time and disk space on free Colab.
 
-如果之前运行过旧版本，请先选择 **Runtime → Restart session**，再从第一格开始运行。
+If you previously ran an older version, choose **Runtime -> Restart session**
+before starting from the first cell.
 """
     ),
     code(
@@ -68,10 +71,10 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-# 只改这里即可切换任务。
+# Change this key to switch tasks.
 BENCHMARK_KEY = "cassava"
 
-# 正式训练默认使用完整数据。临时调试时可改为 False。
+# Formal training uses the full dataset by default; set False for quick debugging.
 FORMAL_TRAINING = True
 EPOCHS = 15 if FORMAL_TRAINING else 2
 MAX_TRAIN_SAMPLES = 0 if FORMAL_TRAINING else 2000
@@ -207,16 +210,17 @@ for key, item in BENCHMARKS.items():
     ),
     markdown(
         """
-## 配置密钥
+## Configure Secrets
 
-在 Colab 左侧 **Secrets** 中添加：
+Add these values under **Secrets** in the left Colab sidebar:
 
 - `OPENAI_API_KEY`
-- `KAGGLE_API_TOKEN`（选择四个 Kaggle 比赛时需要）
-- `OPENAI_BASE_URL`（可选；仅在你明确使用兼容网关时设置）
+- `KAGGLE_API_TOKEN` (required for the four Kaggle competitions)
+- `OPENAI_BASE_URL` (optional; only set it for an OpenAI-compatible gateway)
 
-密钥只写入当前 Colab 运行时的环境变量，不会写入 Git 仓库或 notebook。
-之前在聊天中发送过的密钥应视为已经暴露，建议运行成功后立即撤销并重新生成。
+Secrets are copied only into the current Colab runtime environment. They are not
+written to the Git repository or saved into the notebook. Any key shared in chat
+should be treated as exposed and rotated after the run.
 """
     ),
     code(
@@ -275,10 +279,11 @@ print("Kaggle token configured:", bool(os.environ.get("KAGGLE_API_TOKEN")))
     ),
     markdown(
         """
-## 准备数据
+## Prepare Data
 
-Kaggle 路径会自动下载比赛文件并递归解压 ZIP。若出现 `403`，先打开比赛页面接受规则；
-若出现磁盘不足，请换用 Colab Pro、连接 Google Drive，或选择较小的数据集。
+Kaggle paths automatically download competition files and recursively unzip
+archives. If you see `403`, accept the competition rules on Kaggle first. If
+disk space is low, use Colab Pro, attach Google Drive, or choose a smaller task.
 """
     ),
     code(
@@ -380,11 +385,13 @@ print(json.dumps(runtime_data, indent=2, ensure_ascii=False))
     ),
     markdown(
         """
-## 使用 GPT-5.5 生成训练项目
+## Generate the Training Project with GPT-5.5
 
-这一步直接调用 Module 4，并使用代理配置要求的 Responses API。
-生成后会检查 `generation_info.json`。如果代理返回 HTML、登录页或无效 Python，
-系统会记录失败原因并自动使用经过 smoke test 的模板继续训练，不会把无效内容写进 `model.py`。
+This step calls Module 4 directly using the Responses API expected by the proxy
+configuration. After generation, it checks `generation_info.json`. If the
+provider returns HTML, a login page, or invalid Python, the failure is recorded
+and the smoke-tested template is used instead of writing invalid content to
+`model.py`.
 """
     ),
     code(
@@ -507,10 +514,12 @@ print(json.dumps(runtime_config, indent=2, ensure_ascii=False))
     ),
     markdown(
         """
-## 开始真实训练
+## Start Real Training
 
-正式模式默认使用完整数据训练最多 15 个 epoch，并在验证指标连续 4 轮没有提升时提前停止。
-`best_model.pt` 与 `last_checkpoint.pt` 会保存到 Google Drive，可在 Colab 中断后自动续训。
+Formal mode trains on the full dataset for up to 15 epochs and stops early after
+4 validation rounds without improvement. `best_model.pt` and
+`last_checkpoint.pt` are saved to Google Drive so interrupted Colab sessions can
+resume.
 """
     ),
     code(
@@ -571,9 +580,10 @@ for path in sorted(checkpoint_dir.glob("*.pt")):
     ),
     markdown(
         """
-## 检查生成与训练结果
+## Inspect Generation and Training Results
 
-最后一格显示 Module 4 审核摘要、GPT 使用记录、实际配置和生成文件。
+The final cell shows the Module 4 review summary, GPT usage record, runtime
+configuration, and generated files.
 """
     ),
     code(

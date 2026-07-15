@@ -1,10 +1,13 @@
-"""collect.py — outcomes.jsonl → 台级 + 总 verdict（纯函数，无网络）。
+"""collect.py - outcomes.jsonl to per-testbed and overall verdicts.
 
-裁决规则（预注册，见 plan §0）：对每折 i 的配对差
-`Δ_i = metric(CE, fold_i) − metric(focal, fold_i)`，取 Δ̄=mean，SE=std/√n，
-平局带 = max(MARGIN_FLOOR, 2·SE)：
-  Δ̄ ≥ 带 → CE_WINS；Δ̄ ≤ −带 → FOCAL_WINS；其间 → TIE（现状赢含糊局面）。
-双台合并：无一台 focal 胜且≥1 台 CE 胜 → CE_WINS（focal 对称）；其余 → TIE。
+Decision rule, preregistered in the protocol: for each fold i, compute the
+paired difference `d_i = metric(CE, fold_i) - metric(focal, fold_i)`. Let
+dbar=mean(d), SE=std/sqrt(n), and tie_band=max(MARGIN_FLOOR, 2*SE):
+  dbar >= tie_band   -> CE_WINS
+  dbar <= -tie_band  -> FOCAL_WINS
+  otherwise          -> TIE
+Two-testbed merge: a side wins only with at least one supporting testbed and no
+opposing testbed; otherwise the result is TIE.
 """
 
 from __future__ import annotations
@@ -23,15 +26,15 @@ FOCAL = "focal_loss"
 DEFAULT_OUTCOMES = Path("experiments/ab_loss_imbalance/results/outcomes.jsonl")
 
 
-# ── 台级裁决（纯函数）───────────────────────────────────────────────────────
+# Per-testbed verdict.
 def testbed_verdict(deltas: list[float], margin_floor: float = MARGIN_FLOOR) -> dict:
-    """配对差列表 → {verdict, dbar, se, band, n}。verdict ∈ CE_WINS/FOCAL_WINS/TIE。"""
+    """Return {verdict, dbar, se, band, n} for paired differences."""
     n = len(deltas)
     dbar = statistics.fmean(deltas) if deltas else 0.0
     se = (statistics.stdev(deltas) / (n ** 0.5)) if n >= 2 else float("inf")
     band = max(margin_floor, 2 * se) if se != float("inf") else float("inf")
     if band == float("inf"):
-        verdict = "TIE"                      # 折不足，无法裁决 → 保守 TIE
+        verdict = "TIE"                      # not enough folds; stay conservative
     elif dbar >= band:
         verdict = "CE_WINS"
     elif dbar <= -band:
@@ -42,19 +45,19 @@ def testbed_verdict(deltas: list[float], margin_floor: float = MARGIN_FLOOR) -> 
 
 
 def merge_verdicts(testbed_verdicts: list[str]) -> str:
-    """双台合并：翻案需无反对 + 至少一台支持；否则 TIE。"""
+    """Merge testbed verdicts with support required and no opposing result."""
     if any(v == "FOCAL_WINS" for v in testbed_verdicts):
         if any(v == "CE_WINS" for v in testbed_verdicts):
-            return "TIE"                      # 两台互相矛盾 → 现状赢
+            return "TIE"                      # conflicting testbeds
         return "FOCAL_WINS" if all(v != "CE_WINS" for v in testbed_verdicts) else "TIE"
     if any(v == "CE_WINS" for v in testbed_verdicts):
         return "CE_WINS"
     return "TIE"
 
 
-# ── 配对差提取 ──────────────────────────────────────────────────────────────
+# Paired-difference extraction.
 def paired_deltas(records: list[dict], testbed: str, metric: str) -> list[float]:
-    """从 outcomes 记录里取某台 CE−focal 的逐折配对差（缺折则跳过该折）。"""
+    """Extract per-fold CE-focal differences for one testbed and metric."""
     by_arm_fold: dict[tuple, float] = {}
     for r in records:
         if r.get("benchmark") != testbed:
@@ -71,7 +74,7 @@ def paired_deltas(records: list[dict], testbed: str, metric: str) -> list[float]
     return deltas
 
 
-# ── 汇总 ────────────────────────────────────────────────────────────────────
+# Summary.
 def summarize(records: list[dict]) -> dict:
     per_testbed = {}
     for testbed, tb in TESTBEDS.items():
@@ -85,19 +88,19 @@ def summarize(records: list[dict]) -> dict:
 
 
 def render(summary: dict) -> str:
-    lines = ["# A/B 仲裁结果 — CE vs focal（class_imbalance）", ""]
+    lines = ["# A/B Arbitration Result - CE vs focal under class_imbalance", ""]
     for testbed, r in summary["per_testbed"].items():
-        lines.append(f"## {testbed}（主指标 {r['metric']}，n={r['n']} 折）")
+        lines.append(f"## {testbed} (primary metric {r['metric']}, n={r['n']} folds)")
         if r["deltas"]:
             ds = ", ".join(f"{d:+.4f}" for d in r["deltas"])
             se = "inf" if r["se"] == float("inf") else f"{r['se']:.4f}"
             band = "inf" if r["band"] == float("inf") else f"{r['band']:.4f}"
-            lines.append(f"  Δ(CE−focal) 逐折: [{ds}]")
-            lines.append(f"  Δ̄={r['dbar']:+.4f}  SE={se}  平局带=±{band}  → **{r['verdict']}**")
+            lines.append(f"  d(CE-focal) by fold: [{ds}]")
+            lines.append(f"  dbar={r['dbar']:+.4f}  SE={se}  tie band=+/-{band}  -> **{r['verdict']}**")
         else:
-            lines.append(f"  （无配对折数据）→ **{r['verdict']}**")
+            lines.append(f"  No paired fold data -> **{r['verdict']}**")
         lines.append("")
-    lines.append(f"## 总 verdict：**{summary['overall']}**")
+    lines.append(f"## Overall verdict: **{summary['overall']}**")
     return "\n".join(lines)
 
 
@@ -108,7 +111,7 @@ def load_outcomes(path: Path) -> list[dict]:
 
 
 def _cli() -> None:
-    ap = argparse.ArgumentParser(description="汇总 A/B 折级结果 → verdict")
+    ap = argparse.ArgumentParser(description="Summarize A/B fold-level results into a verdict")
     ap.add_argument("--outcomes", type=Path, default=DEFAULT_OUTCOMES)
     args = ap.parse_args()
     summary = summarize(load_outcomes(args.outcomes))

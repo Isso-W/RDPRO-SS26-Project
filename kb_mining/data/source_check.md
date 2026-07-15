@@ -2,11 +2,12 @@
 
 **Verification date**: 2026-07-03 **Conclusion**: ✅ Link link, use Meta Kaggle official dump, do not use the alternative.
 
-harvest.py **is encoded according to the actual listing in this document**, not according to the "expected link" of kb_mining_plan.
+harvest.py follows the verified file layout below, not the earlier expected link
+described in the planning note.
 
 ## Downloaded files (`kaggle/meta-kaggle`, file-by-file `dataset_download_file`)
 
-| document | size | Loading method |
+| File | Size | Loading method |
 |---|---|---|
 | `Competitions.csv` | 149.6 MB | Can load `usecols` in full |
 | `ForumTopics.csv` | 70.4 MB | Can load `usecols` in full |
@@ -14,24 +15,24 @@ harvest.py **is encoded according to the actual listing in this document**, not 
 
 The download does not generate `.zip` - `dataset_download_file` of kaggle 2.2.3 directly falls into `.csv`.
 
-## Actual listing (subject to dump this time)
+## Actual Listing
 
-- **Competitions.csv**: `Id, Slug, Title, ForumId, EnabledDate, DeadlineDate, TotalTeams, HostSegmentTitle, Overview, DatasetDescription` (the competition description text is embedded in the last two columns - initial filling of the feature card **no need to crawl the competition webpage**).
+- **Competitions.csv**: `Id, Slug, Title, ForumId, EnabledDate, DeadlineDate, TotalTeams, HostSegmentTitle, Overview, DatasetDescription` (competition text is embedded in the final two columns, so the initial feature cards do not need a separate competition-page crawl).
 - **ForumTopics.csv**:`Id, ForumId, FirstForumMessageId, Title, Score, TotalMessages, CreationDate`.
 - **ForumMessages.csv**:`Id, ForumTopicId, PostUserId, PostDate, ReplyToForumMessageId, Message, RawMarkdown, Medal, MedalAwardDate`.
 
 ## Confirmation of viable JOIN chain (shorter than planned)
 
 ```
-Competitions.ForumId  ==  ForumTopics.ForumId          # Press catalog slug Positioning Competition Forum
-ForumTopics.FirstForumMessageId  ==  ForumMessages.Id  # Direct foreign key points to the original poster of the original poster!
+Competitions.ForumId  ==  ForumTopics.ForumId          # locate each competition forum
+ForumTopics.FirstForumMessageId  ==  ForumMessages.Id  # direct foreign key to the topic's first post
 ```
 
 **Key optimization (harvest is implemented based on this)**: `FirstForumMessageId` is a direct foreign key to the first post of the original poster. **There is no need to group and scan ForumMessages** by `ForumTopicId`. Correct approach:
 
-1. Competitions filters out the competitions in catalog → gets the `ForumId` set;
-2. ForumTopics filter these ForumId + title regex filter solution posts → get `FirstForumMessageId` collection (together with rank/score/title);
-3. ForumMessages **Single chunksize streaming**, `Id ∈ 该集合` takes the text immediately - 1.70 GB only scans once, the hit set is very small (≤10 per competition).
+1. Filter Competitions to catalog entries and collect their `ForumId` values.
+2. Filter ForumTopics by those ForumIds and solution-title regexes; collect `FirstForumMessageId` with rank, score, and title.
+3. Stream ForumMessages once with chunksize and keep rows where `Id` is in that collected message-id set. The 1.70 GB file is scanned once, and the hit set is small.
 
 ## Text format
 

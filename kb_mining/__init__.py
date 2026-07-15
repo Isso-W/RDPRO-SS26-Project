@@ -1,6 +1,6 @@
-"""kb_mining — Kaggle 优胜方案挖掘 → KB 增强。
+"""Kaggle solution mining for KB updates.
 
-一次性挖掘管道：harvest → extract → aggregate → decide。
-各阶段幂等、可独立重跑，阶段间只通过 kb_mining/data/ 下的文件通信。
-详见 docs/kb_mining_protocol.md。
+The one-shot mining pipeline is harvest -> extract -> aggregate -> decide.
+Each stage is idempotent and can be rerun independently; stages communicate only
+through files under kb_mining/data/. See docs/kb_mining_protocol.md.
 """

@@ -1,6 +1,7 @@
-"""test_fold_injection.py — 生成器的 paired 折注入 + 预测导出（A/B 实验地基）。
+"""Generated-code tests for paired fold injection and prediction export.
 
-用 importlib 真导入生成的 train.py / evaluate.py，直接驱动其中的纯逻辑函数。
+The tests import generated train.py / evaluate.py and exercise their pure helper
+functions directly.
 """
 
 from __future__ import annotations
@@ -42,19 +43,19 @@ def _write_folds(tmp_path, folds):
     return str(p)
 
 
-# ── 折注入：按 id 精确划分 ───────────────────────────────────────────────────
+# Fold injection by sample id.
 def test_fold_split_matches_specified_ids(tmp_path, monkeypatch):
     train = _import_generated(tmp_path, monkeypatch, "train")
     frame = _frame()
     ff = _write_folds(tmp_path, [[f"id{i}" for i in range(5)],
                                  [f"id{i}" for i in range(5, 10)]])
     tr, val = train._fold_split_indices(frame, "image_id", ff, 0)
-    assert val == [0, 1, 2, 3, 4]           # 第 0 折的 id 精确对应位置
+    assert val == [0, 1, 2, 3, 4]           # fold 0 maps exactly to these row positions
     assert tr == [5, 6, 7, 8, 9]
 
 
 def test_paired_same_foldfile_same_val(tmp_path, monkeypatch):
-    # paired 机器可查证明：同一 fold_file + fold_index → val 完全一致（与 loss 无关）
+    # Same fold_file + fold_index gives the same validation set for paired runs.
     train = _import_generated(tmp_path, monkeypatch, "train")
     frame = _frame()
     ff = _write_folds(tmp_path, [[f"id{i}" for i in range(5)],
@@ -63,23 +64,23 @@ def test_paired_same_foldfile_same_val(tmp_path, monkeypatch):
     _, val_b = train._fold_split_indices(frame, "image_id", ff, 1)
     assert val_a == val_b == [5, 6, 7, 8, 9]
     _, val_other = train._fold_split_indices(frame, "image_id", ff, 0)
-    assert set(val_a).isdisjoint(val_other)   # 不同折不相交
+    assert set(val_a).isdisjoint(val_other)   # different folds do not overlap
 
 
 def test_incomplete_folds_rejected(tmp_path, monkeypatch):
     train = _import_generated(tmp_path, monkeypatch, "train")
     frame = _frame()
-    ff = _write_folds(tmp_path, [[f"id{i}" for i in range(5)]])   # 缺 id5..id9
-    with pytest.raises(ValueError, match="不一致"):
+    ff = _write_folds(tmp_path, [[f"id{i}" for i in range(5)]])   # missing id5..id9
+    with pytest.raises(ValueError, match="do not match"):
         train._fold_split_indices(frame, "image_id", ff, 0)
 
 
 def test_overlapping_folds_rejected(tmp_path, monkeypatch):
     train = _import_generated(tmp_path, monkeypatch, "train")
     frame = _frame()
-    ff = _write_folds(tmp_path, [[f"id{i}" for i in range(6)],       # id5 重叠
+    ff = _write_folds(tmp_path, [[f"id{i}" for i in range(6)],       # id5 overlaps
                                  [f"id{i}" for i in range(5, 10)]])
-    with pytest.raises(ValueError, match="交集"):
+    with pytest.raises(ValueError, match="overlap"):
         train._fold_split_indices(frame, "image_id", ff, 0)
 
 
@@ -118,13 +119,13 @@ def test_fold_count_mismatch_rejected(tmp_path, monkeypatch):
 
 
 def test_backward_compatible_without_fold_keys(tmp_path, monkeypatch):
-    # 不带 fold_file → 内部 _split_indices 仍可用（旧行为回归）
+    # Without fold_file, the original internal _split_indices path still works.
     train = _import_generated(tmp_path, monkeypatch, "train")
     tr, val = train._split_indices([0, 1] * 10, validation_fraction=0.2, seed=42)
     assert len(tr) + len(val) == 20 and set(tr).isdisjoint(val)
 
 
-# ── 预测导出：eval 吐 val_preds ─────────────────────────────────────────────
+# Prediction export from evaluation.
 def test_eval_exports_predictions(tmp_path, monkeypatch):
     torch = pytest.importorskip("torch")
     import torch.nn as nn

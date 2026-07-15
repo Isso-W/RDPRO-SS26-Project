@@ -1,4 +1,4 @@
-"""test_extract.py — 全离线，canned LLM 响应注入 llm_fn。"""
+"""Offline tests for extract.py with canned LLM responses."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from kb_mining import extract
 
 
 def canned(payload):
-    """返回一个忽略入参、总吐固定响应的 llm_fn。payload 为 dict 则序列化。"""
+    """Return an llm_fn that ignores inputs and emits the fixed payload."""
     text = payload if isinstance(payload, str) else json.dumps(payload)
     return lambda system, user: text
 
 
-# ── 正常路径 ────────────────────────────────────────────────────────────────
+# Happy paths.
 def test_single_model():
     post = {"competition": "c", "topic_id": 1,
             "text": "We used a single tf_efficientnet_b4 model at 512px."}
@@ -29,8 +29,8 @@ def test_single_model():
     assert fact["families"] == ["efficientnet"]
     assert fact["family_image_size"] == {"efficientnet": 512}
     assert fact["loss_kb"] == "focal_loss"
-    assert "text" not in fact                      # 正文不入 facts
-    assert fact["competition"] == "c"              # post 字段保留
+    assert "text" not in fact
+    assert fact["competition"] == "c"
 
 
 def test_ensemble_with_best_single():
@@ -45,8 +45,8 @@ def test_ensemble_with_best_single():
             "best_single_score": 0.899, "used_pseudo_labeling": False,
             "used_tta": False, "citations": ["Ensemble of tf_efficientnet_b4"]}
     fact = extract.extract_post(post, canned(resp))
-    assert fact["families"] == ["efficientnet", "resnet"]     # 家族去重
-    assert fact["family_image_size"]["efficientnet"] == 512   # b4/b5 同为 512 → 众数 512
+    assert fact["families"] == ["efficientnet", "resnet"]
+    assert fact["family_image_size"]["efficientnet"] == 512
     assert fact["best_single_family"] == "efficientnet"
     assert fact["loss_kb"] == "cross_entropy_loss"
 
@@ -62,10 +62,10 @@ def test_family_dedup_image_size_mode():
             "citations": ["b4 512, b5 512, b5 768"]}
     fact = extract.extract_post(post, canned(resp))
     assert fact["families"] == ["efficientnet"]
-    assert fact["family_image_size"]["efficientnet"] == 512   # 512×2 vs 768×1
+    assert fact["family_image_size"]["efficientnet"] == 512
 
 
-# ── 别名映射 ────────────────────────────────────────────────────────────────
+# Alias mapping.
 def test_alias_mapping():
     post = {"competition": "c", "topic_id": 4,
             "text": "tf_efficientnetv2_m and seresnext50 and some_weird_net"}
@@ -78,11 +78,11 @@ def test_alias_mapping():
             "citations": ["tf_efficientnetv2_m and seresnext50"]}
     fact = extract.extract_post(post, canned(resp))
     assert fact["families"] == ["efficientnet", "resnet", "unknown"]
-    assert fact["loss_kb"] == "unknown"                # arcface 不归并
+    assert fact["loss_kb"] == "unknown"
     assert fact["loss_is_metric_learning"] is True
 
 
-# ── 校验：拒绝路径 ───────────────────────────────────────────────────────────
+# Rejection paths.
 def test_hybrid_loss_maps_to_unknown():
     post = {"competition": "c", "topic_id": 10,
             "text": "loss was Average of BCE and FocalLoss for the heads"}
@@ -92,7 +92,7 @@ def test_hybrid_loss_maps_to_unknown():
             "best_single_score": None, "used_pseudo_labeling": False, "used_tta": False,
             "citations": ["Average of BCE and FocalLoss"]}
     fact = extract.extract_post(post, canned(resp))
-    assert fact["loss_kb"] == "unknown"        # 组合损失 → unknown，不压平成单票
+    assert fact["loss_kb"] == "unknown"
 
 
 def test_reject_citation_not_found():
@@ -148,10 +148,10 @@ def test_truncate_long_text():
     assert len(out) < len(long)
     assert out.startswith("A")
     assert out.endswith("B")
-    assert "MIDDLE" not in out                       # 中段被切掉
+    assert "MIDDLE" not in out
 
 
-# ── 编排：facts + rejects 落盘 ───────────────────────────────────────────────
+# Orchestration writes facts and rejects.
 def test_run_extract_writes_files(tmp_path):
     posts = [
         {"competition": "c", "topic_id": 1, "text": "single resnet50 model here"},
@@ -166,7 +166,7 @@ def test_run_extract_writes_files(tmp_path):
             "used_pseudo_labeling": False, "used_tta": False,
             "citations": ["single resnet50 model"]}
 
-    # 第一篇合格、第二篇引用对不上 → 一 fact 一 reject
+    # First post passes; second post fails citation matching.
     def llm(system, user):
         return json.dumps(good) if "resnet50" in user else json.dumps(
             {**good, "citations": ["nope"]})

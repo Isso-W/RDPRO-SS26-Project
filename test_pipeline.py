@@ -1,9 +1,12 @@
 """
-Pipeline 整合层测试
-覆盖: data_size 推断、class_imbalance 推断、Module 1+2 合并、Module 1 解析容错
+Pipeline integration-layer tests.
 
-运行: python -m pytest test_pipeline.py -v
-      或 python test_pipeline.py
+Coverage: data_size inference, class_imbalance inference, Module 1 + Module 2
+merge behavior, and Module 1 parser fallback.
+
+Run with:
+    python -m pytest test_pipeline.py -v
+    python test_pipeline.py
 """
 
 import json
@@ -73,27 +76,27 @@ class TestDeriveDataSize(unittest.TestCase):
     def test_zero(self):
         self.assertEqual(derive_data_size(0), "small")
 
-    # ── 双信号：每类样本数下调档位（过拟合侧）──────────────────────────
+    # Two-signal logic: samples per class can downgrade the size tier.
 
     def test_per_class_downgrades_large_to_medium(self):
-        """25k 张 200 类 = 125 张/类：总量是 large，但有效样本量只有 medium"""
+        """25k images over 200 classes gives 125 samples/class, so medium."""
         self.assertEqual(derive_data_size(25_000, num_classes=200), "medium")
 
     def test_per_class_downgrades_medium_to_small(self):
-        """5k 张 100 类 = 50 张/类：每类样本太少，按 small 处理"""
+        """5k images over 100 classes gives 50 samples/class, so small."""
         self.assertEqual(derive_data_size(5_000, num_classes=100), "small")
 
-    # ── 双信号：总量上限不放行（成本侧）───────────────────────────────
+    # Two-signal logic: total count still caps the tier on the cost side.
 
     def test_total_caps_high_per_class(self):
-        """3k 张 2 类 = 1500 张/类：每类充足，但总量决定成本，仍是 small"""
+        """3k images over 2 classes has many samples/class, but is still small."""
         self.assertEqual(derive_data_size(3_000, num_classes=2), "small")
 
     def test_both_signals_large(self):
-        """总量和每类样本数都够大才算 large"""
+        """Both total count and samples/class must be large."""
         self.assertEqual(derive_data_size(100_000, num_classes=10), "large")
 
-    # ── 任务类型阈值：检测/分割标注成本高，阈值减半 ─────────────────────
+    # Task-specific thresholds: detection/segmentation have higher label cost.
 
     def test_detection_thresholds_halved(self):
         self.assertEqual(derive_data_size(1_500, task_type="object_detection"), "small")
@@ -105,7 +108,7 @@ class TestDeriveDataSize(unittest.TestCase):
         self.assertEqual(derive_data_size(10_001, task_type="image_segmentation"), "large")
 
     def test_per_class_ignored_for_detection(self):
-        """每类样本数信号仅用于分类任务"""
+        """The samples-per-class signal is only used for classification."""
         self.assertEqual(derive_data_size(12_000, num_classes=200, task_type="object_detection"), "large")
 
     def test_no_num_classes_falls_back_to_total(self):
@@ -124,7 +127,7 @@ class TestDeriveClassImbalance(unittest.TestCase):
         self.assertTrue(derive_class_imbalance(dist))
 
     def test_exactly_at_threshold(self):
-        # max/min = 10，不超过阈值
+        # max/min = 10, so it is still within the threshold.
         dist = {"a": 100, "b": 10}
         self.assertFalse(derive_class_imbalance(dist))
 
@@ -185,14 +188,14 @@ class TestMergeModules(unittest.TestCase):
         }
 
     def test_data_size_from_module2(self):
-        """data_size 应该由 Module 2 的 total_images 决定，而非 Module 1 的占位值"""
+        """data_size comes from Module 2, not the Module 1 placeholder."""
         m1 = self._make_m1()
         m2 = self._make_m2(total_images=500)
         merged = merge_modules(m1, m2)
         self.assertEqual(merged["data_size"], "small")
 
     def test_module1_fields_preserved(self):
-        """task_type / priority / description 来自 Module 1，合并后不变"""
+        """task_type, priority, and description remain from Module 1."""
         m1 = self._make_m1(task_type="object_detection", priority="speed")
         m2 = self._make_m2()
         merged = merge_modules(m1, m2)
@@ -201,14 +204,14 @@ class TestMergeModules(unittest.TestCase):
         self.assertEqual(merged["description"], "test query")
 
     def test_imbalance_from_module2(self):
-        """Module 1 没检测到不平衡，但 Module 2 数据显示不平衡 → True"""
+        """Module 2 can enable class_imbalance even when Module 1 did not."""
         m1 = self._make_m1()
         m2 = self._make_m2(class_dist={"a": 5000, "b": 10})
         merged = merge_modules(m1, m2)
         self.assertTrue(merged["constraints"]["class_imbalance"])
 
     def test_imbalance_from_module1(self):
-        """Module 1 用户说了不平衡，Module 2 数据均衡 → 仍然 True（OR 逻辑）"""
+        """A user-stated imbalance remains true even if the dataset looks balanced."""
         m1 = self._make_m1()
         m1["constraints"]["class_imbalance"] = True
         m2 = self._make_m2(class_dist={"a": 500, "b": 500})
@@ -216,7 +219,7 @@ class TestMergeModules(unittest.TestCase):
         self.assertTrue(merged["constraints"]["class_imbalance"])
 
     def test_other_constraints_untouched(self):
-        """Module 2 不影响 medical / cross_modal 等字段"""
+        """Module 2 does not overwrite unrelated constraints."""
         m1 = self._make_m1()
         m1["constraints"]["medical"] = True
         m2 = self._make_m2()
@@ -225,7 +228,7 @@ class TestMergeModules(unittest.TestCase):
         self.assertFalse(merged["constraints"]["cross_modal"])
 
     def test_num_classes_passed_through(self):
-        """Module 2 的类别数应该出现在合并结果里，供 Module 4 使用"""
+        """num_classes is passed through for Module 4 head sizing."""
         m1 = self._make_m1()
         m2 = self._make_m2(class_dist={"a": 100, "b": 100, "c": 100})
         merged = merge_modules(m1, m2)
@@ -256,7 +259,7 @@ class TestMergeModules(unittest.TestCase):
         self.assertEqual(merged["data_stats"]["format_distribution"], {"PNG": 101})
 
     def test_data_size_uses_per_class_signal(self):
-        """合并时 data_size 应考虑类别数：25k 张 200 类 → medium 而非 large"""
+        """merge_modules uses class count: 25k images over 200 classes is medium."""
         m1 = self._make_m1()
         class_dist = {f"c{i}": 125 for i in range(200)}
         m2 = self._make_m2(total_images=25_000, class_dist=class_dist)
@@ -264,7 +267,7 @@ class TestMergeModules(unittest.TestCase):
         self.assertEqual(merged["data_size"], "medium")
 
     def test_merge_does_not_mutate_module1_output(self):
-        """merge 不应原地污染 Module 1 的输出"""
+        """merge_modules should not mutate the Module 1 input."""
         m1 = self._make_m1()
         m2 = self._make_m2(class_dist={"a": 5000, "b": 10})
         merge_modules(m1, m2)
@@ -326,7 +329,7 @@ class TestModule4Handoff(unittest.TestCase):
             self.assertTrue(captured["skip_smoke"])
             self.assertTrue(captured["run_refinement"])
 
-        # provider 改为参数传递，环境变量不应被触碰
+        # Provider selection is passed as an argument and should not touch env vars.
         self.assertEqual(os.environ.get("M4_LLM_PROVIDER"), previous_provider)
 
 

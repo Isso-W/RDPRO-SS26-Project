@@ -1,11 +1,11 @@
 """
-LLM 代码生成层 — 通过环境变量切换 provider。
+LLM-backed code-generation layer with provider selection through environment variables.
 
-支持的 provider（通过 M4_LLM_PROVIDER 环境变量）：
-  - "none"     — 跳过 LLM，回退到模板生成（默认）
-  - "qwen"     — 阿里 DashScope（需要 JIAOZI_DASHSCOPE_API_KEY）
-  - "openai"   — OpenAI（需要 OPENAI_API_KEY）
-  - "vertex"   — Google Vertex AI Gemini（需要 GOOGLE_APPLICATION_CREDENTIALS）
+Supported providers through M4_LLM_PROVIDER:
+  - "none"     - skip the LLM and use the template fallback
+  - "qwen"     - Alibaba DashScope, requires JIAOZI_DASHSCOPE_API_KEY
+  - "openai"   - OpenAI, requires OPENAI_API_KEY
+  - "vertex"   - Google Vertex AI Gemini, requires GOOGLE_APPLICATION_CREDENTIALS
 """
 
 from __future__ import annotations
@@ -46,13 +46,14 @@ def _record_llm_cost(response) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Provider 抽象
+# Provider abstraction.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _call_llm(system_prompt: str, user_prompt: str, provider: str | None = None) -> str | None:
-    """调用 LLM，返回原始文本。失败返回 None。
+    """Call the selected LLM provider and return raw text, or None on failure.
 
-    provider 为 None 时回退到 M4_LLM_PROVIDER 环境变量。"""
+    When provider is None, M4_LLM_PROVIDER is used.
+    """
     provider = (provider or get_provider()).strip().lower()
 
     if provider == "none":
@@ -256,15 +257,15 @@ def _call_vertex(system_prompt: str, user_prompt: str) -> str | None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 输出清洗
+# Output cleanup.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _extract_python(raw: str) -> str:
-    """从 LLM 输出中提取纯 Python 代码，去除 markdown 包裹。"""
+    """Extract Python source from provider output and strip markdown fences."""
     match = re.search(r"```python\s*\n(.*?)```", raw, re.DOTALL)
     if match:
         return match.group(1).strip()
-    # 没有 markdown 包裹，去除可能的 ``` 行
+    # If no python fence was used, strip any remaining generic fence markers.
     cleaned = re.sub(r"```\w*\s*", "", raw).strip().rstrip("`")
     return cleaned
 
@@ -300,7 +301,7 @@ def _validate_model_python(source: str) -> str | None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Prompt 模板
+# Prompt templates.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 _SYSTEM_PROMPT = """\
@@ -352,7 +353,7 @@ CRITICAL — forward() return types (the template train.py and evaluate.py depen
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 公开接口
+# Public API.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def generate_model_py(
@@ -361,7 +362,7 @@ def generate_model_py(
     provider: str | None = None,
     max_attempts: int | None = None,
 ) -> str | None:
-    """用 LLM 生成 model.py（使用 model_utils helper）。失败返回 None。
+    """Generate model.py with an LLM and return None on failure.
 
     Content errors (invalid Python / missing build_model) are *self-corrected*: the
     validation reason is fed back and the model is asked to fix it, up to max_attempts

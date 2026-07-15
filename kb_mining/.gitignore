@@ -1,2 +1,2 @@
-# 原始 Meta Kaggle dump（数 GB，不入库；产物 jsonl 才入库）
+# Raw Meta Kaggle dump. It is several GB and is not checked in.
 data/meta_kaggle/

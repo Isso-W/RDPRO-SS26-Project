@@ -1,14 +1,14 @@
 """
-Jiaozi 整合流水线：Module 1 + Module 2 + Module 3
+Integrated pipeline: Module 1 + Module 2 + Module 3.
 
-用法:
+Usage:
     python pipeline.py --dataset uoft-cs/cifar10 --query "classify images on mobile device"
 
-流程:
-    用户自然语言 ──→ Module 1 ──→ task_type / priority / constraints
-    数据集 ID    ──→ Module 2 ──→ data_size / class_imbalance
-    合并         ──→ Module 3 ──→ Top 3 模型推荐
-    可选         ──→ Module 4 ──→ 生成训练/评估/推理代码
+Flow:
+    user request ──→ Module 1 ──→ task_type / priority / constraints
+    dataset ID   ──→ Module 2 ──→ data_size / class_imbalance
+    merged input ──→ Module 3 ──→ top-3 model recommendations
+    optional     ──→ Module 4 ──→ training/evaluation/inference code
 """
 
 from __future__ import annotations
@@ -21,11 +21,12 @@ from pathlib import Path
 from recipe.tables import derive_recommended_epochs
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Module 2 → Module 3 字段映射
+# Module 2 to Module 3 field mapping.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# 总量阈值 (small 上限, medium 上限)：总量决定标注/训练成本。
-# 检测和分割的单张标注成本是分类的 10-100 倍，阈值减半。
+# Total-image thresholds (small max, medium max). Total size is mostly a
+# labeling/training-cost signal. Detection and segmentation have higher
+# per-image annotation cost, so their thresholds are lower.
 _TOTAL_THRESHOLDS = {
     "classification":     (3_000, 20_000),
     "feature_extraction": (3_000, 20_000),
@@ -34,8 +35,9 @@ _TOTAL_THRESHOLDS = {
 }
 _DEFAULT_TOTAL_THRESHOLDS = (3_000, 20_000)
 
-# 每类样本数阈值 (small 上限, medium 上限)：决定过拟合风险。
-# 仅分类任务使用——25k 张图分 200 类只有 125 张/类，是小数据不是大数据。
+# Per-class thresholds (small max, medium max). This is used only for
+# classification: 25k images over 200 classes is only 125 samples/class, so it
+# behaves more like a small-data setting than a large one.
 _PER_CLASS_THRESHOLDS = (100, 1_000)
 
 _SIZE_ORDER = ["small", "medium", "large"]
@@ -55,11 +57,11 @@ def derive_data_size(
     num_classes: int | None = None,
     task_type: str = "classification",
 ) -> str:
-    """从图片总数（+ 可选类别数）推断 data_size。
+    """Infer data_size from image count and, for classification, class count.
 
-    双信号取更保守一档：
-      - 总量档位：成本侧约束，总量不够大就不算大数据
-      - 每类样本数档位（仅分类）：过拟合侧约束，类多样本摊薄也不算大数据
+    We use the more conservative of two signals:
+      - total images: a cost-side signal
+      - samples per class: an overfitting signal for classification
     """
     by_total = _tier(total_images, _TOTAL_THRESHOLDS.get(task_type, _DEFAULT_TOTAL_THRESHOLDS))
 
@@ -73,7 +75,7 @@ def derive_data_size(
 _IMBALANCE_RATIO_THRESHOLD = 10
 
 def derive_class_imbalance(class_distribution: dict) -> bool:
-    """从类别分布推断是否存在类别不平衡。max/min 比值超过阈值视为不平衡。"""
+    """Treat a class distribution as imbalanced when max/min exceeds the threshold."""
     if not class_distribution:
         return False
     counts = list(class_distribution.values())
@@ -110,7 +112,7 @@ def derive_color_mode(stats: dict) -> str:
 
 
 def _patch_torch_metadata():
-    """datasets 库在 import 时会读 torch 版本 metadata，某些 torch 安装方式下 metadata 缺失会导致崩溃。"""
+    """Patch missing torch package metadata before importing datasets."""
     import importlib.metadata
     if getattr(importlib.metadata.version, "_torch_patched", False):
         return
@@ -126,7 +128,7 @@ def _patch_torch_metadata():
 
 
 def parse_dataset_id(raw: str) -> tuple[str, str | None]:
-    """解析 'org/name:subset' 格式，返回 (dataset_id, subset)。"""
+    """Parse an 'org/name:subset' string into (dataset_id, subset)."""
     if ":" in raw:
         dataset_id, subset = raw.rsplit(":", 1)
         return dataset_id, subset
@@ -134,7 +136,7 @@ def parse_dataset_id(raw: str) -> tuple[str, str | None]:
 
 
 def run_module2_analysis(dataset_id: str, subset: str | None = None) -> dict:
-    """运行 Module 2 的轻量分析（只取统计信息，跳过标准化和特征提取）。"""
+    """Run the lightweight Module 2 analysis pass."""
     _patch_torch_metadata()
     from ingestion.image_loader import ImageLoader
     from analyzer.image_statistics import ImageStatisticsAnalyzer
@@ -149,27 +151,27 @@ def run_module2_analysis(dataset_id: str, subset: str | None = None) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 合并 Module 1 + Module 2 → Module 3 输入
+# Merge Module 1 and Module 2 outputs into Module 3 input.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def merge_modules(m1_output: dict, m2_report: dict) -> dict:
     """
-    将 Module 1（LLM 提取）和 Module 2（数据集分析）的结果合并为
-    Module 3 的 retrieve_top3_hybrid() 所需的输入格式。
+    Merge Module 1 fields and Module 2 dataset statistics into the input format
+    expected by Module 3's retrieve_top3_hybrid().
 
-    Module 2 覆盖的字段：
-      - data_size：从 total_images + 类别数（分类任务）推断
-      - num_classes：来自 class_distribution，供 Module 4 生成正确的 head 维度
-      - constraints.class_imbalance：从 class_distribution 推断（与 Module 1 取 OR）
+    Fields controlled by Module 2:
+      - data_size: inferred from total_images and class count
+      - num_classes: passed through for Module 4 head sizing
+      - constraints.class_imbalance: OR of Module 1 intent and Module 2 stats
     """
     merged = dict(m1_output)
-    # constraints 单独拷贝，避免原地修改 m1_output 内层 dict
+    # Copy nested constraints so the Module 1 output is not modified in place.
     merged["constraints"] = dict(m1_output.get("constraints", {}))
 
     class_dist = m2_report.get("class_distribution", {})
     num_classes = m2_report.get("num_classes") or len(class_dist) or None
 
-    # data_size 由 Module 2 决定：总量 + 每类样本数双信号
+    # Module 2 owns data_size through the total-count and per-class signals.
     total_images = m2_report.get("total_images", 0)
     merged["data_size"] = derive_data_size(
         total_images,
@@ -188,7 +190,8 @@ def merge_modules(m1_output: dict, m2_report: dict) -> dict:
         "format_distribution": m2_report.get("format_distribution", {}),
     }
 
-    # class_imbalance: Module 1（用户说了）或 Module 2（数据显示了）任一为 True 即生效
+    # Either a user requirement or the observed class distribution can enable
+    # the imbalance constraint.
     m2_imbalance = derive_class_imbalance(class_dist)
     merged["constraints"]["class_imbalance"] = (
         merged["constraints"].get("class_imbalance", False) or m2_imbalance
@@ -235,7 +238,7 @@ def run_module4_generation(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 完整流水线
+# Full pipeline.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def run_pipeline(
@@ -254,17 +257,17 @@ def run_pipeline(
     use_recipe: bool = False,
 ) -> dict:
     """
-    完整流水线入口。
+    Main pipeline entry point.
 
-    返回:
+    Returns:
       {
-        "module3_input": dict,       # 合并后的 Module 3 输入
-        "recommendations": list,     # retrieve_top3_hybrid 原始结果
-        "task_lists": list,          # Module 4 可消费的任务清单
-        "module4": dict | None,      # 可选的 Module 4 生成结果
+        "module3_input": dict,       # merged Module 3 input
+        "recommendations": list,     # raw retrieve_top3_hybrid results
+        "task_lists": list,          # Module 4 candidate list
+        "module4": dict | None,      # optional Module 4 result
       }
     """
-    # Step 1: Module 1 — 用户自然语言 → 结构化字段
+    # Step 1: Module 1 parses the natural-language request.
     print("[Pipeline] Module 1: Parsing user requirements...")
     from features_extraction_api import module1_pipeline
 
@@ -273,17 +276,17 @@ def run_pipeline(
         print("[Pipeline] Module 1 failed, cannot continue.")
         return {"module3_input": None, "recommendations": [], "task_lists": [], "module4": None}
 
-    # Step 2: Module 2 — 数据集分析 → data_size / class_imbalance
+    # Step 2: Module 2 extracts dataset-side signals.
     ds_label = f"{dataset_id}:{subset}" if subset else dataset_id
     print(f"[Pipeline] Module 2: Analyzing dataset {ds_label}...")
     m2_report = run_module2_analysis(dataset_id, subset=subset)
 
-    # Step 3: 合并
+    # Step 3: merge the two views.
     m3_input = merge_modules(m1_output, m2_report)
     print(f"[Pipeline] Merged: task={m3_input['task_type']}  "
           f"size={m3_input['data_size']}  priority={m3_input['priority']}")
 
-    # Step 4: Module 3 — 模型推荐
+    # Step 4: Module 3 retrieves model configurations.
     print("[Pipeline] Module 3: Retrieving model configurations...")
     from retrieval.rag_retrieval import (
         build_graph, build_vector_index,
@@ -294,10 +297,10 @@ def run_pipeline(
     col = build_vector_index()
     recommendations = retrieve_top3_hybrid(m3_input, G, col)
 
-    # 输出结果
+    # Print the recommendation summary.
     print_results(m3_input, recommendations, G)
 
-    # Step 4b（可选）：累积型推荐器 — 用历史结果记忆重排 + 给出解释
+    # Optional re-ranker that uses stored outcomes as memory.
     if use_recommender:
         from recommender import recommend, OutcomeMemory
 
@@ -425,7 +428,7 @@ def main() -> int:
     dataset_id, parsed_subset = parse_dataset_id(args.dataset)
     subset = args.subset or parsed_subset
 
-    # 真训练时本地 smoke 没意义（合成数据 1 步），自动跳过，和 run_for_testing.py 一致
+    # Real-training mode skips local synthetic smoke runs, matching run_for_testing.py.
     skip_smoke = args.module4_no_smoke or args.module4_real_training
 
     result = run_pipeline(
