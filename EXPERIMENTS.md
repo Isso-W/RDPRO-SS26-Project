@@ -16,9 +16,9 @@ The notebooks under [`experiments/notebook_runs/notebooks/`](experiments/noteboo
 4. Accept the competition rules in Kaggle before downloading data or submitting.
 5. Choose **Runtime → Run all**.
 
-The setup cells now clone `Isso-W/Jiaozi` at `main`. The visible outputs are historical evidence from the supplied archives, not a claim that `main` was rerun after export. A fresh rerun can differ because packages, hardware, data availability, and the current `main` revision may have changed.
+The setup cells now clone `Isso-W/RDPRO-SS26-Project` at `main`. The visible outputs are historical evidence from the supplied archives, not a claim that `main` was rerun after export. A fresh rerun can differ because packages, hardware, data availability, and the current `main` revision may have changed.
 
-## Jiaozi pipeline notebooks
+## GraphRAG-based AutoML pipeline notebooks
 
 | Competition | Notebook to run | Per-cell log | Stored run state |
 | --- | --- | --- | --- |
@@ -112,7 +112,7 @@ The scripted smoke fixes seed 13, uses synthetic Leaf Classification data, write
 python -m pip install -e '.[dev]'
 M4_LLM_PROVIDER=none python -m module4_agent \
   --input module4_agent/examples/sample_m3_output.json \
-  --output /tmp/jiaozi-module4-smoke
+  --output /tmp/graphrag-automl-module4-smoke
 ```
 
 This validates generated code on synthetic inputs. It is not evidence of real-data model quality.
