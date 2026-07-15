@@ -1,0 +1,494 @@
+Notebook: jiaozi/plant_pathology_2020.ipynb
+Competition: Plant Pathology 2020
+Workflow: jiaozi
+Source archive: jiaozi.zip
+Source archive SHA-256: 4d578802aaa3f1f56f00fd8360b3efde768dc33caacfbc2c8b9fedacb5aba3c0
+Source notebook SHA-256: 5914bac3ce9a1cf40e3b2d28d7c828cbc22cf7dfa19a3c570f8f1ae82d96acfe
+Stored output status: validation_complete_submission_not_executed
+
+=== Cell 3 | execution_count=1 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+REPO_URL = https://github.com/muzhi-hac/Jiaozi-rag-wang.git
+REPO_REF = rag_wang
+=== git stdout ===
+
+=== git stderr ===
+Cloning into '/content/Jiaozi'...
+
+
+=== requirements.txt ===
+# Runtime dependencies for the Jiaozi CV Auto-DL pipeline.
+# Install with the same Python interpreter used to run tests, for example:
+#   /usr/bin/python3 -m pip install -r requirements.txt
+
+chromadb
+datasets
+networkx
+numpy
+openai>=2.0.0
+pandas
+pillow
+scikit-learn
+sentence-transformers
+torch
+torchvision
+transformers
+
+# Test runner for the module4_agent pytest suite.
+pytest
+
+
+=== installing requirements ===
+Collecting chromadb (from -r requirements.txt (line 5))
+  Downloading chromadb-1.5.9-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.0 kB)
+Requirement already satisfied: datasets in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 6)) (4.0.0)
+Requirement already satisfied: networkx in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 7)) (3.6.1)
+Requirement already satisfied: numpy in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 8)) (2.0.2)
+Requirement already satisfied: openai>=2.0.0 in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 9)) (2.43.0)
+Requirement already satisfied: pandas in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 10)) (2.2.2)
+Requirement already satisfied: pillow in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 11)) (11.3.0)
+Requirement already satisfied: scikit-learn in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 12)) (1.6.1)
+Requirement already satisfied: sentence-transformers in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 13)) (5.6.0)
+Requirement already satisfied: torch in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 14)) (2.11.0+cu128)
+Requirement already satisfied: torchvision in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 15)) (0.26.0+cu128)
+Requirement already satisfied: transformers in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 16)) (5.12.1)
+Requirement already satisfied: pytest in /usr/local/lib/python3.12/dist-packages (from -r requirements.txt (line 19)) (8.4.2)
+Collecting build>=1.0.3 (from chromadb->-r requirements.txt (line 5))
+  Downloading build-1.5.1-py3-none-any.whl.metadata (5.6 kB)
+Requirement already satisfied: pydantic>=2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (2.13.4)
+Collecting pydantic-settings>=2.0 (from chromadb->-r requirements.txt (line 5))
+  Downloading pydantic_settings-2.14.2-py3-none-any.whl.metadata (3.4 kB)
+Collecting pybase64>=1.4.1 (from chromadb->-r requirements.txt (line 5))
+  Downloading pybase64-1.4.3-cp312-cp312-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl.metadata (8.7 kB)
+Requirement already satisfied: uvicorn>=0.18.3 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r requirements.txt (line 5)) (0.49.0)
+Requirement already satisfied: typing-extensions>=4.5.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (4.15.0)
+Collecting onnxruntime>=1.14.1 (from chromadb->-r requirements.txt (line 5))
+  Downloading onnxruntime-1.27.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (5.4 kB)
+Requirement already satisfied: opentelemetry-api>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (1.42.1)
+Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb->-r requirements.txt (line 5))
+  Downloading opentelemetry_exporter_otlp_proto_grpc-1.43.0-py3-none-any.whl.metadata (2.6 kB)
+Requirement already satisfied: opentelemetry-sdk>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (1.42.1)
+Requirement already satisfied: tokenizers>=0.13.2 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (0.22.2)
+Collecting pypika>=0.48.9 (from chromadb->-r requirements.txt (line 5))
+  Downloading pypika-0.51.1-py2.py3-none-any.whl.metadata (51 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.0/52.0 kB 4.1 MB/s eta 0:00:00
+Requirement already satisfied: tqdm>=4.65.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (4.67.3)
+Collecting overrides>=7.3.1 (from chromadb->-r requirements.txt (line 5))
+  Downloading overrides-7.7.0-py3-none-any.whl.metadata (5.8 kB)
+Requirement already satisfied: importlib-resources in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (7.1.0)
+Requirement already satisfied: grpcio>=1.58.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (1.81.1)
+Collecting bcrypt>=4.0.1 (from chromadb->-r requirements.txt (line 5))
+  Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl.metadata (10 kB)
+Requirement already satisfied: typer>=0.9.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (0.25.1)
+Collecting kubernetes>=28.1.0 (from chromadb->-r requirements.txt (line 5))
+  Downloading kubernetes-36.0.2-py2.py3-none-any.whl.metadata (1.8 kB)
+Requirement already satisfied: tenacity>=8.2.3 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (9.1.4)
+Requirement already satisfied: pyyaml>=6.0.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (6.0.3)
+Requirement already satisfied: mmh3>=4.0.1 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (5.2.1)
+Requirement already satisfied: orjson>=3.9.12 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (3.11.9)
+Requirement already satisfied: httpx>=0.27.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (0.28.1)
+Requirement already satisfied: rich>=10.11.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (13.9.4)
+Requirement already satisfied: jsonschema>=4.19.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r requirements.txt (line 5)) (4.26.0)
+Requirement already satisfied: filelock in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (3.29.4)
+Requirement already satisfied: pyarrow>=15.0.0 in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (18.1.0)
+Requirement already satisfied: dill<0.3.9,>=0.3.0 in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (0.3.8)
+Requirement already satisfied: requests>=2.32.2 in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (2.32.4)
+Requirement already satisfied: xxhash in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (3.7.1)
+Requirement already satisfied: multiprocess<0.70.17 in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (0.70.16)
+Requirement already satisfied: fsspec<=2025.3.0,>=2023.1.0 in /usr/local/lib/python3.12/dist-packages (from fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (2025.3.0)
+Requirement already satisfied: huggingface-hub>=0.24.0 in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (1.20.1)
+Requirement already satisfied: packaging in /usr/local/lib/python3.12/dist-packages (from datasets->-r requirements.txt (line 6)) (26.2)
+Requirement already satisfied: anyio<5,>=3.5.0 in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r requirements.txt (line 9)) (4.14.0)
+Requirement already satisfied: distro<2,>=1.7.0 in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r requirements.txt (line 9)) (1.9.0)
+Requirement already satisfied: jiter<1,>=0.10.0 in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r requirements.txt (line 9)) (0.15.0)
+Requirement already satisfied: sniffio in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r requirements.txt (line 9)) (1.3.1)
+Requirement already satisfied: python-dateutil>=2.8.2 in /usr/local/lib/python3.12/dist-packages (from pandas->-r requirements.txt (line 10)) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /usr/local/lib/python3.12/dist-packages (from pandas->-r requirements.txt (line 10)) (2025.2)
+Requirement already satisfied: tzdata>=2022.7 in /usr/local/lib/python3.12/dist-packages (from pandas->-r requirements.txt (line 10)) (2026.2)
+Requirement already satisfied: scipy>=1.6.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn->-r requirements.txt (line 12)) (1.16.3)
+Requirement already satisfied: joblib>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn->-r requirements.txt (line 12)) (1.5.3)
+Requirement already satisfied: threadpoolctl>=3.1.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn->-r requirements.txt (line 12)) (3.6.0)
+Requirement already satisfied: setuptools<82 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (75.2.0)
+Requirement already satisfied: sympy>=1.13.3 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (1.14.0)
+Requirement already satisfied: jinja2 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (3.1.6)
+Requirement already satisfied: cuda-toolkit==12.8.1 in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.8.1)
+Requirement already satisfied: cuda-bindings<13,>=12.9.4 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (12.9.7)
+Requirement already satisfied: nvidia-cudnn-cu12==9.19.0.56 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (9.19.0.56)
+Requirement already satisfied: nvidia-cusparselt-cu12==0.7.1 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (0.7.1)
+Requirement already satisfied: nvidia-nccl-cu12==2.28.9 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (2.28.9)
+Requirement already satisfied: nvidia-nvshmem-cu12==3.4.5 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (3.4.5)
+Requirement already satisfied: triton==3.6.0 in /usr/local/lib/python3.12/dist-packages (from torch->-r requirements.txt (line 14)) (3.6.0)
+Requirement already satisfied: nvidia-cublas-cu12==12.8.4.1.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.8.4.1)
+Requirement already satisfied: nvidia-cuda-runtime-cu12==12.8.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.8.90)
+Requirement already satisfied: nvidia-cufft-cu12==11.3.3.83.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (11.3.3.83)
+Requirement already satisfied: nvidia-cufile-cu12==1.13.1.3.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (1.13.1.3)
+Requirement already satisfied: nvidia-cuda-cupti-cu12==12.8.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.8.90)
+Requirement already satisfied: nvidia-curand-cu12==10.3.9.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (10.3.9.90)
+Requirement already satisfied: nvidia-cusolver-cu12==11.7.3.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (11.7.3.90)
+Requirement already satisfied: nvidia-cusparse-cu12==12.5.8.93.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.5.8.93)
+Requirement already satisfied: nvidia-nvjitlink-cu12==12.8.93.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.8.93)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu12==12.8.93.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.8.93)
+Requirement already satisfied: nvidia-nvtx-cu12==12.8.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r requirements.txt (line 14)) (12.8.90)
+Requirement already satisfied: regex>=2025.10.22 in /usr/local/lib/python3.12/dist-packages (from transformers->-r requirements.txt (line 16)) (2025.11.3)
+Requirement already satisfied: safetensors>=0.4.3 in /usr/local/lib/python3.12/dist-packages (from transformers->-r requirements.txt (line 16)) (0.8.0)
+Requirement already satisfied: iniconfig>=1 in /usr/local/lib/python3.12/dist-packages (from pytest->-r requirements.txt (line 19)) (2.3.0)
+Requirement already satisfied: pluggy<2,>=1.5 in /usr/local/lib/python3.12/dist-packages (from pytest->-r requirements.txt (line 19)) (1.6.0)
+Requirement already satisfied: pygments>=2.7.2 in /usr/local/lib/python3.12/dist-packages (from pytest->-r requirements.txt (line 19)) (2.20.0)
+Requirement already satisfied: idna>=2.8 in /usr/local/lib/python3.12/dist-packages (from anyio<5,>=3.5.0->openai>=2.0.0->-r requirements.txt (line 9)) (3.18)
+Collecting pyproject_hooks (from build>=1.0.3->chromadb->-r requirements.txt (line 5))
+  Downloading pyproject_hooks-1.2.0-py3-none-any.whl.metadata (1.3 kB)
+Requirement already satisfied: cuda-pathfinder~=1.1 in /usr/local/lib/python3.12/dist-packages (from cuda-bindings<13,>=12.9.4->torch->-r requirements.txt (line 14)) (1.5.5)
+Requirement already satisfied: aiohttp!=4.0.0a0,!=4.0.0a1 in /usr/local/lib/python3.12/dist-packages (from fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (3.14.1)
+Requirement already satisfied: certifi in /usr/local/lib/python3.12/dist-packages (from httpx>=0.27.0->chromadb->-r requirements.txt (line 5)) (2026.6.17)
+Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.12/dist-packages (from httpx>=0.27.0->chromadb->-r requirements.txt (line 5)) (1.0.9)
+Requirement already satisfied: h11>=0.16 in /usr/local/lib/python3.12/dist-packages (from httpcore==1.*->httpx>=0.27.0->chromadb->-r requirements.txt (line 5)) (0.16.0)
+Requirement already satisfied: click>=8.4.0 in /usr/local/lib/python3.12/dist-packages (from huggingface-hub>=0.24.0->datasets->-r requirements.txt (line 6)) (8.4.2)
+Requirement already satisfied: hf-xet<2.0.0,>=1.5.1 in /usr/local/lib/python3.12/dist-packages (from huggingface-hub>=0.24.0->datasets->-r requirements.txt (line 6)) (1.5.1)
+Requirement already satisfied: attrs>=22.2.0 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=4.19.0->chromadb->-r requirements.txt (line 5)) (26.1.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=4.19.0->chromadb->-r requirements.txt (line 5)) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=4.19.0->chromadb->-r requirements.txt (line 5)) (0.37.0)
+Requirement already satisfied: rpds-py>=0.25.0 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=4.19.0->chromadb->-r requirements.txt (line 5)) (2026.5.1)
+Requirement already satisfied: six>=1.9.0 in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r requirements.txt (line 5)) (1.17.0)
+Requirement already satisfied: websocket-client!=0.40.0,!=0.41.*,!=0.42.*,>=0.32.0 in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r requirements.txt (line 5)) (1.9.0)
+Requirement already satisfied: requests-oauthlib in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r requirements.txt (line 5)) (2.0.0)
+Requirement already satisfied: urllib3!=2.6.0,>=1.24.2 in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r requirements.txt (line 5)) (2.5.0)
+Collecting durationpy>=0.7 (from kubernetes>=28.1.0->chromadb->-r requirements.txt (line 5))
+  Downloading durationpy-0.10-py3-none-any.whl.metadata (340 bytes)
+Requirement already satisfied: flatbuffers in /usr/local/lib/python3.12/dist-packages (from onnxruntime>=1.14.1->chromadb->-r requirements.txt (line 5)) (25.12.19)
+Requirement already satisfied: protobuf>=4.25.8 in /usr/local/lib/python3.12/dist-packages (from onnxruntime>=1.14.1->chromadb->-r requirements.txt (line 5)) (5.29.6)
+Requirement already satisfied: googleapis-common-protos~=1.57 in /usr/local/lib/python3.12/dist-packages (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb->-r requirements.txt (line 5)) (1.75.0)
+Collecting opentelemetry-exporter-otlp-proto-common==1.43.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb->-r requirements.txt (line 5))
+  Downloading opentelemetry_exporter_otlp_proto_common-1.43.0-py3-none-any.whl.metadata (1.8 kB)
+Collecting opentelemetry-proto==1.43.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb->-r requirements.txt (line 5))
+  Downloading opentelemetry_proto-1.43.0-py3-none-any.whl.metadata (2.3 kB)
+Collecting opentelemetry-sdk>=1.2.0 (from chromadb->-r requirements.txt (line 5))
+  Downloading opentelemetry_sdk-1.43.0-py3-none-any.whl.metadata (1.7 kB)
+Collecting opentelemetry-api>=1.2.0 (from chromadb->-r requirements.txt (line 5))
+  Downloading opentelemetry_api-1.43.0-py3-none-any.whl.metadata (1.4 kB)
+Collecting opentelemetry-semantic-conventions==0.64b0 (from opentelemetry-sdk>=1.2.0->chromadb->-r requirements.txt (line 5))
+  Downloading opentelemetry_semantic_conventions-0.64b0-py3-none-any.whl.metadata (2.4 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.0->chromadb->-r requirements.txt (line 5)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.46.4 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.0->chromadb->-r requirements.txt (line 5)) (2.46.4)
+Requirement already satisfied: typing-inspection>=0.4.2 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.0->chromadb->-r requirements.txt (line 5)) (0.4.2)
+Requirement already satisfied: python-dotenv>=0.21.0 in /usr/local/lib/python3.12/dist-packages (from pydantic-settings>=2.0->chromadb->-r requirements.txt (line 5)) (1.2.2)
+Requirement already satisfied: charset_normalizer<4,>=2 in /usr/local/lib/python3.12/dist-packages (from requests>=2.32.2->datasets->-r requirements.txt (line 6)) (3.4.7)
+Requirement already satisfied: markdown-it-py>=2.2.0 in /usr/local/lib/python3.12/dist-packages (from rich>=10.11.0->chromadb->-r requirements.txt (line 5)) (4.2.0)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /usr/local/lib/python3.12/dist-packages (from sympy>=1.13.3->torch->-r requirements.txt (line 14)) (1.3.0)
+Requirement already satisfied: shellingham>=1.3.0 in /usr/local/lib/python3.12/dist-packages (from typer>=0.9.0->chromadb->-r requirements.txt (line 5)) (1.5.4)
+Requirement already satisfied: annotated-doc>=0.0.2 in /usr/local/lib/python3.12/dist-packages (from typer>=0.9.0->chromadb->-r requirements.txt (line 5)) (0.0.4)
+Requirement already satisfied: httptools>=0.8.0 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r requirements.txt (line 5)) (0.8.0)
+Requirement already satisfied: uvloop>=0.15.1 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r requirements.txt (line 5)) (0.22.1)
+Requirement already satisfied: watchfiles>=0.20 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r requirements.txt (line 5)) (1.2.0)
+Requirement already satisfied: websockets>=10.4 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r requirements.txt (line 5)) (15.0.1)
+Requirement already satisfied: MarkupSafe>=2.0 in /usr/local/lib/python3.12/dist-packages (from jinja2->torch->-r requirements.txt (line 14)) (3.0.3)
+Requirement already satisfied: aiohappyeyeballs>=2.5.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (2.6.2)
+Requirement already satisfied: aiosignal>=1.4.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (1.4.0)
+Requirement already satisfied: frozenlist>=1.1.1 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (1.8.0)
+Requirement already satisfied: multidict<7.0,>=4.5 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (6.7.1)
+Requirement already satisfied: propcache>=0.2.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (0.5.2)
+Requirement already satisfied: yarl<2.0,>=1.17.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r requirements.txt (line 6)) (1.24.2)
+Requirement already satisfied: mdurl~=0.1 in /usr/local/lib/python3.12/dist-packages (from markdown-it-py>=2.2.0->rich>=10.11.0->chromadb->-r requirements.txt (line 5)) (0.1.2)
+Requirement already satisfied: oauthlib>=3.0.0 in /usr/local/lib/python3.12/dist-packages (from requests-oauthlib->kubernetes>=28.1.0->chromadb->-r requirements.txt (line 5)) (3.3.1)
+Downloading chromadb-1.5.9-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (23.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 23.3/23.3 MB 100.9 MB/s eta 0:00:00
+Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl (278 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 278.2/278.2 kB 29.4 MB/s eta 0:00:00
+Downloading build-1.5.1-py3-none-any.whl (31 kB)
+Downloading kubernetes-36.0.2-py2.py3-none-any.whl (4.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.6/4.6 MB 141.7 MB/s eta 0:00:00
+Downloading onnxruntime-1.27.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (18.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 18.7/18.7 MB 138.8 MB/s eta 0:00:00
+Downloading opentelemetry_exporter_otlp_proto_grpc-1.43.0-py3-none-any.whl (19 kB)
+Downloading opentelemetry_exporter_otlp_proto_common-1.43.0-py3-none-any.whl (17 kB)
+Downloading opentelemetry_proto-1.43.0-py3-none-any.whl (72 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 72.5/72.5 kB 8.9 MB/s eta 0:00:00
+Downloading opentelemetry_sdk-1.43.0-py3-none-any.whl (178 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 178.9/178.9 kB 20.6 MB/s eta 0:00:00
+Downloading opentelemetry_api-1.43.0-py3-none-any.whl (61 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 61.9/61.9 kB 7.3 MB/s eta 0:00:00
+Downloading opentelemetry_semantic_conventions-0.64b0-py3-none-any.whl (203 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 203.7/203.7 kB 23.3 MB/s eta 0:00:00
+Downloading overrides-7.7.0-py3-none-any.whl (17 kB)
+Downloading pybase64-1.4.3-cp312-cp312-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (71 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 71.6/71.6 kB 8.5 MB/s eta 0:00:00
+Downloading pydantic_settings-2.14.2-py3-none-any.whl (61 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 61.7/61.7 kB 7.1 MB/s eta 0:00:00
+Downloading pypika-0.51.1-py2.py3-none-any.whl (60 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.6/60.6 kB 7.3 MB/s eta 0:00:00
+Downloading durationpy-0.10-py3-none-any.whl (3.9 kB)
+Downloading pyproject_hooks-1.2.0-py3-none-any.whl (10 kB)
+Installing collected packages: pypika, durationpy, pyproject_hooks, pybase64, overrides, opentelemetry-proto, opentelemetry-api, onnxruntime, bcrypt, opentelemetry-semantic-conventions, opentelemetry-exporter-otlp-proto-common, build, pydantic-settings, opentelemetry-sdk, kubernetes, opentelemetry-exporter-otlp-proto-grpc, chromadb
+  Attempting uninstall: opentelemetry-api
+    Found existing installation: opentelemetry-api 1.42.1
+    Uninstalling opentelemetry-api-1.42.1:
+      Successfully uninstalled opentelemetry-api-1.42.1
+  Attempting uninstall: opentelemetry-semantic-conventions
+    Found existing installation: opentelemetry-semantic-conventions 0.63b1
+    Uninstalling opentelemetry-semantic-conventions-0.63b1:
+      Successfully uninstalled opentelemetry-semantic-conventions-0.63b1
+  Attempting uninstall: opentelemetry-sdk
+    Found existing installation: opentelemetry-sdk 1.42.1
+    Uninstalling opentelemetry-sdk-1.42.1:
+      Successfully uninstalled opentelemetry-sdk-1.42.1
+Successfully installed bcrypt-5.0.0 build-1.5.1 chromadb-1.5.9 durationpy-0.10 kubernetes-36.0.2 onnxruntime-1.27.0 opentelemetry-api-1.43.0 opentelemetry-exporter-otlp-proto-common-1.43.0 opentelemetry-exporter-otlp-proto-grpc-1.43.0 opentelemetry-proto-1.43.0 opentelemetry-sdk-1.43.0 opentelemetry-semantic-conventions-0.64b0 overrides-7.7.0 pybase64-1.4.3 pydantic-settings-2.14.2 pypika-0.51.1 pyproject_hooks-1.2.0
+
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+google-adk 2.3.0 requires opentelemetry-api<=1.42.1,>=1.39, but you have opentelemetry-api 1.43.0 which is incompatible.
+google-adk 2.3.0 requires opentelemetry-sdk<=1.42.1,>=1.39, but you have opentelemetry-sdk 1.43.0 which is incompatible.
+
+pip return code = 0
+Jiaozi repository: /content/Jiaozi
+Jiaozi repo URL: https://github.com/muzhi-hac/Jiaozi-rag-wang.git
+Jiaozi ref: rag_wang
+pipeline.py candidates:
+ - /content/Jiaozi/pipeline.py
+
+=== Cell 4 | execution_count=2 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Stored optional KAGGLE_API_TOKEN at ~/.kaggle/access_token
+
+=== Cell 6 | execution_count=None | outputs=0 ===
+[no stored output]
+
+=== Cell 7 | execution_count=None | outputs=0 ===
+[no stored output]
+
+=== Cell 9 | execution_count=7 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Mounted at /content/drive
+HF_HOME = /content/drive/MyDrive/Jiaozi/hf_cache
+First run downloads the dataset to Drive; later runs reuse it (no 12-min re-download).
+Note: reading from Drive (FUSE) is a bit slower than local disk, but far faster than re-downloading.
+
+=== Cell 11 | execution_count=8 | outputs=3 ===
+--- output 0 ---
+[stream:stdout]
+Current working directory: /content/Jiaozi
+Using pipeline: /content/Jiaozi/pipeline.py
+Prepared local Kaggle data:
+{
+  "benchmark": "plant_pathology_2020",
+  "competition": "plant-pathology-2020-fgvc7",
+  "train_csv": "/content/data/plant-pathology-2020-fgvc7/jiaozi_train.csv",
+  "image_dir": "/content/data/plant-pathology-2020-fgvc7/images",
+  "image_column": "image_id",
+  "label_column": "label",
+  "image_path_template": "{image}",
+  "image_extension": ".jpg",
+  "num_classes": 4,
+  "metric": "roc_auc"
+}
+Class distribution:
+label
+rust                 622
+scab                 592
+healthy              516
+multiple_diseases     91
+[Notebook] Module 1: Parsing user requirements...
+[Notebook] Module 2: Analyzing sampled real Kaggle images...
+[Notebook] Merged: task=classification size=small classes=4 metric=roc_auc
+[Notebook] Module 3: Retrieving model configurations...
+--- output 1 ---
+[display_data:text/plain]
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+--- output 2 ---
+[stream:stdout]
+[Index] Added 18 backbone entries and refreshed 18 total entries.
+
+──────────────────────────────────────────────────────────────────────
+Task   : classification
+Input  : size=small  priority=accuracy
+Desc   : Classify plant leaf images from the Plant Pathology Kaggle dataset to recognize healthy, multiple diseases, rust, and scab. Accuracy and mean ROC AUC matter more than speed.
+──────────────────────────────────────────────────────────────────────
+
+Top 1  [score=0.945  struct=1.0  vec=0.862]
+  backbone  : DINOv3
+  head      : Classification Head
+  loss      : CrossEntropyLoss
+  optimizer : AdamW
+  pretrained: DINOv3-B/16 / LVD-1689M
+               facebook/dinov3-vitb16-pretrain-lvd1689m  (LVD-1689M (self-supervised), 86M)
+               strategy: partial finetune last 2 blocks
+  training  : pretrained weights required (insufficient data to train from scratch)
+
+Top 2  [score=0.704  struct=0.786  vec=0.582]
+  backbone  : DINOv2
+  head      : Classification Head
+  loss      : CrossEntropyLoss
+  optimizer : AdamW
+  pretrained: DINOv2-Base
+               facebook/dinov2-base  (LVD-142M (self-supervised), 86M)
+               strategy: freeze backbone, train head only
+  training  : pretrained weights required (insufficient data to train from scratch)
+  alt       : DINOv3
+
+Top 3  [score=0.629  struct=0.381  vec=1.0]
+  backbone  : EfficientNet
+  head      : Classification Head
+  loss      : CrossEntropyLoss
+  optimizer : Adam
+  pretrained: EfficientNet-B0 / ImageNet-1k
+               google/efficientnet-b0  (ImageNet-1k, 5M)
+               strategy: freeze backbone, train head only
+  training  : pretrained weights required (insufficient data to train from scratch)
+  alt       : ResNet, MobileNetV3
+
+[Notebook] Recommender re-ranked candidates.
+Module 4 summary: /content/jiaozi_generated_pipeline/module4_summary.json
+
+=== Cell 12 | execution_count=9 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+{
+  "candidates": [
+    {
+      "backbone": "dinov3",
+      "finetune_strategy": "partial",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "rank": 1,
+      "score": 0.945,
+      "task_type": "classification"
+    },
+    {
+      "backbone": "dinov3",
+      "finetune_strategy": "partial",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "rank": 2,
+      "score": 0.945,
+      "task_type": "classification"
+    },
+    {
+      "backbone": "dinov2",
+      "finetune_strategy": "head_only",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "rank": 3,
+      "score": 0.704,
+      "task_type": "classification"
+    },
+    {
+      "backbone": "efficientnet",
+      "finetune_strategy": "head_only",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adam",
+      "rank": 4,
+      "score": 0.629,
+      "task_type": "classification"
+    }
+  ],
+  "errors": [],
+  "generated_files": [
+    "README_generated.md",
+    "configs.json",
+    "evaluate.py",
+    "generation_info.json",
+    "infer.py",
+    "model.py",
+    "model_utils.py",
+    "module4_summary.json",
+    "requirements.txt",
+    "run.py",
+    "run_experiments.py",
+    "smoke_data.py",
+    "train.py",
+    "utils.py"
+  ],
+  "iteration_history": [
+    {
+      "errors": [],
+      "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+      "is_approved": true,
+      "iteration": 1,
+      "smoke_skipped": true,
+      "smoke_success": true,
+      "warnings": [
+        "Smoke tests were skipped by request; approval is static-only."
+      ]
+    }
+  ],
+  "iterations": 1,
+  "num_candidates": 4,
+  "output_dir": "/content/jiaozi_generated_pipeline",
+  "refinement_summary": null,
+  "review": {
+    "errors": [],
+    "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+    "is_approved": true,
+    "warnings": [
+      "Smoke tests were skipped by request; approval is static-only."
+    ]
+  },
+  "review_feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+  "smoke": {
+    "commands": [],
+    "runtime_sec": 0.0,
+    "skipped": true,
+    "success": true
+  },
+  "smoke_success": true,
+  "status": "approved",
+  "warnings": [
+    "Smoke tests were skipped by request; approval is static-only."
+  ]
+}
+
+Generated files:
+README_generated.md
+configs.json
+evaluate.py
+generation_info.json
+infer.py
+model.py
+model_utils.py
+module3_candidates.json
+module4_summary.json
+requirements.txt
+run.py
+run_experiments.py
+smoke_data.py
+train.py
+utils.py
+
+=== Cell 14 | execution_count=10 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Checkpoints -> /content/drive/MyDrive/Jiaozi/checkpoints/dinov3__content_data_plant-pathology-2020-fgvc7_jiaozi_train.csv (resume: auto)
+Training dinov3 for 40 epochs on /content/data/plant-pathology-2020-fgvc7/jiaozi_train.csv ...
+Command: /usr/bin/python3 -u run.py --epochs 40 (cwd: /content/jiaozi_generated_pipeline )
+
+
+Real training finished. Checkpoints under: /content/drive/MyDrive/Jiaozi/checkpoints/dinov3__content_data_plant-pathology-2020-fgvc7_jiaozi_train.csv
+
+=== Cell 16 | execution_count=11 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+=== RESULT (best checkpoint) ===
+checkpoint : /content/drive/MyDrive/Jiaozi/checkpoints/dinov3__content_data_plant-pathology-2020-fgvc7_jiaozi_train.csv/best_model.pt
+best_epoch : 40
+best_metric: 0.976634685523388 (validation metric at best epoch — no re-eval)
+validation : {"metric_name": "roc_auc", "metric_value": 0.976634685523388, "accuracy": 0.9146005511283875, "epoch": 40}
+
+=== Cell 17 | execution_count=12 | outputs=3 ===
+--- output 0 ---
+[display_data:text/plain]
+Loading weights:   0%|          | 0/211 [00:00<?, ?it/s]
+--- output 1 ---
+[stream:stdout]
+Wrote: /content/jiaozi_generated_pipeline/submission.csv
+--- output 2 ---
+[display_data:text/plain]
+  image_id       healthy  multiple_diseases      rust          scab
+0   Test_0  4.271935e-06           0.000626  0.999364  5.362394e-06
+1   Test_1  1.515947e-06           0.055395  0.944187  4.165002e-04
+2   Test_2  6.527573e-05           0.000193  0.000006  9.997351e-01
+3   Test_3  9.991092e-01           0.000001  0.000094  7.957070e-04
+4   Test_4  5.117315e-08           0.000178  0.999821  6.894422e-07
+[display_data:rich output omitted from text log: text/html]
+
+=== Cell 18 | execution_count=None | outputs=0 ===
+[no stored output]

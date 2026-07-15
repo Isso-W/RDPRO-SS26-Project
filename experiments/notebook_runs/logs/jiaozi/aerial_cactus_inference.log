@@ -1,0 +1,54 @@
+Notebook: jiaozi/aerial_cactus_inference.ipynb
+Competition: Aerial Cactus Identification (inference)
+Workflow: jiaozi
+Source archive: agent_final_submission.zip
+Source archive SHA-256: 17e393c460781267c89f2df86636676e1f421d55536aa4d9413166de690235ae
+Source notebook SHA-256: 3d00c21a42c897cce23d49199ca4248d6c2bfdf8eec9f2d1ab9e2885e9adb4f0
+Stored output status: submission_file_ready
+
+=== Cell 2 | execution_count=1 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+torch: 2.10.0+cu128
+GPU available: True
+competition root: /kaggle/input/competitions/aerial-cactus-identification
+sample submission: /kaggle/input/competitions/aerial-cactus-identification/sample_submission.csv
+checkpoint: /kaggle/input/datasets/baron66/jiaozi-aerial-cactus-dinov3-assets/best_model.pt
+test rows: 4000
+
+=== Cell 3 | execution_count=2 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+backbone tensors restored: 211/211 (100.0%)
+classification head: head.classifier.weight (2, 768)
+best epoch: 10
+best validation ROC-AUC: 0.9998905541231663
+device: cuda
+
+=== Cell 4 | execution_count=3 | outputs=2 ===
+--- output 0 ---
+[stream:stdout]
+Extracting Kaggle test archive: /kaggle/input/competitions/aerial-cactus-identification/test.zip
+[infer] batch 1/63
+[infer] batch 10/63
+[infer] batch 20/63
+[infer] batch 30/63
+[infer] batch 40/63
+[infer] batch 50/63
+[infer] batch 60/63
+[infer] batch 63/63
+
+=== KAGGLE SUBMISSION READY ===
+file: /kaggle/working/submission.csv
+shape: (4000, 2)
+probability range: 7.68579297427685e-11 to 1.0
+probability std: 0.43233570756133344
+--- output 1 ---
+[display_data:text/plain]
+                                     id    has_cactus
+0  000940378805c44108d287872b2f04ce.jpg  1.000000e+00
+1  0017242f54ececa4512b4d7937d1e21e.jpg  1.000000e+00
+2  001ee6d8564003107853118ab87df407.jpg  4.793755e-07
+3  002e175c3c1e060769475f52182583d0.jpg  7.750694e-07
+4  0036e44a7e8f7218e9bc7bf8137e4943.jpg  9.999611e-01
+[display_data:rich output omitted from text log: text/html]

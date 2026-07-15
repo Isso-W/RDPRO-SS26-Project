@@ -1,0 +1,82 @@
+Notebook: jiaozi/ranzcr_clip_inference.ipynb
+Competition: RANZCR CLiP (inference)
+Workflow: jiaozi
+Source archive: agent_final_submission.zip
+Source archive SHA-256: 17e393c460781267c89f2df86636676e1f421d55536aa4d9413166de690235ae
+Source notebook SHA-256: 32ab7be134c62c0fdada065bbe0cbbc3566d2893c8055df7d37d3ed016e244f2
+Stored output status: submission_file_ready
+
+=== Cell 2 | execution_count=1 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+torch: 2.10.0+cu128
+GPU available: True
+competition root: /kaggle/input/competitions/ranzcr-clip-catheter-line-classification
+sample submission: /kaggle/input/competitions/ranzcr-clip-catheter-line-classification/sample_submission.csv
+checkpoint: /kaggle/input/datasets/baron66/jiaozi-ranzcr-dinov3-assets-v2/best_model.pt
+test rows: 3582
+target labels: 11
+best epoch: 16
+validation mean ROC-AUC: 0.8577258824877178
+
+=== Cell 3 | execution_count=2 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+model tensors restored: 213
+DINOv3 compatibility keys renamed: 204
+strict checkpoint validation: PASSED
+classification head: (11, 768)
+device: cuda
+
+=== Cell 4 | execution_count=3 | outputs=2 ===
+--- output 0 ---
+[stream:stdout]
+[infer] batch 1/112
+[infer] batch 10/112
+[infer] batch 20/112
+[infer] batch 30/112
+[infer] batch 40/112
+[infer] batch 50/112
+[infer] batch 60/112
+[infer] batch 70/112
+[infer] batch 80/112
+[infer] batch 90/112
+[infer] batch 100/112
+[infer] batch 110/112
+[infer] batch 112/112
+
+=== KAGGLE SUBMISSION READY ===
+file: /kaggle/working/submission.csv
+shape: (3582, 12)
+probability range: 5.960464477539063e-08 to 1.0
+probability std: 0.2901637591789588
+--- output 1 ---
+[display_data:text/plain]
+                                    StudyInstanceUID  ETT - Abnormal  \
+0  1.2.826.0.1.3680043.8.498.46923145579096002617...        0.453125
+1  1.2.826.0.1.3680043.8.498.84006870182611080091...        0.000636
+2  1.2.826.0.1.3680043.8.498.12219033294413119947...        0.000035
+3  1.2.826.0.1.3680043.8.498.84994474380235968109...        0.456787
+4  1.2.826.0.1.3680043.8.498.35798987793805669662...        0.000118
+
+   ETT - Borderline  ETT - Normal  NGT - Abnormal  NGT - Borderline  \
+0          0.923340      0.810059        0.094849          0.405762
+1          0.000436      0.000177        0.000296          0.002714
+2          0.000098      0.000457        0.000225          0.001192
+3          0.763184      0.249756        0.722656          0.062805
+4          0.001245      0.000521        0.000823          0.009712
+
+   NGT - Incompletely Imaged  NGT - Normal  CVC - Abnormal  CVC - Borderline  \
+0                   0.434814      0.944336        0.232788          0.394043
+1                   0.006050      0.005161        0.449951          0.416504
+2                   0.000358      0.000989        0.142578          0.336182
+3                   0.927734      0.119385        0.597168          0.567383
+4                   0.000043      0.012825        0.174316          0.335205
+
+   CVC - Normal  Swan Ganz Catheter Present
+0      0.941406                1.000000e+00
+1      0.708984                1.937151e-05
+2      0.840820                4.649162e-06
+3      0.586914                6.587982e-03
+4      0.812988                7.152557e-07
+[display_data:rich output omitted from text log: text/html]

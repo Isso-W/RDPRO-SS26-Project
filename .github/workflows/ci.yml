@@ -32,7 +32,8 @@ jobs:
         run: |
           python -m unittest test_pipeline.py -v
           (cd retrieval && python -m unittest test_rag_retrieval.py test_golden.py -v)
-          python -m pytest module4_agent/tests recipe/tests kb_mining/tests experiments/ab_loss_imbalance/tests -q
+          python -m pytest module4_agent/tests recipe/tests kb_mining/tests \
+            experiments/ab_loss_imbalance/tests experiments/notebook_runs/test_evidence.py -q
       - name: Run offline Module 4 smoke
         env:
           M4_LLM_PROVIDER: none

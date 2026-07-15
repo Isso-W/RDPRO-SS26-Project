@@ -1,0 +1,1873 @@
+Notebook: jiaozi/global_wheat_detection.ipynb
+Competition: Global Wheat Detection
+Workflow: jiaozi
+Source archive: jiaozi.zip
+Source archive SHA-256: 4d578802aaa3f1f56f00fd8360b3efde768dc33caacfbc2c8b9fedacb5aba3c0
+Source notebook SHA-256: e298c0b6773ddde3a77045dc66d0da8a9071d9350c7b7ecff80755ce8b01db6c
+Stored output status: validation_complete_submission_blocked
+
+=== Cell 2 | execution_count=1 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Current working directory: /content
+REPO_URL = https://github.com/muzhi-hac/Jiaozi-rag-wang.git
+REPO_REF = rag_wang
+REPO_DIR = /content/Jiaozi
+Running: git clone --depth 1 --branch rag_wang https://github.com/muzhi-hac/Jiaozi-rag-wang.git /content/Jiaozi
+=== git stdout ===
+
+=== git stderr ===
+Cloning into '/content/Jiaozi'...
+
+Repo cloned successfully.
+Current working directory: /content/Jiaozi
+Top-level files:
+ - .env.example
+ - .git
+ - .gitignore
+ - CLAUDE.md
+ - LICENSE
+ - README.md
+ - analyzer
+ - build_vision_benchmarks_notebook.py
+ - configs
+ - cost_meter.py
+ - dataset_analyzer.py
+ - docs
+ - env_loader.py
+ - features
+ - features_extraction_api.py
+ - ingestion
+ - integration_update_colab.ipynb
+ - kaggle_benchmark_colab.ipynb
+ - kaggle_submit.py
+ - main.py
+ - module4_agent
+ - pipeline.py
+ - processors
+ - pyproject.toml
+ - recommender
+ - report.md
+ - requirements.txt
+ - retrieval
+ - run_and_log.py
+ - run_for_testing.py
+ - run_kaggle_benchmark.py
+ - skrub_pipeline.py
+ - test_pipeline.py
+ - vision_benchmark_catalog.py
+ - vision_benchmarks_colab.ipynb
+
+=== Cell 3 | execution_count=2 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Stored optional KAGGLE_API_TOKEN at ~/.kaggle/access_token
+[Cell 3] No HF_TOKEN found.
+
+=== Cell 4 | execution_count=3 | outputs=2 ===
+--- output 0 ---
+[stream:stdout]
+Running: /usr/bin/python3 -m pip install --upgrade pip setuptools wheel
+=== pip stdout ===
+Requirement already satisfied: pip in /usr/local/lib/python3.12/dist-packages (24.1.2)
+Collecting pip
+  Downloading pip-26.1.2-py3-none-any.whl.metadata (4.6 kB)
+Requirement already satisfied: setuptools in /usr/local/lib/python3.12/dist-packages (75.2.0)
+Collecting setuptools
+  Downloading setuptools-83.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: wheel in /usr/local/lib/python3.12/dist-packages (0.47.0)
+Requirement already satisfied: packaging>=24.0 in /usr/local/lib/python3.12/dist-packages (from wheel) (26.2)
+Downloading pip-26.1.2-py3-none-any.whl (1.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 82.5 MB/s eta 0:00:00
+Downloading setuptools-83.0.0-py3-none-any.whl (1.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 70.2 MB/s eta 0:00:00
+Installing collected packages: setuptools, pip
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 75.2.0
+    Uninstalling setuptools-75.2.0:
+      Successfully uninstalled setuptools-75.2.0
+  Attempting uninstall: pip
+    Found existing installation: pip 24.1.2
+    Uninstalling pip-24.1.2:
+      Successfully uninstalled pip-24.1.2
+Successfully installed pip-26.1.2 setuptools-83.0.0
+
+=== pip stderr ===
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+ipython 7.34.0 requires jedi>=0.16, which is not installed.
+torch 2.11.0+cu128 requires setuptools<82, but you have setuptools 83.0.0 which is incompatible.
+
+return code = 0
+Running: /usr/bin/python3 -m pip install --upgrade kaggle pycocotools
+=== pip stdout ===
+Requirement already satisfied: kaggle in /usr/local/lib/python3.12/dist-packages (2.0.2)
+Collecting kaggle
+  Downloading kaggle-2.2.3-py3-none-any.whl.metadata (16 kB)
+Requirement already satisfied: pycocotools in /usr/local/lib/python3.12/dist-packages (2.0.11)
+Requirement already satisfied: bleach in /usr/local/lib/python3.12/dist-packages (from kaggle) (6.4.0)
+Requirement already satisfied: jupytext in /usr/local/lib/python3.12/dist-packages (from kaggle) (1.19.4)
+Collecting kagglesdk<1.0,>=0.1.30 (from kaggle)
+  Downloading kagglesdk-0.1.34-py3-none-any.whl.metadata (13 kB)
+Requirement already satisfied: packaging in /usr/local/lib/python3.12/dist-packages (from kaggle) (26.2)
+Requirement already satisfied: protobuf in /usr/local/lib/python3.12/dist-packages (from kaggle) (5.29.6)
+Requirement already satisfied: python-dateutil in /usr/local/lib/python3.12/dist-packages (from kaggle) (2.9.0.post0)
+Requirement already satisfied: python-dotenv in /usr/local/lib/python3.12/dist-packages (from kaggle) (1.2.2)
+Requirement already satisfied: python-slugify in /usr/local/lib/python3.12/dist-packages (from kaggle) (8.0.4)
+Requirement already satisfied: requests in /usr/local/lib/python3.12/dist-packages (from kaggle) (2.32.4)
+Requirement already satisfied: tqdm in /usr/local/lib/python3.12/dist-packages (from kaggle) (4.67.3)
+Requirement already satisfied: urllib3>=1.15.1 in /usr/local/lib/python3.12/dist-packages (from kaggle) (2.5.0)
+Requirement already satisfied: numpy in /usr/local/lib/python3.12/dist-packages (from pycocotools) (2.0.2)
+Requirement already satisfied: webencodings in /usr/local/lib/python3.12/dist-packages (from bleach->kaggle) (0.5.1)
+Requirement already satisfied: markdown-it-py>=1.0 in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (4.2.0)
+Requirement already satisfied: mdit-py-plugins in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (0.6.1)
+Requirement already satisfied: nbformat in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (5.10.4)
+Requirement already satisfied: pyyaml in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (6.0.3)
+Requirement already satisfied: mdurl~=0.1 in /usr/local/lib/python3.12/dist-packages (from markdown-it-py>=1.0->jupytext->kaggle) (0.1.2)
+Requirement already satisfied: fastjsonschema>=2.15 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (2.21.2)
+Requirement already satisfied: jsonschema>=2.6 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (4.26.0)
+Requirement already satisfied: jupyter-core!=5.0.*,>=4.12 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (5.9.1)
+Requirement already satisfied: traitlets>=5.1 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (5.7.1)
+Requirement already satisfied: attrs>=22.2.0 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (26.1.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (0.37.0)
+Requirement already satisfied: rpds-py>=0.25.0 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (2026.5.1)
+Requirement already satisfied: platformdirs>=2.5 in /usr/local/lib/python3.12/dist-packages (from jupyter-core!=5.0.*,>=4.12->nbformat->jupytext->kaggle) (4.10.0)
+Requirement already satisfied: typing-extensions>=4.4.0 in /usr/local/lib/python3.12/dist-packages (from referencing>=0.28.4->jsonschema>=2.6->nbformat->jupytext->kaggle) (4.15.0)
+Requirement already satisfied: six>=1.5 in /usr/local/lib/python3.12/dist-packages (from python-dateutil->kaggle) (1.17.0)
+Requirement already satisfied: text-unidecode>=1.3 in /usr/local/lib/python3.12/dist-packages (from python-slugify->kaggle) (1.3)
+Requirement already satisfied: charset_normalizer<4,>=2 in /usr/local/lib/python3.12/dist-packages (from requests->kaggle) (3.4.7)
+Requirement already satisfied: idna<4,>=2.5 in /usr/local/lib/python3.12/dist-packages (from requests->kaggle) (3.18)
+Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.12/dist-packages (from requests->kaggle) (2026.6.17)
+Downloading kaggle-2.2.3-py3-none-any.whl (111 kB)
+Downloading kagglesdk-0.1.34-py3-none-any.whl (247 kB)
+Installing collected packages: kagglesdk, kaggle
+  Attempting uninstall: kagglesdk
+    Found existing installation: kagglesdk 0.1.23
+    Uninstalling kagglesdk-0.1.23:
+      Successfully uninstalled kagglesdk-0.1.23
+  Attempting uninstall: kaggle
+    Found existing installation: kaggle 2.0.2
+    Uninstalling kaggle-2.0.2:
+      Successfully uninstalled kaggle-2.0.2
+
+Successfully installed kaggle-2.2.3 kagglesdk-0.1.34
+
+=== pip stderr ===
+
+return code = 0
+Kaggle access token configured.
+--- output 1 ---
+[execute_result:text/plain]
+CompletedProcess(args=['kaggle', '--version'], returncode=0)
+
+=== Cell 5 | execution_count=4 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Downloading global-wheat-detection.zip to /content/data
+100% 607M/607M [00:30<00:00, 21.0MB/s]
+
+
+=== Cell 6 | execution_count=5 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Zip files: [PosixPath('/content/data/global-wheat-detection.zip')]
+Extracting: /content/data/global-wheat-detection.zip
+To: /content/data/global-wheat-detection
+Done.
+KAGGLE_DATA_DIR = /content/data/global-wheat-detection
+Top-level files:
+ - sample_submission.csv
+ - test
+ - train
+ - train.csv
+
+=== Cell 8 | execution_count=6 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Mounted at /content/drive
+HF_HOME = /content/hf_cache
+First run downloads the dataset to Drive; later runs reuse it (no 12-min re-download).
+Note: reading from Drive (FUSE) is a bit slower than local disk, but far faster than re-downloading.
+
+=== Cell 10 | execution_count=7 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+ipython 7.34.0 requires jedi>=0.16, which is not installed.
+google-adk 2.3.0 requires opentelemetry-api<=1.42.1,>=1.39, but you have opentelemetry-api 1.43.0 which is incompatible.
+google-adk 2.3.0 requires opentelemetry-sdk<=1.42.1,>=1.39, but you have opentelemetry-sdk 1.43.0 which is incompatible.
+
+=== Cell 11 | execution_count=8 | outputs=14 ===
+--- output 0 ---
+[stream:stdout]
+==========================================================================================
+[Global Wheat] keep Jiaozi core: QUERY -> Module1 -> Module2 -> Module3 -> Module4
+QUERY passed to Jiaozi:
+Task: Global Wheat Detection, dense object detection for wheat head detection in field images. Dataset: Kaggle Global Wheat Detection. Input images are RGB wheat field images. Each image can contain many wheat heads. Training labels are bounding boxes, not image-level classes. The train.csv file contains image_id and bbox columns, where bbox is in [x, y, width, height] format. This is an object detection task, not a classification task. The agent should autonomously select the detection model, preprocessing, augmentation, optimizer, loss, and evaluation pipeline. The evaluation metric is mean average precision over IoU thresholds from 0.50 to 0.75, i.e. mAP@0.50:0.75. Do not use validation loss as the final evaluation metric. The generated pipeline should report local validation mAP@0.50:0.75 and use it to select the best checkpoint. The Kaggle submission format must contain image_id and PredictionString, where PredictionString is a sequence of score x y width height values.
+check: /content/data/global-wheat-detection/train.csv exists= True
+check: /content/data/global-wheat-detection/sample_submission.csv exists= True
+check: /content/data/global-wheat-detection/train exists= True
+check: /content/data/global-wheat-detection/test exists= True
+train.csv shape: (147793, 5)
+columns: ['image_id', 'width', 'height', 'bbox', 'source']
+    image_id  width  height                         bbox   source
+0  b6ab77fd7   1024    1024   [834.0, 222.0, 56.0, 36.0]  usask_1
+1  b6ab77fd7   1024    1024  [226.0, 548.0, 130.0, 58.0]  usask_1
+2  b6ab77fd7   1024    1024  [377.0, 504.0, 74.0, 160.0]  usask_1
+3  b6ab77fd7   1024    1024  [834.0, 95.0, 109.0, 107.0]  usask_1
+4  b6ab77fd7   1024    1024  [26.0, 144.0, 124.0, 117.0]  usask_1
+processed_bbox_csv: /content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv
+bbox rows: 147793 unique images: 3373
+count    3373.000000
+mean       43.816484
+std        20.374820
+min         1.000000
+25%        28.000000
+50%        43.000000
+75%        59.000000
+max       116.000000
+Name: num_boxes, dtype: float64
+{
+  "benchmark": "global_wheat_detection",
+  "competition": "global-wheat-detection",
+  "task_type": "object_detection",
+  "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+  "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+  "image_dir": "/content/data/global-wheat-detection/train",
+  "test_image_dir": "/content/data/global-wheat-detection/test",
+  "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+  "image_column": "image",
+  "image_id_column": "image_id",
+  "bbox_format": "xywh",
+  "detector_bbox_format": "xyxy",
+  "num_object_classes": 1,
+  "num_classes": 2,
+  "class_names": [
+    "background",
+    "wheat_head"
+  ],
+  "metric": "detection_map",
+  "submission_format": "image_id,PredictionString"
+}
+
+[Jiaozi Module 1]
+{
+  "task_type": "object_detection",
+  "data_size": "medium",
+  "priority": "balanced",
+  "constraints": {
+    "real_time": false,
+    "edge_deployment": false,
+    "class_imbalance": false,
+    "cross_modal": false,
+    "medical": false,
+    "zero_shot": false,
+    "few_shot": false
+  },
+  "evaluation_metric": "accuracy",
+  "description": "Task: Global Wheat Detection, dense object detection for wheat head detection in field images. Dataset: Kaggle Global Wheat Detection. Input images are RGB wheat field images. Each image can contain many wheat heads. Training labels are bounding boxes, not image-level classes. The train.csv file contains image_id and bbox columns, where bbox is in [x, y, width, height] format. This is an object detection task, not a classification task. The agent should autonomously select the detection model, preprocessing, augmentation, optimizer, loss, and evaluation pipeline. The evaluation metric is mean average precision over IoU thresholds from 0.50 to 0.75, i.e. mAP@0.50:0.75. Do not use validation loss as the final evaluation metric. The generated pipeline should report local validation mAP@0.50:0.75 and use it to select the best checkpoint. The Kaggle submission format must contain image_id and PredictionString, where PredictionString is a sequence of score x y width height values."
+}
+
+[Jiaozi Module 2]
+{
+  "split_sizes": {
+    "train": 200
+  },
+  "total_images": 200,
+  "num_classes": 1,
+  "class_distribution": {
+    "1": 200
+  },
+  "annotation_format": "classification",
+  "min_width": 1024,
+  "max_width": 1024,
+  "avg_width": 1024.0,
+  "min_height": 1024,
+  "max_height": 1024,
+  "avg_height": 1024.0,
+  "mode_distribution": {
+    "RGB": 200
+  },
+  "format_distribution": {
+    "None": 200
+  },
+  "metadata_sample_size": 200
+}
+
+[Merged input to Module 3]
+{
+  "task_type": "object_detection",
+  "data_size": "small",
+  "priority": "balanced",
+  "constraints": {
+    "real_time": false,
+    "edge_deployment": false,
+    "class_imbalance": false,
+    "cross_modal": false,
+    "medical": false,
+    "zero_shot": false,
+    "few_shot": false
+  },
+  "evaluation_metric": "detection_map",
+  "description": "Task: Global Wheat Detection, dense object detection for wheat head detection in field images. Dataset: Kaggle Global Wheat Detection. Input images are RGB wheat field images. Each image can contain many wheat heads. Training labels are bounding boxes, not image-level classes. The train.csv file contains image_id and bbox columns, where bbox is in [x, y, width, height] format. This is an object detection task, not a classification task. The agent should autonomously select the detection model, preprocessing, augmentation, optimizer, loss, and evaluation pipeline. The evaluation metric is mean average precision over IoU thresholds from 0.50 to 0.75, i.e. mAP@0.50:0.75. Do not use validation loss as the final evaluation metric. The generated pipeline should report local validation mAP@0.50:0.75 and use it to select the best checkpoint. The Kaggle submission format must contain image_id and PredictionString, where PredictionString is a sequence of score x y width height values.",
+  "num_classes": 2,
+  "problem_type": "dense_object_detection",
+  "num_object_classes": 1,
+  "label_type": "bounding_boxes",
+  "bbox_format": "xywh",
+  "submission_format": "image_id,PredictionString"
+}
+
+[Jiaozi Module 3]
+--- output 1 ---
+[display_data:text/plain]
+modules.json:   0%|          | 0.00/349 [00:00<?, ?B/s]
+--- output 2 ---
+[display_data:text/plain]
+config_sentence_transformers.json:   0%|          | 0.00/116 [00:00<?, ?B/s]
+--- output 3 ---
+[display_data:text/plain]
+README.md:   0%|          | 0.00/10.5k [00:00<?, ?B/s]
+--- output 4 ---
+[display_data:text/plain]
+sentence_bert_config.json:   0%|          | 0.00/53.0 [00:00<?, ?B/s]
+--- output 5 ---
+[display_data:text/plain]
+config.json:   0%|          | 0.00/612 [00:00<?, ?B/s]
+--- output 6 ---
+[display_data:text/plain]
+model.safetensors:   0%|          | 0.00/90.9M [00:00<?, ?B/s]
+--- output 7 ---
+[display_data:text/plain]
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+--- output 8 ---
+[display_data:text/plain]
+tokenizer_config.json:   0%|          | 0.00/350 [00:00<?, ?B/s]
+--- output 9 ---
+[display_data:text/plain]
+vocab.txt:   0%|          | 0.00/232k [00:00<?, ?B/s]
+--- output 10 ---
+[display_data:text/plain]
+tokenizer.json:   0%|          | 0.00/466k [00:00<?, ?B/s]
+--- output 11 ---
+[display_data:text/plain]
+special_tokens_map.json:   0%|          | 0.00/112 [00:00<?, ?B/s]
+--- output 12 ---
+[display_data:text/plain]
+config.json:   0%|          | 0.00/190 [00:00<?, ?B/s]
+--- output 13 ---
+[stream:stdout]
+[Index] Added 18 backbone entries and refreshed 18 total entries.
+
+──────────────────────────────────────────────────────────────────────
+Task   : object_detection
+Input  : size=small  priority=balanced
+Desc   : Task: Global Wheat Detection, dense object detection for wheat head detection in field images. Dataset: Kaggle Global Wheat Detection. Input images are RGB wheat field images. Each image can contain many wheat heads. Training labels are bounding boxes, not image-level classes. The train.csv file contains image_id and bbox columns, where bbox is in [x, y, width, height] format. This is an object detection task, not a classification task. The agent should autonomously select the detection model, preprocessing, augmentation, optimizer, loss, and evaluation pipeline. The evaluation metric is mean average precision over IoU thresholds from 0.50 to 0.75, i.e. mAP@0.50:0.75. Do not use validation loss as the final evaluation metric. The generated pipeline should report local validation mAP@0.50:0.75 and use it to select the best checkpoint. The Kaggle submission format must contain image_id and PredictionString, where PredictionString is a sequence of score x y width height values.
+──────────────────────────────────────────────────────────────────────
+
+Top 1  [score=1.0  struct=1.0  vec=1.0]
+  backbone  : YOLOv8
+  head      : Anchor-Free Detection Head
+  loss      : FocalLoss
+  optimizer : SGD with Momentum
+  pretrained: YOLOv8-Medium / COCO
+               ultralytics/assets  (COCO, 26M)
+               strategy: full finetune
+  training  : pretrained weights required (insufficient data to train from scratch)
+  alt       : YOLO26
+
+Top 2  [score=0.6  struct=1.0  vec=0.0]
+  backbone  : YOLO26
+  head      : Anchor-Free Detection Head
+  loss      : FocalLoss
+  optimizer : SGD with Momentum
+  pretrained: YOLO26-Medium / COCO
+               yolo26m.pt  (COCO, 20.4M)
+               strategy: full finetune
+  training  : pretrained weights required (insufficient data to train from scratch)
+
+Top 3  [score=0.404  struct=0.667  vec=0.009]
+  backbone  : ResNet
+  head      : Anchor-Free Detection Head
+  loss      : FocalLoss
+  optimizer : SGD with Momentum
+  pretrained: ResNet-50 / ImageNet-1k
+               microsoft/resnet-50  (ImageNet-1k, 25M)
+               strategy: freeze backbone, train head only
+  training  : pretrained weights required (insufficient data to train from scratch)
+  alt       : EfficientNet
+
+Recommender re-ranked candidates
+
+[Jiaozi selected top model_config]
+{
+  "backbone": "yolov8",
+  "pretrained_hf_id": "ultralytics/assets",
+  "pretrained_name": "YOLOv8-Medium / COCO",
+  "pretrain_dataset": "COCO",
+  "params_M": 26,
+  "head": "detection_head_anchor_free",
+  "loss": "focal_loss",
+  "optimizer": "sgd_momentum",
+  "finetune_strategy": "full",
+  "freeze_backbone": false,
+  "unfreeze_last_n_blocks": 0,
+  "train_norm_layers": false,
+  "scratch_viable": false,
+  "benchmark": "global_wheat_detection",
+  "competition": "global-wheat-detection",
+  "task_type": "object_detection",
+  "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+  "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+  "image_dir": "/content/data/global-wheat-detection/train",
+  "test_image_dir": "/content/data/global-wheat-detection/test",
+  "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+  "image_column": "image",
+  "image_id_column": "image_id",
+  "bbox_format": "xywh",
+  "detector_bbox_format": "xyxy",
+  "num_object_classes": 1,
+  "num_classes": 2,
+  "class_names": [
+    "background",
+    "wheat_head"
+  ],
+  "metric": "detection_map",
+  "submission_format": "image_id,PredictionString",
+  "offline_smoke": false,
+  "evaluation_metric": "mAP@0.50:0.75",
+  "recommended_epochs": 40
+}
+
+[Jiaozi Module 4]
+{
+  "candidates": [
+    {
+      "backbone": "yolov8",
+      "finetune_strategy": "full",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "rank": 1,
+      "score": 1.0,
+      "task_type": "object_detection"
+    },
+    {
+      "backbone": "yolo26",
+      "finetune_strategy": "full",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "rank": 2,
+      "score": 0.6,
+      "task_type": "object_detection"
+    },
+    {
+      "backbone": "resnet",
+      "finetune_strategy": "head_only",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "rank": 3,
+      "score": 0.404,
+      "task_type": "object_detection"
+    }
+  ],
+  "errors": [],
+  "generated_files": [
+    "README_generated.md",
+    "configs.json",
+    "evaluate.py",
+    "generation_info.json",
+    "infer.py",
+    "model.py",
+    "model_utils.py",
+    "module4_summary.json",
+    "requirements.txt",
+    "run.py",
+    "run_experiments.py",
+    "smoke_data.py",
+    "train.py",
+    "utils.py"
+  ],
+  "iteration_history": [
+    {
+      "errors": [],
+      "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+      "is_approved": true,
+      "iteration": 1,
+      "smoke_skipped": true,
+      "smoke_success": true,
+      "warnings": [
+        "Smoke tests were skipped by request; approval is static-only."
+      ]
+    }
+  ],
+  "iterations": 1,
+  "num_candidates": 3,
+  "output_dir": "/content/jiaozi_generated_pipeline",
+  "refinement_summary": null,
+  "review": {
+    "errors": [],
+    "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+    "is_approved": true,
+    "warnings": [
+      "Smoke tests were skipped by request; approval is static-only."
+    ]
+  },
+  "review_feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+  "smoke": {
+    "commands": [],
+    "runtime_sec": 0.0,
+    "skipped": true,
+    "success": true
+  },
+  "smoke_success": true,
+  "status": "approved",
+  "warnings": [
+    "Smoke tests were skipped by request; approval is static-only."
+  ]
+}
+Jiaozi complete. Next cells write detection adapter files and train.
+
+=== Cell 12 | execution_count=9 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+configs.json exists= True size= 8093
+agent_selected_config.json exists= True size= 1330
+model.py exists= True size= 8865
+train.py exists= True size= 47764
+run.py exists= True size= 4665
+
+=== Cell 13 | execution_count=10 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+
+================================================================================
+configs.json
+================================================================================
+[
+  {
+    "alternatives": [
+      "yolo26"
+    ],
+    "augmentation": "basic",
+    "backbone": "yolov8",
+    "checkpoint": "ultralytics/assets",
+    "class_imbalance": false,
+    "data_size": "medium",
+    "embedding_dim": 32,
+    "finetune_strategy": "full",
+    "freeze_backbone": false,
+    "head": "detection_head_anchor_free",
+    "image_size": 224,
+    "learning_rate": 0.001,
+    "loss": "focal_loss",
+    "model_config": {
+      "backbone": "yolov8",
+      "bbox_format": "xywh",
+      "benchmark": "global_wheat_detection",
+      "class_names": [
+        "background",
+        "wheat_head"
+      ],
+      "competition": "global-wheat-detection",
+      "detector_bbox_format": "xyxy",
+      "evaluation_metric": "mAP@0.50:0.75",
+      "finetune_strategy": "full",
+      "freeze_backbone": false,
+      "head": "detection_head_anchor_free",
+      "image_column": "image",
+      "image_dir": "/content/data/global-wheat-detection/train",
+      "image_id_column": "image_id",
+      "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+      "loss": "focal_loss",
+      "metric": "detection_map",
+      "num_classes": 2,
+      "num_object_classes": 1,
+      "offline_smoke": false,
+      "optimizer": "sgd_momentum",
+      "params_M": 26,
+      "pretrain_dataset": "COCO",
+      "pretrained_hf_id": "ultralytics/assets",
+      "pretrained_name": "YOLOv8-Medium / COCO",
+      "recommended_epochs": 40,
+      "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+      "scratch_viable": false,
+      "submission_format": "image_id,PredictionString",
+      "task_type": "object_detection",
+      "test_image_dir": "/content/data/global-wheat-detection/test",
+      "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+      "train_norm_layers": false,
+      "unfreeze_last_n_blocks": 0
+    },
+    "num_classes": 2,
+    "offline_smoke": false,
+    "optimizer": "sgd_momentum",
+    "params_M": 26.0,
+    "pretrained_hf_id": "ultralytics/assets",
+    "pretrained_name": "YOLOv8-Medium / COCO",
+    "rank": 1,
+    "score": 1.0,
+    "scratch_viable": false,
+    "strategy_ablation_group": "",
+    "strategy_ablation_variant": "",
+    "task_type": "object_detection",
+    "tasks": [
+      "Load YOLOv8-Medium / COCO from ultralytics/assets (26M params, pretrained on COCO)",
+      "Full finetune: update all backbone and head weights",
+      "Use Anchor-Free Detection Head as the output head",
+      "Use FocalLoss as the training loss",
+      "Use SGD with Momentum as the optimizer"
+    ],
+    "train_norm_layers": false,
+    "unfreeze_last_n_blocks": 0,
+    "use_pretrained": true
+  },
+  {
+    "alternatives": [],
+    "augmentation": "basic",
+    "backbone": "yolo26",
+    "checkpoint": "yolo26m.pt",
+    "class_imbalance": false,
+    "data_size": "medium",
+    "embedding_dim": 32,
+    "finetune_strategy": "full",
+    "freeze_backbone": false,
+    "head": "detection_head_anchor_free",
+    "image_size": 224,
+    "learning_rate": 0.001,
+    "loss": "focal_loss",
+    "model_config": {
+      "backbone": "yolo26",
+      "bbox_format": "xywh",
+      "benchmark": "global_wheat_detection",
+      "class_names": [
+        "background",
+        "wheat_head"
+      ],
+      "competition": "global-wheat-detection",
+      "detector_bbox_format": "xyxy",
+      "evaluation_metric": "mAP@0.50:0.75",
+      "finetune_strategy": "full",
+      "freeze_backbone": false,
+      "head": "detection_head_anchor_free",
+      "image_column": "image",
+      "image_dir": "/content/data/global-wheat-detection/train",
+      "image_id_column": "image_id",
+      "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+      "loss": "focal_loss",
+      "metric": "detection_map",
+      "num_classes": 2,
+      "num_object_classes": 1,
+      "offline_smoke": false,
+      "optimizer": "sgd_momentum",
+      "params_M": 20.4,
+      "pretrain_dataset": "COCO",
+      "pretrained_hf_id": "yolo26m.pt",
+      "pretrained_name": "YOLO26-Medium / COCO",
+      "recommended_epochs": 40,
+      "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+      "scratch_viable": false,
+      "submission_format": "image_id,PredictionString",
+      "task_type": "object_detection",
+      "test_image_dir": "/content/data/global-wheat-detection/test",
+      "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+      "train_norm_layers": false,
+      "unfreeze_last_n_blocks": 0
+    },
+    "num_classes": 2,
+    "offline_smoke": false,
+    "optimizer": "sgd_momentum",
+    "params_M": 20.4,
+    "pretrained_hf_id": "yolo26m.pt",
+    "pretrained_name": "YOLO26-Medium / COCO",
+    "rank": 2,
+    "score": 0.6,
+    "scratch_viable": false,
+    "strategy_ablation_group": "",
+    "strategy_ablation_variant": "",
+    "task_type": "object_detection",
+    "tasks": [
+      "Load YOLO26-Medium / COCO from yolo26m.pt (20.4M params, pretrained on COCO)",
+      "Full finetune: update all backbone and head weights",
+      "Use Anchor-Free Detection Head as the output head",
+      "Use FocalLoss as the training loss",
+      "Use SGD with Momentum as the optimizer"
+    ],
+    "train_norm_layers": false,
+    "unfreeze_last_n_blocks": 0,
+    "use_pretrained": true
+  },
+  {
+    "alternatives": [
+      "efficientnet"
+    ],
+    "augmentation": "basic",
+    "backbone": "resnet",
+    "checkpoint": "microsoft/resnet-50",
+    "class_imbalance": false,
+    "data_size": "medium",
+    "embedding_dim": 32,
+    "finetune_strategy": "head_only",
+    "freeze_backbone": true,
+    "head": "detection_head_anchor_free",
+    "image_size": 224,
+    "learning_rate": 0.001,
+    "loss": "focal_loss",
+    "model_config": {
+      "backbone": "resnet",
+      "bbox_format": "xywh",
+      "benchmark": "global_wheat_detection",
+      "class_names": [
+        "background",
+        "wheat_head"
+      ],
+      "competition": "global-wheat-detection",
+      "detector_bbox_format": "xyxy",
+      "evaluation_metric": "mAP@0.50:0.75",
+      "finetune_strategy": "head_only",
+      "freeze_backbone": true,
+      "head": "detection_head_anchor_free",
+      "image_column": "image",
+      "image_dir": "/content/data/global-wheat-detection/train",
+      "image_id_column": "image_id",
+      "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+      "loss": "focal_loss",
+      "metric": "detection_map",
+      "num_classes": 2,
+      "num_object_classes": 1,
+      "offline_smoke": false,
+      "optimizer": "sgd_momentum",
+      "params_M": 25,
+      "pretrain_dataset": "ImageNet-1k",
+      "pretrained_hf_id": "microsoft/resnet-50",
+      "pretrained_name": "ResNet-50 / ImageNet-1k",
+      "recommended_epochs": 25,
+      "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+      "scratch_viable": false,
+      "submission_format": "image_id,PredictionString",
+      "task_type": "object_detection",
+      "test_image_dir": "/content/data/global-wheat-detection/test",
+      "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+      "train_norm_layers": false,
+      "unfreeze_last_n_blocks": 0
+    },
+    "num_classes": 2,
+    "offline_smoke": false,
+    "optimizer": "sgd_momentum",
+    "params_M": 25.0,
+    "pretrained_hf_id": "microsoft/resnet-50",
+    "pretrained_name": "ResNet-50 / ImageNet-1k",
+    "rank": 3,
+    "score": 0.404,
+    "scratch_viable": false,
+    "strategy_ablation_group": "",
+    "strategy_ablation_variant": "",
+    "task_type": "object_detection",
+    "tasks": [
+      "Load ResNet-50 / ImageNet-1k from microsoft/resnet-50 (25M params, pretrained on ImageNet-1k)",
+      "Head-only finetune: freeze backbone, train head only",
+      "Use Anchor-Free Detection Head as the output head",
+      "Use FocalLoss as the training loss",
+      "Use SGD with Momentum as the optimizer"
+    ],
+    "train_norm_layers": false,
+    "unfreeze_last_n_blocks": 0,
+    "use_pretrained": true
+  }
+]
+
+================================================================================
+agent_selected_config.json
+================================================================================
+{
+  "backbone": "yolov8",
+  "pretrained_hf_id": "ultralytics/assets",
+  "pretrained_name": "YOLOv8-Medium / COCO",
+  "pretrain_dataset": "COCO",
+  "params_M": 26,
+  "head": "detection_head_anchor_free",
+  "loss": "focal_loss",
+  "optimizer": "sgd_momentum",
+  "finetune_strategy": "full",
+  "freeze_backbone": false,
+  "unfreeze_last_n_blocks": 0,
+  "train_norm_layers": false,
+  "scratch_viable": false,
+  "benchmark": "global_wheat_detection",
+  "competition": "global-wheat-detection",
+  "task_type": "object_detection",
+  "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+  "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+  "image_dir": "/content/data/global-wheat-detection/train",
+  "test_image_dir": "/content/data/global-wheat-detection/test",
+  "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+  "image_column": "image",
+  "image_id_column": "image_id",
+  "bbox_format": "xywh",
+  "detector_bbox_format": "xyxy",
+  "num_object_classes": 1,
+  "num_classes": 2,
+  "class_names": [
+    "background",
+    "wheat_head"
+  ],
+  "metric": "detection_map",
+  "submission_format": "image_id,PredictionString",
+  "offline_smoke": false,
+  "evaluation_metric": "mAP@0.50:0.75",
+  "recommended_epochs": 40
+}
+
+================================================================================
+module3_candidates.json
+================================================================================
+[
+  {
+    "format": "nl",
+    "model_config": {
+      "backbone": "yolov8",
+      "pretrained_hf_id": "ultralytics/assets",
+      "pretrained_name": "YOLOv8-Medium / COCO",
+      "pretrain_dataset": "COCO",
+      "params_M": 26,
+      "head": "detection_head_anchor_free",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "finetune_strategy": "full",
+      "freeze_backbone": false,
+      "unfreeze_last_n_blocks": 0,
+      "train_norm_layers": false,
+      "scratch_viable": false,
+      "benchmark": "global_wheat_detection",
+      "competition": "global-wheat-detection",
+      "task_type": "object_detection",
+      "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+      "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+      "image_dir": "/content/data/global-wheat-detection/train",
+      "test_image_dir": "/content/data/global-wheat-detection/test",
+      "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+      "image_column": "image",
+      "image_id_column": "image_id",
+      "bbox_format": "xywh",
+      "detector_bbox_format": "xyxy",
+      "num_object_classes": 1,
+      "num_classes": 2,
+      "class_names": [
+        "background",
+        "wheat_head"
+      ],
+      "metric": "detection_map",
+      "submission_format": "image_id,PredictionString",
+      "offline_smoke": false,
+      "evaluation_metric": "mAP@0.50:0.75",
+      "recommended_epochs": 40
+    },
+    "tasks": [
+      "Load YOLOv8-Medium / COCO from ultralytics/assets (26M params, pretrained on COCO)",
+      "Full finetune: update all backbone and head weights",
+      "Use Anchor-Free Detection Head as the output head",
+      "Use FocalLoss as the training loss",
+      "Use SGD with Momentum as the optimizer"
+    ],
+    "alternatives": [
+      "yolo26"
+    ],
+    "rank": 1,
+    "score": 1.0
+  },
+  {
+    "format": "nl",
+    "model_config": {
+      "backbone": "yolo26",
+      "pretrained_hf_id": "yolo26m.pt",
+      "pretrained_name": "YOLO26-Medium / COCO",
+      "pretrain_dataset": "COCO",
+      "params_M": 20.4,
+      "head": "detection_head_anchor_free",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "finetune_strategy": "full",
+      "freeze_backbone": false,
+      "unfreeze_last_n_blocks": 0,
+      "train_norm_layers": false,
+      "scratch_viable": false,
+      "benchmark": "global_wheat_detection",
+      "competition": "global-wheat-detection",
+      "task_type": "object_detection",
+      "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+      "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+      "image_dir": "/content/data/global-wheat-detection/train",
+      "test_image_dir": "/content/data/global-wheat-detection/test",
+      "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+      "image_column": "image",
+      "image_id_column": "image_id",
+      "bbox_format": "xywh",
+      "detector_bbox_format": "xyxy",
+      "num_object_classes": 1,
+      "num_classes": 2,
+      "class_names": [
+        "background",
+        "wheat_head"
+      ],
+      "metric": "detection_map",
+      "submission_format": "image_id,PredictionString",
+      "offline_smoke": false,
+      "evaluation_metric": "mAP@0.50:0.75",
+      "recommended_epochs": 40
+    },
+    "tasks": [
+      "Load YOLO26-Medium / COCO from yolo26m.pt (20.4M params, pretrained on COCO)",
+      "Full finetune: update all backbone and head weights",
+      "Use Anchor-Free Detection Head as the output head",
+      "Use FocalLoss as the training loss",
+      "Use SGD with Momentum as the optimizer"
+    ],
+    "alternatives": [],
+    "rank": 2,
+    "score": 0.6
+  },
+  {
+    "format": "nl",
+    "model_config": {
+      "backbone": "resnet",
+      "pretrained_hf_id": "microsoft/resnet-50",
+      "pretrained_name": "ResNet-50 / ImageNet-1k",
+      "pretrain_dataset": "ImageNet-1k",
+      "params_M": 25,
+      "head": "detection_head_anchor_free",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "finetune_strategy": "head_only",
+      "freeze_backbone": true,
+      "unfreeze_last_n_blocks": 0,
+      "train_norm_layers": false,
+      "scratch_viable": false,
+      "benchmark": "global_wheat_detection",
+      "competition": "global-wheat-detection",
+      "task_type": "object_detection",
+      "train_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv",
+      "image_level_csv": "/content/data/global-wheat-detection/jiaozi_global_wheat_image_level_for_module2.csv",
+      "image_dir": "/content/data/global-wheat-detection/train",
+      "test_image_dir": "/content/data/global-wheat-detection/test",
+      "sample_submission": "/content/data/global-wheat-detection/sample_submission.csv",
+      "image_column": "image",
+      "image_id_column": "image_id",
+      "bbox_format": "xywh",
+      "detector_bbox_format": "xyxy",
+      "num_object_classes": 1,
+      "num_classes": 2,
+      "class_names": [
+        "background",
+        "wheat_head"
+      ],
+      "metric": "detection_map",
+      "submission_format": "image_id,PredictionString",
+      "offline_smoke": false,
+      "evaluation_metric": "mAP@0.50:0.75",
+      "recommended_epochs": 25
+    },
+    "tasks": [
+      "Load ResNet-50 / ImageNet-1k from microsoft/resnet-50 (25M params, pretrained on ImageNet-1k)",
+      "Head-only finetune: freeze backbone, train head only",
+      "Use Anchor-Free Detection Head as the output head",
+      "Use FocalLoss as the training loss",
+      "Use SGD with Momentum as the optimizer"
+    ],
+    "alternatives": [
+      "efficientnet"
+    ],
+    "rank": 3,
+    "score": 0.404
+  }
+]
+
+================================================================================
+generation_info.json
+================================================================================
+{
+  "fallback_reason": "",
+  "generated_by": "module4_agent",
+  "llm_attempted": true,
+  "llm_model": "gpt-5.5",
+  "llm_provider": "openai",
+  "llm_used": true,
+  "model_py_source": "openai",
+  "template_fallback": false
+}
+
+================================================================================
+module4_summary.json
+================================================================================
+{
+  "candidates": [
+    {
+      "backbone": "yolov8",
+      "finetune_strategy": "full",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "rank": 1,
+      "score": 1.0,
+      "task_type": "object_detection"
+    },
+    {
+      "backbone": "yolo26",
+      "finetune_strategy": "full",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "rank": 2,
+      "score": 0.6,
+      "task_type": "object_detection"
+    },
+    {
+      "backbone": "resnet",
+      "finetune_strategy": "head_only",
+      "loss": "focal_loss",
+      "optimizer": "sgd_momentum",
+      "rank": 3,
+      "score": 0.404,
+      "task_type": "object_detection"
+    }
+  ],
+  "errors": [],
+  "generated_files": [
+    "README_generated.md",
+    "configs.json",
+    "evaluate.py",
+    "generation_info.json",
+    "infer.py",
+    "model.py",
+    "model_utils.py",
+    "module4_summary.json",
+    "requirements.txt",
+    "run.py",
+    "run_experiments.py",
+    "smoke_data.py",
+    "train.py",
+    "utils.py"
+  ],
+  "iteration_history": [
+    {
+      "errors": [],
+      "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+      "is_approved": true,
+      "iteration": 1,
+      "smoke_skipped": true,
+      "smoke_success": true,
+      "warnings": [
+        "Smoke tests were skipped by request; approval is static-only."
+      ]
+    }
+  ],
+  "iterations": 1,
+  "num_candidates": 3,
+  "output_dir": "/content/jiaozi_generated_pipeline",
+  "refinement_summary": null,
+  "review": {
+    "errors": [],
+    "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+    "is_approved": true,
+    "warnings": [
+      "Smoke tests were skipped by request; approval is static-only."
+    ]
+  },
+  "review_feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+  "smoke": {
+    "commands": [],
+    "runtime_sec": 0.0,
+    "skipped": true,
+    "success": true
+  },
+  "smoke_success": true,
+  "status": "approved",
+  "warnings": [
+    "Smoke tests were skipped by request; approval is static-only."
+  ]
+}
+
+=== Cell 15 | execution_count=12 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Creating new Ultralytics Settings v0.0.6 file ✅
+View Ultralytics Settings with 'yolo settings' or at '/root/.config/Ultralytics/settings.json'
+Update Settings with 'yolo settings key=value', i.e. 'yolo settings runs_dir=path/to/dir'. For help see https://docs.ultralytics.com/quickstart/#ultralytics-settings.
+==========================================================================================
+[Conditional execution dispatcher]
+Agent-selected backbone       : yolov8
+Agent-selected pretrained name: YOLOv8-Medium / COCO
+Agent-selected checkpoint     : ultralytics/assets
+Agent-recommended epochs      : 40
+Agent target metric           : mAP@0.50:0.75
+Use temporary YOLOv8 patch    : True
+==========================================================================================
+Resolved executable checkpoint: yolov8m.pt
+train_csv           : /content/data/global-wheat-detection/jiaozi_global_wheat_bboxes.csv exists=True
+train_image_dir     : /content/data/global-wheat-detection/train exists=True
+test_image_dir      : /content/data/global-wheat-detection/test exists=True
+sample_submission   : /content/data/global-wheat-detection/sample_submission.csv exists=True
+YOLO train images: 3036
+YOLO val images  : 337
+Split manifest   : /content/jiaozi_generated_pipeline/yolo_split_manifest.csv
+Prepared YOLO images: 3373
+Prepared YOLO boxes : 147793
+YOLO data YAML:
+path: /content/jiaozi_generated_pipeline/yolo_adapter_data
+train: images/train
+val: images/val
+nc: 1
+names:
+  0: wheat_head
+
+Loading agent-selected Ultralytics checkpoint: yolov8m.pt
+Downloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8m.pt to 'yolov8m.pt': 100% ━━━━━━━━━━━━ 49.7MB 487.1MB/s 0.1s
+Ultralytics 8.4.93 🚀 Python-3.12.13 torch-2.11.0+cu128 CUDA:0 (NVIDIA L4, 22563MiB)
+engine/trainer: agnostic_nms=False, amp=True, angle=1.0, augment=False, auto_augment=randaugment, batch=2, bgr=0.0, box=7.5, cache=False, cfg=None, classes=None, close_mosaic=10, cls=0.5, cls_pw=0.0, cls_remap=True, compile=False, conf=None, copy_paste=0.0, copy_paste_mode=flip, cos_lr=False, cutmix=0.0, data=/content/jiaozi_generated_pipeline/yolo_adapter_data/global_wheat.yaml, degrees=0.0, deterministic=True, device=0, dfl=1.5, dis=6.0, distill_model=None, dnn=False, dropout=0.0, dynamic=False, embed=None, end2end=None, epochs=40, erasing=0.4, exist_ok=True, fliplr=0.5, flipud=0.0, format=torchscript, fraction=1.0, freeze=None, hsv_h=0.015, hsv_s=0.7, hsv_v=0.4, imgsz=1024, iou=0.7, keras=False, kobj=1.0, line_width=None, lr0=0.01, lrf=0.01, mask_ratio=4, max_det=300, mixup=0.0, mode=train, model=yolov8m.pt, momentum=0.937, mosaic=1.0, multi_scale=0.0, name=agent_selected_yolov8_global_wheat, nbs=64, nms=False, opset=None, optimize=False, optimizer=SGD, overlap_mask=True, patience=100, perspective=0.0, plots=True, pose=12.0, pretrained=True, profile=False, project=/content/jiaozi_generated_pipeline/yolo_runs, quantize=None, rect=False, resume=False, retina_masks=False, rle=1.0, save=True, save_conf=False, save_crop=False, save_dir=/content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat, save_frames=False, save_json=False, save_period=-1, save_txt=False, scale=0.5, seed=42, shear=0.0, show=False, show_boxes=True, show_conf=True, show_labels=True, simplify=True, single_cls=False, source=None, split=val, stream_buffer=False, task=detect, time=None, tracker=tracktrack.yaml, translate=0.1, val=True, verbose=True, vid_stride=1, visualize=False, warmup_bias_lr=0.1, warmup_epochs=3.0, warmup_momentum=0.8, weight_decay=0.0005, workers=2, workspace=None
+Downloading https://ultralytics.com/assets/Arial.ttf to '/root/.config/Ultralytics/Arial.ttf': 100% ━━━━━━━━━━━━ 755.1KB 165.5MB/s 0.0s
+Overriding model.yaml nc=80 with nc=1
+
+                   from  n    params  module                                       arguments
+  0                  -1  1      1392  ultralytics.nn.modules.conv.Conv             [3, 48, 3, 2]
+  1                  -1  1     41664  ultralytics.nn.modules.conv.Conv             [48, 96, 3, 2]
+  2                  -1  2    111360  ultralytics.nn.modules.block.C2f             [96, 96, 2, True]
+  3                  -1  1    166272  ultralytics.nn.modules.conv.Conv             [96, 192, 3, 2]
+  4                  -1  4    813312  ultralytics.nn.modules.block.C2f             [192, 192, 4, True]
+  5                  -1  1    664320  ultralytics.nn.modules.conv.Conv             [192, 384, 3, 2]
+  6                  -1  4   3248640  ultralytics.nn.modules.block.C2f             [384, 384, 4, True]
+  7                  -1  1   1991808  ultralytics.nn.modules.conv.Conv             [384, 576, 3, 2]
+  8                  -1  2   3985920  ultralytics.nn.modules.block.C2f             [576, 576, 2, True]
+  9                  -1  1    831168  ultralytics.nn.modules.block.SPPF            [576, 576, 5]
+ 10                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']
+ 11             [-1, 6]  1         0  ultralytics.nn.modules.conv.Concat           [1]
+ 12                  -1  2   1993728  ultralytics.nn.modules.block.C2f             [960, 384, 2]
+ 13                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']
+ 14             [-1, 4]  1         0  ultralytics.nn.modules.conv.Concat           [1]
+ 15                  -1  2    517632  ultralytics.nn.modules.block.C2f             [576, 192, 2]
+ 16                  -1  1    332160  ultralytics.nn.modules.conv.Conv             [192, 192, 3, 2]
+ 17            [-1, 12]  1         0  ultralytics.nn.modules.conv.Concat           [1]
+ 18                  -1  2   1846272  ultralytics.nn.modules.block.C2f             [576, 384, 2]
+ 19                  -1  1   1327872  ultralytics.nn.modules.conv.Conv             [384, 384, 3, 2]
+ 20             [-1, 9]  1         0  ultralytics.nn.modules.conv.Concat           [1]
+ 21                  -1  2   4207104  ultralytics.nn.modules.block.C2f             [960, 576, 2]
+ 22        [15, 18, 21]  1   3776275  ultralytics.nn.modules.head.Detect           [1, 16, None, [192, 384, 576]]
+Model summary: 170 layers, 25,856,899 parameters, 25,856,883 gradients, 79.1 GFLOPs
+
+Transferred 469/475 items from pretrained weights
+Freezing layer 'model.22.dfl.conv.weight'
+AMP: running Automatic Mixed Precision (AMP) checks...
+Downloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt to 'yolo26n.pt': 100% ━━━━━━━━━━━━ 5.3MB 339.3MB/s 0.0s
+AMP: checks passed ✅
+train: Fast image access ✅ (ping: 0.0±0.0 ms, read: 2675.1±1250.9 MB/s, size: 175.2 KB)
+train: Scanning /content/jiaozi_generated_pipeline/yolo_adapter_data/labels/train... 3036 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 3036/3036 1.3Kit/s 2.3s
+train: New cache created: /content/jiaozi_generated_pipeline/yolo_adapter_data/labels/train.cache
+albumentations: Blur(p=0.01, blur_limit=(3, 7)), MedianBlur(p=0.01, blur_limit=(3, 7)), ToGray(p=0.01, method='weighted_average', num_output_channels=3), CLAHE(p=0.01, clip_limit=(1.0, 4.0), tile_grid_size=(8, 8))
+val: Fast image access ✅ (ping: 0.0±0.0 ms, read: 792.8±29.5 MB/s, size: 174.1 KB)
+val: Scanning /content/jiaozi_generated_pipeline/yolo_adapter_data/labels/val... 337 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 337/337 1.1Kit/s 0.3s
+val: New cache created: /content/jiaozi_generated_pipeline/yolo_adapter_data/labels/val.cache
+optimizer: SGD(lr=0.01, momentum=0.937) with parameter groups 77 weight(decay=0.0), 84 weight(decay=0.0005), 83 bias(decay=0.0)
+Plotting labels to /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/labels.jpg...
+Image sizes 1024 train, 1024 val
+Using 2 dataloader workers
+Logging results to /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat
+Starting training for 40 epochs...
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       1/40      3.19G      1.787      1.157      1.662        137       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.0it/s 2:32
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 10.7it/s 7.9s
+                   all        337      14639      0.883      0.843      0.907      0.489
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       2/40      3.52G      1.642     0.8741      1.492        208       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.5it/s 2:25
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.4it/s 6.9s
+                   all        337      14639      0.898      0.855      0.921      0.509
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       3/40      3.52G      1.641     0.8683      1.488        128       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.905      0.854      0.918        0.5
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       4/40      3.52G      1.628     0.8401      1.482         82       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:24
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.901      0.865      0.923       0.51
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       5/40      3.52G      1.597     0.8029      1.476        173       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639       0.91      0.867      0.928      0.525
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       6/40      3.52G      1.583     0.7885      1.467        130       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.4it/s 6.8s
+                   all        337      14639      0.906      0.876      0.932      0.532
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       7/40      3.52G      1.559     0.7675      1.453        179       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.4it/s 6.9s
+                   all        337      14639      0.911      0.876      0.933      0.534
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       8/40      3.52G      1.557     0.7542      1.457         61       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:24
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.909      0.881      0.937      0.535
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       9/40      3.52G      1.541     0.7439      1.457        143       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.906      0.882      0.937      0.542
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      10/40      3.52G       1.53     0.7346       1.45        118       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639       0.91      0.886      0.937      0.536
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      11/40      3.52G       1.53     0.7287      1.457        166       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.4it/s 6.8s
+                   all        337      14639      0.908      0.892      0.941      0.549
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      12/40      3.52G      1.517     0.7181      1.438        198       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.917      0.889      0.943      0.548
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      13/40      3.52G      1.508     0.7067      1.444        100       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.5it/s 2:24
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639       0.92      0.892      0.943       0.55
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      14/40      3.52G      1.507     0.7071      1.445        135       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.8s
+                   all        337      14639      0.919      0.887      0.943      0.549
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      15/40      3.52G      1.501     0.7041      1.443        103       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.923      0.889      0.944      0.554
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      16/40      3.52G      1.481     0.6913      1.429        102       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:24
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.8s
+                   all        337      14639      0.919       0.89      0.944      0.556
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      17/40      3.52G      1.478     0.6802       1.44        114       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.8s
+                   all        337      14639      0.917       0.89      0.944      0.557
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      18/40      3.52G      1.474     0.6831      1.437        231       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.925      0.892      0.946      0.555
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      19/40      3.52G      1.473     0.6769       1.43         75       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639       0.92      0.898      0.946      0.555
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      20/40      3.52G      1.462     0.6671      1.439         98       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.922      0.896      0.947      0.559
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      21/40      3.52G      1.461     0.6665      1.425        103       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.7it/s 6.7s
+                   all        337      14639      0.921        0.9      0.946      0.559
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      22/40      3.52G      1.459     0.6586       1.42        167       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.7it/s 6.7s
+                   all        337      14639       0.92      0.895      0.946       0.56
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      23/40      3.52G      1.451     0.6551       1.43         76       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.923      0.894      0.947      0.563
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      24/40      3.52G      1.442     0.6477      1.405        211       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.922      0.902      0.947      0.562
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      25/40      3.52G      1.432     0.6412      1.404        139       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.923      0.895      0.948      0.566
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      26/40      3.52G      1.424      0.641      1.401        135       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.8s
+                   all        337      14639      0.921      0.901      0.948      0.565
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      27/40      3.52G      1.425     0.6356      1.392        139       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.8s
+                   all        337      14639      0.922      0.905      0.949      0.564
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      28/40      3.52G      1.415     0.6271      1.389        154       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.924      0.903       0.95      0.565
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      29/40      3.52G      1.412     0.6223      1.391        128       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.921      0.901      0.947      0.564
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      30/40      3.52G      1.404     0.6194      1.399        128       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.6it/s 2:23
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.924      0.898       0.95      0.566
+Closing dataloader mosaic
+albumentations: Blur(p=0.01, blur_limit=(3, 7)), MedianBlur(p=0.01, blur_limit=(3, 7)), ToGray(p=0.01, method='weighted_average', num_output_channels=3), CLAHE(p=0.01, clip_limit=(1.0, 4.0), tile_grid_size=(8, 8))
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      31/40      3.52G      1.423     0.5982      1.398         70       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.7it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.8s
+                   all        337      14639       0.92      0.901      0.949      0.567
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      32/40      3.52G      1.415     0.5957      1.402         98       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.7it/s 2:22
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.926      0.897      0.948      0.565
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      33/40      3.52G      1.405     0.5904      1.409        113       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.8it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.921      0.903      0.949      0.564
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      34/40      3.52G      1.398     0.5819      1.411         64       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.8it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.925      0.898      0.949      0.565
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      35/40      3.52G      1.385     0.5753      1.401        106       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.7it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.919      0.904      0.948      0.565
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      36/40      3.52G      1.384     0.5761      1.418         72       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.7it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.7s
+                   all        337      14639      0.922      0.901       0.95      0.567
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      37/40      3.52G      1.376     0.5646      1.389         73       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.8it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.6it/s 6.8s
+                   all        337      14639      0.923      0.903       0.95      0.566
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      38/40      3.52G      1.364     0.5583      1.375         34       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.7it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.7it/s 6.7s
+                   all        337      14639      0.925      0.905       0.95      0.566
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      39/40      3.52G      1.365     0.5558      1.384         54       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.7it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.7it/s 6.7s
+                   all        337      14639      0.926      0.904      0.951      0.568
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+      40/40      3.52G       1.36     0.5542      1.378         69       1024: 100% ━━━━━━━━━━━━ 1518/1518 10.7it/s 2:21
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 12.5it/s 6.8s
+                   all        337      14639      0.925      0.906      0.951      0.567
+
+40 epochs completed in 1.671 hours.
+Optimizer stripped from /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/last.pt, 52.1MB
+Optimizer stripped from /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt, 52.1MB
+
+Validating /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt...
+Ultralytics 8.4.93 🚀 Python-3.12.13 torch-2.11.0+cu128 CUDA:0 (NVIDIA L4, 22563MiB)
+Model summary (fused): 93 layers, 25,840,339 parameters, 0 gradients, 78.7 GFLOPs
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 85/85 11.1it/s 7.6s
+                   all        337      14639      0.926      0.904      0.951      0.568
+Speed: 0.4ms preprocess, 10.4ms inference, 0.0ms loss, 3.6ms postprocess per image
+Results saved to /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat
+==========================================================================================
+Temporary YOLOv8 adapter training completed.
+Actual Ultralytics checkpoint: yolov8m.pt
+Run directory                : /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat
+Best checkpoint              : /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt exists= True
+Last checkpoint              : /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/last.pt exists= True
+==========================================================================================
+Saved patch state: /content/jiaozi_generated_pipeline/yolov8_patch_state.json
+
+=== Cell 16 | execution_count=14 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Inference device : 0
+Half precision   : True
+==========================================================================================
+[Local validation: Global Wheat mAP@0.50:0.75 proxy]
+Best checkpoint : /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt
+Validation images: 337
+Confidence      : 0.05
+NMS IoU         : 0.6
+==========================================================================================
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 1/337 image_id=b53afdf5c boxes=47
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 25/337 image_id=1d7d9fda3 boxes=79
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 50/337 image_id=a119a31fb boxes=114
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 75/337 image_id=fda86ae9a boxes=50
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 100/337 image_id=6f01adf08 boxes=44
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 125/337 image_id=614640a0b boxes=31
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 150/337 image_id=b88fcdafb boxes=81
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 175/337 image_id=2ae1f9d88 boxes=90
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 200/337 image_id=4b7c94e8f boxes=93
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 225/337 image_id=125118d1d boxes=78
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 250/337 image_id=a9b1e5e29 boxes=35
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 275/337 image_id=b3c96d5ad boxes=22
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 300/337 image_id=c78edc091 boxes=46
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 325/337 image_id=38b259a9e boxes=34
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[validation inference] 337/337 image_id=f20baf558 boxes=37
+Local validation mAP@0.50:0.75 proxy = 0.543473
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[test inference] 1/10 image_id=aac893a91 boxes=33
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+WARNING ⚠️ 'half' is deprecated and will be removed in the future. Use 'quantize' instead.
+[test inference] 10/10 image_id=53f253011 boxes=38
+==========================================================================================
+Temporary YOLOv8 adapter result
+Actual model checkpoint : yolov8m.pt
+Best trained checkpoint : /content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt
+Local metric            : 0.543473
+Submission              : /content/jiaozi_generated_pipeline/submission.csv
+Result summary          : /content/jiaozi_generated_pipeline/yolov8_patch_results.json
+==========================================================================================
+Backed up: /content/drive/MyDrive/Jiaozi/global_wheat_yolov8_patch/best.pt
+Backed up: /content/drive/MyDrive/Jiaozi/global_wheat_yolov8_patch/submission.csv
+Backed up: /content/drive/MyDrive/Jiaozi/global_wheat_yolov8_patch/yolov8_patch_results.json
+Backed up: /content/drive/MyDrive/Jiaozi/global_wheat_yolov8_patch/yolov8_patch_state.json
+Backed up: /content/drive/MyDrive/Jiaozi/global_wheat_yolov8_patch/yolo_split_manifest.csv
+
+=== Cell 17 | execution_count=15 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+submission exists: True /content/jiaozi_generated_pipeline/submission.csv
+sample exists: True /content/data/global-wheat-detection/sample_submission.csv
+Submission shape: (10, 2)
+Sample shape: (10, 2)
+Submission columns: ['image_id', 'PredictionString']
+Sample columns: ['image_id', 'PredictionString']
+
+Submission head:
+    image_id                                   PredictionString
+0  aac893a91  0.834473 238.00 79.19 140.50 146.56 0.817383 5...
+1  51f1be19e  0.796875 602.00 80.56 170.00 179.44 0.782715 5...
+2  f5a1f0358  0.841309 942.00 430.00 82.00 187.00 0.806641 5...
+3  796707dd7  0.803711 712.50 826.00 105.00 100.00 0.787109 ...
+4  51b3e36ab  0.823242 230.25 640.00 97.50 160.00 0.812500 8...
+5  348a992bb  0.811523 0.31 316.00 123.25 98.00 0.810059 761...
+6  cc3532ff6  0.806641 772.50 824.00 164.00 160.00 0.803223 ...
+7  2fd875eaa  0.855957 890.00 52.25 104.00 87.00 0.844727 10...
+8  cb8d261a3  0.828613 650.00 681.50 94.00 67.00 0.813965 75...
+9  53f253011  0.830078 621.00 102.31 118.00 138.94 0.815430 ...
+
+NaN counts before fill:
+image_id            0
+PredictionString    0
+dtype: int64
+
+PredictionString examples:
+aac893a91 => '0.834473 238.00 79.19 140.50 146.56 0.817383 555.00 527.00 126.00 188.00 0.813965 690.00 385.00 122.00 178.00 0.811523 65.50 0.00 108.00 160.00 0.801270 610.00 912.00 87.00 112.00 0.800293 23.44 450.0'
+51f1be19e => '0.796875 602.00 80.56 170.00 179.44 0.782715 503.25 464.50 195.75 105.00 0.773926 774.00 883.00 148.00 100.00 0.753418 800.50 758.00 114.00 94.00 0.740234 70.25 690.00 127.75 214.00 0.727051 649.00 78'
+f5a1f0358 => '0.841309 942.00 430.00 82.00 187.00 0.806641 549.00 396.25 76.00 103.00 0.805176 884.50 643.00 92.00 142.00 0.796875 544.00 272.25 106.00 109.00 0.791016 0.00 836.00 64.69 114.00 0.788086 222.25 311.5'
+796707dd7 => '0.803711 712.50 826.00 105.00 100.00 0.787109 617.00 37.25 86.00 77.25 0.784668 503.50 781.50 93.00 97.00 0.778809 471.00 262.50 105.00 104.00 0.775879 377.50 629.00 98.50 124.00 0.772461 898.00 334.5'
+51b3e36ab => '0.823242 230.25 640.00 97.50 160.00 0.812500 874.00 291.25 150.00 132.00 0.809082 0.00 902.00 84.00 122.00 0.802734 460.50 9.25 87.00 145.25 0.798828 542.00 21.88 250.00 139.75 0.792480 692.00 608.00 '
+348a992bb => '0.811523 0.31 316.00 123.25 98.00 0.810059 761.00 117.38 126.00 89.25 0.810059 735.00 223.12 140.00 84.88 0.794922 0.62 470.75 134.88 94.25 0.784668 538.00 28.84 80.00 100.78 0.784180 139.00 43.31 114'
+cc3532ff6 => '0.806641 772.50 824.00 164.00 160.00 0.803223 377.00 0.00 81.00 99.12 0.801270 553.00 829.00 126.00 174.00 0.800781 489.50 570.00 97.00 142.00 0.791016 268.50 641.00 92.50 164.00 0.786621 82.00 805.50'
+2fd875eaa => '0.855957 890.00 52.25 104.00 87.00 0.844727 107.50 588.00 137.00 78.00 0.842773 0.00 910.00 105.69 80.00 0.842285 0.31 0.00 114.88 73.00 0.836426 465.75 353.00 124.25 93.50 0.835938 393.50 794.50 73.0'
+cb8d261a3 => '0.828613 650.00 681.50 94.00 67.00 0.813965 756.50 712.00 81.00 84.00 0.806641 436.50 118.94 104.00 77.56 0.804199 265.00 778.00 111.00 66.00 0.802734 753.00 489.50 119.00 91.00 0.799316 21.50 866.00 '
+53f253011 => '0.830078 621.00 102.31 118.00 138.94 0.815430 16.00 33.53 141.75 107.47 0.802734 19.97 593.50 116.78 142.00 0.798340 467.00 459.75 145.00 198.25 0.797363 931.00 202.50 93.00 133.50 0.790527 357.50 344'
+
+Basic submission format check passed.
+
+=== Cell 18 | execution_count=16 | outputs=0 ===
+[no stored output]
+
+=== Cell 19 | execution_count=19 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+100% 12.4k/12.4k [00:00<00:00, 15.3kB/s]
+400 Client Error: Bad Request for url: https://api.kaggle.com/v1/competitions.CompetitionApiService/CreateSubmission
+
+=== Cell 20 | execution_count=None | outputs=0 ===
+[no stored output]
+
+=== Cell 21 | execution_count=18 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+No submissions found
+
+=== Cell 22 | execution_count=20 | outputs=2 ===
+--- output 0 ---
+[display_data:text/plain]
+<IPython.core.display.Javascript object>
+[display_data:rich output omitted from text log: application/javascript]
+--- output 1 ---
+[display_data:text/plain]
+<IPython.core.display.Javascript object>
+[display_data:rich output omitted from text log: application/javascript]
+
+=== Cell 23 | execution_count=22 | outputs=3 ===
+--- output 0 ---
+[stream:stdout]
+找到以下权重文件：
+  yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt  (49.70 MB)
+  yolo_runs/agent_selected_yolov8_global_wheat/weights/last.pt  (49.70 MB)
+
+确认找到目标 YOLO 权重：
+/content/jiaozi_generated_pipeline/yolo_runs/agent_selected_yolov8_global_wheat/weights/best.pt
+
+打包前总大小：715.63 MB
+压缩包已生成： /content/jiaozi_generated_pipeline_bundle.zip
+压缩包大小：701.59 MB
+--- output 1 ---
+[display_data:text/plain]
+<IPython.core.display.Javascript object>
+[display_data:rich output omitted from text log: application/javascript]
+--- output 2 ---
+[display_data:text/plain]
+<IPython.core.display.Javascript object>
+[display_data:rich output omitted from text log: application/javascript]

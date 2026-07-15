@@ -513,7 +513,7 @@ When a KB proposal needs a real experiment, the validation should follow the sam
 - separate public Kaggle submission reporting;
 - deterministic baseline vs search/refinement/ensemble comparison arms.
 
-Detailed experiment cases, artifacts, and completed or pending scores belong in `EXPERIMENTAL_RESULTS.md`. The active runtime does not depend on those reference experiments.
+Detailed experiment cases, stored notebook outputs, accepted or blocked submissions, and pending scores are documented in [`EXPERIMENTS.md`](EXPERIMENTS.md) and [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md). The active runtime does not depend on those reference experiments.
 
 ## 10. Environment Configuration
 
@@ -636,6 +636,7 @@ Any benchmark claim should follow the stricter MLE-style benchmark protocol:
 |-- kb_mining/                         # evidence mining for KB updates
 |-- experiments/ab_loss_imbalance/      # paired loss experiment + Cassava records
 |-- experiments/mlestar_kaggle_benchmarks/ # isolated Python 3.11 experiment
+|-- experiments/notebook_runs/          # reviewer notebooks + per-cell logs + hashes
 |-- docs/                              # design notes and API docs
 |-- CONTRIBUTIONS.md                  # history-backed module attribution
 |-- EXPERIMENTS.md                    # reproducible experiment commands
@@ -652,5 +653,7 @@ For final project submission, the README should be accompanied by:
 
 - `README.md`: polished version of this project guide;
 - `CONTRIBUTIONS.md`: which member wrote which parts, with links to files or sections;
-- `EXPERIMENTS.md`: how to run scripted experiments and where logs are stored;
-- `EXPERIMENTAL_RESULTS.md`: what experiments were run, what they show, and which results are still planned rather than completed.
+- [`EXPERIMENTS.md`](EXPERIMENTS.md): exact competition-to-notebook mapping, rerun instructions, and per-cell log paths;
+- [`EXPERIMENTAL_RESULTS.md`](EXPERIMENTAL_RESULTS.md): validation metrics, Kaggle receipts, failures and warnings, plus results that remain pending.
+
+The reviewer notebooks under [`experiments/notebook_runs/notebooks/`](experiments/notebook_runs/notebooks/) retain visible textual outputs. The matching files under [`experiments/notebook_runs/logs/`](experiments/notebook_runs/logs/) enumerate every code cell, including cells with no stored output or an error.

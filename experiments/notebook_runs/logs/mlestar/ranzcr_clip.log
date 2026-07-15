@@ -1,0 +1,2445 @@
+Notebook: mlestar/ranzcr_clip.ipynb
+Competition: RANZCR CLiP
+Workflow: mlestar
+Source archive: mle_final_submission.zip
+Source archive SHA-256: 66126db1149262fcd4f59a3824a52e16aa557491838733ea2758af4e4db8dd8a
+Source notebook SHA-256: 794fd62e492f48edccb1be4ac9fe47fbc0e99ff630d116b39f28c9a9297b69e7
+Stored output status: validation_complete_assets_packaged
+
+=== Cell 2 | execution_count=1 | outputs=2 ===
+--- output 0 ---
+[stream:stdout]
+Repository commit: 01228290ba427023f3e3d386255558f50b21a1a6
+--- output 1 ---
+[execute_result:text/plain]
+CompletedProcess(args=['/usr/bin/python3', '-m', 'mlestar.cli', 'benchmarks'], returncode=0)
+
+=== Cell 3 | execution_count=2 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Mounted at /content/drive
+Kaggle token configured: True
+Selected benchmarks: ['ranzcr_clip']
+Persistent runs root: /content/drive/MyDrive/mlestar-runs
+
+=== Cell 4 | execution_count=3 | outputs=0 ===
+[no stored output]
+
+=== Cell 5 | execution_count=4 | outputs=0 ===
+[no stored output]
+
+=== Cell 6 | execution_count=5 | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+device: NVIDIA L4
+
+=== Cell 7 | execution_count=6 | outputs=0 ===
+[no stored output]
+
+=== Cell 8 | execution_count=7 | outputs=0 ===
+[no stored output]
+
+=== Cell 9 | execution_count=8 | outputs=17 ===
+--- output 0 ---
+[stream:stdout]
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)
+Downloading ranzcr-clip-catheter-line-classification.zip to /content/ranzcr-clip-catheter-line-classification
+--- output 1 ---
+[display_data:text/plain]
+RANZCR exact resize cache:   0%|          | 0/33665 [00:00<?, ?it/s]
+--- output 2 ---
+[stream:stdout]
+{'cached_images': 33665, 'new_files': 33665, 'pixel_checks': 10}
+START seed=13 phase=baseline model=resnet18
+--- output 3 ---
+[display_data:text/plain]
+model.safetensors:   0%|          | 0.00/46.8M [00:00<?, ?B/s]
+--- output 4 ---
+[stream:stdout]
+  fit=1 epoch=1/40 loss=0.57112 inner_val_loss=0.50720 best_epoch=1 seconds=3.4
+  fit=1 epoch=2/40 loss=0.38930 inner_val_loss=0.35711 best_epoch=2 seconds=1.1
+  fit=1 epoch=3/40 loss=0.31350 inner_val_loss=0.32497 best_epoch=3 seconds=1.1
+  fit=1 epoch=4/40 loss=0.27911 inner_val_loss=0.30585 best_epoch=4 seconds=1.1
+  fit=1 epoch=5/40 loss=0.25945 inner_val_loss=0.29468 best_epoch=5 seconds=1.2
+  fit=1 epoch=6/40 loss=0.24347 inner_val_loss=0.28844 best_epoch=6 seconds=1.1
+  fit=1 epoch=7/40 loss=0.23343 inner_val_loss=0.29056 best_epoch=6 seconds=1.2
+  fit=1 epoch=8/40 loss=0.22236 inner_val_loss=0.28510 best_epoch=8 seconds=1.1
+  fit=1 epoch=9/40 loss=0.21312 inner_val_loss=0.28772 best_epoch=8 seconds=1.2
+  fit=1 epoch=10/40 loss=0.20279 inner_val_loss=0.28378 best_epoch=10 seconds=1.1
+  fit=1 epoch=11/40 loss=0.19471 inner_val_loss=0.28929 best_epoch=10 seconds=1.1
+  fit=1 epoch=12/40 loss=0.18583 inner_val_loss=0.29147 best_epoch=10 seconds=1.1
+  fit=1 epoch=13/40 loss=0.17262 inner_val_loss=0.28908 best_epoch=10 seconds=1.1
+  fit=1 epoch=14/40 loss=0.16403 inner_val_loss=0.29242 best_epoch=10 seconds=1.1
+  fit=1 epoch=15/40 loss=0.15074 inner_val_loss=0.29489 best_epoch=10 seconds=1.1
+  fit=1 full_refit_epoch=1/10 loss=0.55997
+  fit=1 full_refit_epoch=2/10 loss=0.37649
+  fit=1 full_refit_epoch=3/10 loss=0.30339
+  fit=1 full_refit_epoch=4/10 loss=0.27386
+  fit=1 full_refit_epoch=5/10 loss=0.25688
+  fit=1 full_refit_epoch=6/10 loss=0.24426
+  fit=1 full_refit_epoch=7/10 loss=0.23252
+  fit=1 full_refit_epoch=8/10 loss=0.22105
+  fit=1 full_refit_epoch=9/10 loss=0.21131
+  fit=1 full_refit_epoch=10/10 loss=0.19933
+  fit=2 epoch=1/40 loss=0.55462 inner_val_loss=0.47672 best_epoch=1 seconds=1.4
+  fit=2 epoch=2/40 loss=0.38590 inner_val_loss=0.35875 best_epoch=2 seconds=1.2
+  fit=2 epoch=3/40 loss=0.31224 inner_val_loss=0.31726 best_epoch=3 seconds=1.2
+  fit=2 epoch=4/40 loss=0.28022 inner_val_loss=0.29771 best_epoch=4 seconds=1.2
+  fit=2 epoch=5/40 loss=0.25916 inner_val_loss=0.28826 best_epoch=5 seconds=1.2
+  fit=2 epoch=6/40 loss=0.24434 inner_val_loss=0.27961 best_epoch=6 seconds=1.1
+  fit=2 epoch=7/40 loss=0.23198 inner_val_loss=0.27514 best_epoch=7 seconds=1.1
+  fit=2 epoch=8/40 loss=0.22356 inner_val_loss=0.27672 best_epoch=7 seconds=1.1
+  fit=2 epoch=9/40 loss=0.21147 inner_val_loss=0.27273 best_epoch=9 seconds=1.1
+  fit=2 epoch=10/40 loss=0.20128 inner_val_loss=0.26888 best_epoch=10 seconds=1.1
+  fit=2 epoch=11/40 loss=0.19227 inner_val_loss=0.27468 best_epoch=10 seconds=1.1
+  fit=2 epoch=12/40 loss=0.18337 inner_val_loss=0.27055 best_epoch=10 seconds=1.1
+  fit=2 epoch=13/40 loss=0.17214 inner_val_loss=0.26942 best_epoch=10 seconds=1.1
+  fit=2 epoch=14/40 loss=0.16406 inner_val_loss=0.26948 best_epoch=10 seconds=1.1
+  fit=2 epoch=15/40 loss=0.15585 inner_val_loss=0.27577 best_epoch=10 seconds=1.1
+  fit=2 full_refit_epoch=1/10 loss=0.54302
+  fit=2 full_refit_epoch=2/10 loss=0.36825
+  fit=2 full_refit_epoch=3/10 loss=0.29883
+  fit=2 full_refit_epoch=4/10 loss=0.26778
+  fit=2 full_refit_epoch=5/10 loss=0.24998
+  fit=2 full_refit_epoch=6/10 loss=0.23893
+  fit=2 full_refit_epoch=7/10 loss=0.22638
+  fit=2 full_refit_epoch=8/10 loss=0.21447
+  fit=2 full_refit_epoch=9/10 loss=0.20446
+  fit=2 full_refit_epoch=10/10 loss=0.19316
+  fit=3 epoch=1/40 loss=0.56000 inner_val_loss=0.49328 best_epoch=1 seconds=1.3
+  fit=3 epoch=2/40 loss=0.38650 inner_val_loss=0.34721 best_epoch=2 seconds=1.2
+  fit=3 epoch=3/40 loss=0.31378 inner_val_loss=0.30935 best_epoch=3 seconds=1.1
+  fit=3 epoch=4/40 loss=0.27912 inner_val_loss=0.29365 best_epoch=4 seconds=1.1
+  fit=3 epoch=5/40 loss=0.25980 inner_val_loss=0.28445 best_epoch=5 seconds=1.2
+  fit=3 epoch=6/40 loss=0.24807 inner_val_loss=0.27675 best_epoch=6 seconds=1.1
+  fit=3 epoch=7/40 loss=0.23498 inner_val_loss=0.27934 best_epoch=6 seconds=1.1
+  fit=3 epoch=8/40 loss=0.22584 inner_val_loss=0.26876 best_epoch=8 seconds=1.1
+  fit=3 epoch=9/40 loss=0.21426 inner_val_loss=0.26729 best_epoch=9 seconds=1.2
+  fit=3 epoch=10/40 loss=0.20295 inner_val_loss=0.26593 best_epoch=10 seconds=1.2
+  fit=3 epoch=11/40 loss=0.18979 inner_val_loss=0.27181 best_epoch=10 seconds=1.2
+  fit=3 epoch=12/40 loss=0.18088 inner_val_loss=0.26786 best_epoch=10 seconds=1.2
+  fit=3 epoch=13/40 loss=0.16997 inner_val_loss=0.26470 best_epoch=13 seconds=1.1
+  fit=3 epoch=14/40 loss=0.15749 inner_val_loss=0.27249 best_epoch=13 seconds=1.1
+  fit=3 epoch=15/40 loss=0.14644 inner_val_loss=0.27044 best_epoch=13 seconds=1.1
+  fit=3 epoch=16/40 loss=0.13673 inner_val_loss=0.28720 best_epoch=13 seconds=1.1
+  fit=3 epoch=17/40 loss=0.12801 inner_val_loss=0.28208 best_epoch=13 seconds=1.1
+  fit=3 epoch=18/40 loss=0.12198 inner_val_loss=0.28685 best_epoch=13 seconds=1.1
+  fit=3 full_refit_epoch=1/13 loss=0.55076
+  fit=3 full_refit_epoch=2/13 loss=0.37374
+  fit=3 full_refit_epoch=3/13 loss=0.30558
+  fit=3 full_refit_epoch=4/13 loss=0.27507
+  fit=3 full_refit_epoch=5/13 loss=0.25800
+  fit=3 full_refit_epoch=6/13 loss=0.24399
+  fit=3 full_refit_epoch=7/13 loss=0.23186
+  fit=3 full_refit_epoch=8/13 loss=0.22054
+  fit=3 full_refit_epoch=9/13 loss=0.20974
+  fit=3 full_refit_epoch=10/13 loss=0.19871
+  fit=3 full_refit_epoch=11/13 loss=0.18799
+  fit=3 full_refit_epoch=12/13 loss=0.17715
+  fit=3 full_refit_epoch=13/13 loss=0.16562
+  fit=4 epoch=1/40 loss=0.55010 inner_val_loss=0.48836 best_epoch=1 seconds=1.3
+  fit=4 epoch=2/40 loss=0.37723 inner_val_loss=0.36760 best_epoch=2 seconds=1.2
+  fit=4 epoch=3/40 loss=0.30577 inner_val_loss=0.32227 best_epoch=3 seconds=1.2
+  fit=4 epoch=4/40 loss=0.27639 inner_val_loss=0.30440 best_epoch=4 seconds=1.2
+  fit=4 epoch=5/40 loss=0.25902 inner_val_loss=0.30022 best_epoch=5 seconds=1.1
+  fit=4 epoch=6/40 loss=0.24445 inner_val_loss=0.29317 best_epoch=6 seconds=1.2
+  fit=4 epoch=7/40 loss=0.23253 inner_val_loss=0.28945 best_epoch=7 seconds=1.1
+  fit=4 epoch=8/40 loss=0.22492 inner_val_loss=0.28874 best_epoch=8 seconds=1.2
+  fit=4 epoch=9/40 loss=0.21480 inner_val_loss=0.28874 best_epoch=8 seconds=1.1
+  fit=4 epoch=10/40 loss=0.20469 inner_val_loss=0.29076 best_epoch=8 seconds=1.1
+  fit=4 epoch=11/40 loss=0.19623 inner_val_loss=0.28946 best_epoch=8 seconds=1.2
+  fit=4 epoch=12/40 loss=0.18577 inner_val_loss=0.28422 best_epoch=12 seconds=1.1
+  fit=4 epoch=13/40 loss=0.17549 inner_val_loss=0.29124 best_epoch=12 seconds=1.1
+  fit=4 epoch=14/40 loss=0.16313 inner_val_loss=0.28927 best_epoch=12 seconds=1.2
+  fit=4 epoch=15/40 loss=0.15283 inner_val_loss=0.28590 best_epoch=12 seconds=1.2
+  fit=4 epoch=16/40 loss=0.14277 inner_val_loss=0.30162 best_epoch=12 seconds=1.2
+  fit=4 epoch=17/40 loss=0.13365 inner_val_loss=0.30781 best_epoch=12 seconds=1.1
+  fit=4 full_refit_epoch=1/12 loss=0.54092
+  fit=4 full_refit_epoch=2/12 loss=0.36317
+  fit=4 full_refit_epoch=3/12 loss=0.30209
+  fit=4 full_refit_epoch=4/12 loss=0.27526
+  fit=4 full_refit_epoch=5/12 loss=0.25778
+  fit=4 full_refit_epoch=6/12 loss=0.24478
+  fit=4 full_refit_epoch=7/12 loss=0.23529
+  fit=4 full_refit_epoch=8/12 loss=0.22430
+  fit=4 full_refit_epoch=9/12 loss=0.21411
+  fit=4 full_refit_epoch=10/12 loss=0.20431
+  fit=4 full_refit_epoch=11/12 loss=0.19587
+  fit=4 full_refit_epoch=12/12 loss=0.18480
+  fit=5 epoch=1/40 loss=0.59745 inner_val_loss=0.51671 best_epoch=1 seconds=1.4
+  fit=5 epoch=2/40 loss=0.40505 inner_val_loss=0.35814 best_epoch=2 seconds=1.2
+  fit=5 epoch=3/40 loss=0.31317 inner_val_loss=0.30446 best_epoch=3 seconds=1.2
+  fit=5 epoch=4/40 loss=0.27312 inner_val_loss=0.28843 best_epoch=4 seconds=1.2
+  fit=5 epoch=5/40 loss=0.25477 inner_val_loss=0.26631 best_epoch=5 seconds=1.2
+  fit=5 epoch=6/40 loss=0.24124 inner_val_loss=0.26400 best_epoch=6 seconds=1.1
+  fit=5 epoch=7/40 loss=0.22950 inner_val_loss=0.26546 best_epoch=6 seconds=1.2
+  fit=5 epoch=8/40 loss=0.21847 inner_val_loss=0.26020 best_epoch=8 seconds=1.2
+  fit=5 epoch=9/40 loss=0.20848 inner_val_loss=0.26471 best_epoch=8 seconds=1.1
+  fit=5 epoch=10/40 loss=0.19819 inner_val_loss=0.25816 best_epoch=10 seconds=1.2
+  fit=5 epoch=11/40 loss=0.19028 inner_val_loss=0.26555 best_epoch=10 seconds=1.2
+  fit=5 epoch=12/40 loss=0.17781 inner_val_loss=0.26161 best_epoch=10 seconds=1.2
+  fit=5 epoch=13/40 loss=0.16763 inner_val_loss=0.26561 best_epoch=10 seconds=1.2
+  fit=5 epoch=14/40 loss=0.16065 inner_val_loss=0.26753 best_epoch=10 seconds=1.1
+  fit=5 epoch=15/40 loss=0.14802 inner_val_loss=0.26432 best_epoch=10 seconds=1.1
+  fit=5 full_refit_epoch=1/10 loss=0.58455
+  fit=5 full_refit_epoch=2/10 loss=0.38479
+  fit=5 full_refit_epoch=3/10 loss=0.29996
+  fit=5 full_refit_epoch=4/10 loss=0.26513
+  fit=5 full_refit_epoch=5/10 loss=0.24710
+  fit=5 full_refit_epoch=6/10 loss=0.23403
+  fit=5 full_refit_epoch=7/10 loss=0.22255
+  fit=5 full_refit_epoch=8/10 loss=0.21270
+  fit=5 full_refit_epoch=9/10 loss=0.20275
+  fit=5 full_refit_epoch=10/10 loss=0.19125
+END   seed=13 phase=baseline model=resnet18 metric=0.716430511255746 error=None minutes=2.91
+START seed=13 phase=initial model=resnet18
+  fit=6 epoch=1/40 loss=0.57112 inner_val_loss=0.50720 best_epoch=1 seconds=1.4
+  fit=6 epoch=2/40 loss=0.38930 inner_val_loss=0.35711 best_epoch=2 seconds=1.1
+  fit=6 epoch=3/40 loss=0.31350 inner_val_loss=0.32497 best_epoch=3 seconds=1.1
+  fit=6 epoch=4/40 loss=0.27911 inner_val_loss=0.30585 best_epoch=4 seconds=1.1
+  fit=6 epoch=5/40 loss=0.25945 inner_val_loss=0.29468 best_epoch=5 seconds=1.2
+  fit=6 epoch=6/40 loss=0.24347 inner_val_loss=0.28844 best_epoch=6 seconds=1.2
+  fit=6 epoch=7/40 loss=0.23343 inner_val_loss=0.29056 best_epoch=6 seconds=1.1
+  fit=6 epoch=8/40 loss=0.22236 inner_val_loss=0.28510 best_epoch=8 seconds=1.1
+  fit=6 epoch=9/40 loss=0.21312 inner_val_loss=0.28772 best_epoch=8 seconds=1.1
+  fit=6 epoch=10/40 loss=0.20279 inner_val_loss=0.28378 best_epoch=10 seconds=1.1
+  fit=6 epoch=11/40 loss=0.19471 inner_val_loss=0.28929 best_epoch=10 seconds=1.1
+  fit=6 epoch=12/40 loss=0.18583 inner_val_loss=0.29147 best_epoch=10 seconds=1.1
+  fit=6 epoch=13/40 loss=0.17262 inner_val_loss=0.28908 best_epoch=10 seconds=1.1
+  fit=6 epoch=14/40 loss=0.16403 inner_val_loss=0.29242 best_epoch=10 seconds=1.2
+  fit=6 epoch=15/40 loss=0.15074 inner_val_loss=0.29489 best_epoch=10 seconds=1.2
+  fit=6 full_refit_epoch=1/10 loss=0.55997
+  fit=6 full_refit_epoch=2/10 loss=0.37649
+  fit=6 full_refit_epoch=3/10 loss=0.30339
+  fit=6 full_refit_epoch=4/10 loss=0.27386
+  fit=6 full_refit_epoch=5/10 loss=0.25688
+  fit=6 full_refit_epoch=6/10 loss=0.24426
+  fit=6 full_refit_epoch=7/10 loss=0.23252
+  fit=6 full_refit_epoch=8/10 loss=0.22105
+  fit=6 full_refit_epoch=9/10 loss=0.21131
+  fit=6 full_refit_epoch=10/10 loss=0.19933
+  fit=7 epoch=1/40 loss=0.55462 inner_val_loss=0.47672 best_epoch=1 seconds=1.4
+  fit=7 epoch=2/40 loss=0.38590 inner_val_loss=0.35875 best_epoch=2 seconds=1.2
+  fit=7 epoch=3/40 loss=0.31224 inner_val_loss=0.31726 best_epoch=3 seconds=1.1
+  fit=7 epoch=4/40 loss=0.28022 inner_val_loss=0.29771 best_epoch=4 seconds=1.1
+  fit=7 epoch=5/40 loss=0.25916 inner_val_loss=0.28826 best_epoch=5 seconds=1.1
+  fit=7 epoch=6/40 loss=0.24434 inner_val_loss=0.27961 best_epoch=6 seconds=1.1
+  fit=7 epoch=7/40 loss=0.23198 inner_val_loss=0.27514 best_epoch=7 seconds=1.1
+  fit=7 epoch=8/40 loss=0.22356 inner_val_loss=0.27672 best_epoch=7 seconds=1.2
+  fit=7 epoch=9/40 loss=0.21147 inner_val_loss=0.27273 best_epoch=9 seconds=1.2
+  fit=7 epoch=10/40 loss=0.20128 inner_val_loss=0.26888 best_epoch=10 seconds=1.1
+  fit=7 epoch=11/40 loss=0.19227 inner_val_loss=0.27468 best_epoch=10 seconds=1.1
+  fit=7 epoch=12/40 loss=0.18337 inner_val_loss=0.27055 best_epoch=10 seconds=1.2
+  fit=7 epoch=13/40 loss=0.17214 inner_val_loss=0.26942 best_epoch=10 seconds=1.1
+  fit=7 epoch=14/40 loss=0.16406 inner_val_loss=0.26948 best_epoch=10 seconds=1.2
+  fit=7 epoch=15/40 loss=0.15585 inner_val_loss=0.27577 best_epoch=10 seconds=1.1
+  fit=7 full_refit_epoch=1/10 loss=0.54302
+  fit=7 full_refit_epoch=2/10 loss=0.36825
+  fit=7 full_refit_epoch=3/10 loss=0.29883
+  fit=7 full_refit_epoch=4/10 loss=0.26778
+  fit=7 full_refit_epoch=5/10 loss=0.24998
+  fit=7 full_refit_epoch=6/10 loss=0.23893
+  fit=7 full_refit_epoch=7/10 loss=0.22638
+  fit=7 full_refit_epoch=8/10 loss=0.21447
+  fit=7 full_refit_epoch=9/10 loss=0.20446
+  fit=7 full_refit_epoch=10/10 loss=0.19316
+  fit=8 epoch=1/40 loss=0.56000 inner_val_loss=0.49328 best_epoch=1 seconds=1.4
+  fit=8 epoch=2/40 loss=0.38650 inner_val_loss=0.34721 best_epoch=2 seconds=1.2
+  fit=8 epoch=3/40 loss=0.31378 inner_val_loss=0.30935 best_epoch=3 seconds=1.1
+  fit=8 epoch=4/40 loss=0.27912 inner_val_loss=0.29365 best_epoch=4 seconds=1.1
+  fit=8 epoch=5/40 loss=0.25980 inner_val_loss=0.28445 best_epoch=5 seconds=1.2
+  fit=8 epoch=6/40 loss=0.24807 inner_val_loss=0.27675 best_epoch=6 seconds=1.1
+  fit=8 epoch=7/40 loss=0.23498 inner_val_loss=0.27934 best_epoch=6 seconds=1.2
+  fit=8 epoch=8/40 loss=0.22584 inner_val_loss=0.26876 best_epoch=8 seconds=1.1
+  fit=8 epoch=9/40 loss=0.21426 inner_val_loss=0.26729 best_epoch=9 seconds=1.2
+  fit=8 epoch=10/40 loss=0.20295 inner_val_loss=0.26593 best_epoch=10 seconds=1.1
+  fit=8 epoch=11/40 loss=0.18979 inner_val_loss=0.27181 best_epoch=10 seconds=1.1
+  fit=8 epoch=12/40 loss=0.18088 inner_val_loss=0.26786 best_epoch=10 seconds=1.1
+  fit=8 epoch=13/40 loss=0.16997 inner_val_loss=0.26470 best_epoch=13 seconds=1.2
+  fit=8 epoch=14/40 loss=0.15749 inner_val_loss=0.27249 best_epoch=13 seconds=1.1
+  fit=8 epoch=15/40 loss=0.14644 inner_val_loss=0.27044 best_epoch=13 seconds=1.1
+  fit=8 epoch=16/40 loss=0.13673 inner_val_loss=0.28720 best_epoch=13 seconds=1.1
+  fit=8 epoch=17/40 loss=0.12801 inner_val_loss=0.28208 best_epoch=13 seconds=1.1
+  fit=8 epoch=18/40 loss=0.12198 inner_val_loss=0.28685 best_epoch=13 seconds=1.2
+  fit=8 full_refit_epoch=1/13 loss=0.55076
+  fit=8 full_refit_epoch=2/13 loss=0.37374
+  fit=8 full_refit_epoch=3/13 loss=0.30558
+  fit=8 full_refit_epoch=4/13 loss=0.27507
+  fit=8 full_refit_epoch=5/13 loss=0.25800
+  fit=8 full_refit_epoch=6/13 loss=0.24399
+  fit=8 full_refit_epoch=7/13 loss=0.23186
+  fit=8 full_refit_epoch=8/13 loss=0.22054
+  fit=8 full_refit_epoch=9/13 loss=0.20974
+  fit=8 full_refit_epoch=10/13 loss=0.19871
+  fit=8 full_refit_epoch=11/13 loss=0.18799
+  fit=8 full_refit_epoch=12/13 loss=0.17715
+  fit=8 full_refit_epoch=13/13 loss=0.16562
+  fit=9 epoch=1/40 loss=0.55010 inner_val_loss=0.48836 best_epoch=1 seconds=1.4
+  fit=9 epoch=2/40 loss=0.37723 inner_val_loss=0.36760 best_epoch=2 seconds=1.1
+  fit=9 epoch=3/40 loss=0.30577 inner_val_loss=0.32227 best_epoch=3 seconds=1.2
+  fit=9 epoch=4/40 loss=0.27639 inner_val_loss=0.30440 best_epoch=4 seconds=1.1
+  fit=9 epoch=5/40 loss=0.25902 inner_val_loss=0.30022 best_epoch=5 seconds=1.1
+  fit=9 epoch=6/40 loss=0.24445 inner_val_loss=0.29317 best_epoch=6 seconds=1.2
+  fit=9 epoch=7/40 loss=0.23253 inner_val_loss=0.28945 best_epoch=7 seconds=1.2
+  fit=9 epoch=8/40 loss=0.22492 inner_val_loss=0.28874 best_epoch=8 seconds=1.2
+  fit=9 epoch=9/40 loss=0.21480 inner_val_loss=0.28874 best_epoch=8 seconds=1.2
+  fit=9 epoch=10/40 loss=0.20469 inner_val_loss=0.29076 best_epoch=8 seconds=1.1
+  fit=9 epoch=11/40 loss=0.19623 inner_val_loss=0.28946 best_epoch=8 seconds=1.1
+  fit=9 epoch=12/40 loss=0.18577 inner_val_loss=0.28422 best_epoch=12 seconds=1.1
+  fit=9 epoch=13/40 loss=0.17549 inner_val_loss=0.29124 best_epoch=12 seconds=1.1
+  fit=9 epoch=14/40 loss=0.16313 inner_val_loss=0.28927 best_epoch=12 seconds=1.2
+  fit=9 epoch=15/40 loss=0.15283 inner_val_loss=0.28590 best_epoch=12 seconds=1.1
+  fit=9 epoch=16/40 loss=0.14277 inner_val_loss=0.30162 best_epoch=12 seconds=1.1
+  fit=9 epoch=17/40 loss=0.13365 inner_val_loss=0.30781 best_epoch=12 seconds=1.1
+  fit=9 full_refit_epoch=1/12 loss=0.54092
+  fit=9 full_refit_epoch=2/12 loss=0.36317
+  fit=9 full_refit_epoch=3/12 loss=0.30209
+  fit=9 full_refit_epoch=4/12 loss=0.27526
+  fit=9 full_refit_epoch=5/12 loss=0.25778
+  fit=9 full_refit_epoch=6/12 loss=0.24478
+  fit=9 full_refit_epoch=7/12 loss=0.23529
+  fit=9 full_refit_epoch=8/12 loss=0.22430
+  fit=9 full_refit_epoch=9/12 loss=0.21411
+  fit=9 full_refit_epoch=10/12 loss=0.20431
+  fit=9 full_refit_epoch=11/12 loss=0.19587
+  fit=9 full_refit_epoch=12/12 loss=0.18480
+  fit=10 epoch=1/40 loss=0.59745 inner_val_loss=0.51671 best_epoch=1 seconds=1.3
+  fit=10 epoch=2/40 loss=0.40505 inner_val_loss=0.35814 best_epoch=2 seconds=1.1
+  fit=10 epoch=3/40 loss=0.31317 inner_val_loss=0.30446 best_epoch=3 seconds=1.1
+  fit=10 epoch=4/40 loss=0.27312 inner_val_loss=0.28843 best_epoch=4 seconds=1.2
+  fit=10 epoch=5/40 loss=0.25477 inner_val_loss=0.26631 best_epoch=5 seconds=1.2
+  fit=10 epoch=6/40 loss=0.24124 inner_val_loss=0.26400 best_epoch=6 seconds=1.1
+  fit=10 epoch=7/40 loss=0.22950 inner_val_loss=0.26546 best_epoch=6 seconds=1.1
+  fit=10 epoch=8/40 loss=0.21847 inner_val_loss=0.26020 best_epoch=8 seconds=1.1
+  fit=10 epoch=9/40 loss=0.20848 inner_val_loss=0.26471 best_epoch=8 seconds=1.1
+  fit=10 epoch=10/40 loss=0.19819 inner_val_loss=0.25816 best_epoch=10 seconds=1.2
+  fit=10 epoch=11/40 loss=0.19028 inner_val_loss=0.26555 best_epoch=10 seconds=1.2
+  fit=10 epoch=12/40 loss=0.17781 inner_val_loss=0.26161 best_epoch=10 seconds=1.2
+  fit=10 epoch=13/40 loss=0.16763 inner_val_loss=0.26561 best_epoch=10 seconds=1.2
+  fit=10 epoch=14/40 loss=0.16065 inner_val_loss=0.26753 best_epoch=10 seconds=1.2
+  fit=10 epoch=15/40 loss=0.14802 inner_val_loss=0.26432 best_epoch=10 seconds=1.2
+  fit=10 full_refit_epoch=1/10 loss=0.58455
+  fit=10 full_refit_epoch=2/10 loss=0.38479
+  fit=10 full_refit_epoch=3/10 loss=0.29996
+  fit=10 full_refit_epoch=4/10 loss=0.26513
+  fit=10 full_refit_epoch=5/10 loss=0.24710
+  fit=10 full_refit_epoch=6/10 loss=0.23403
+  fit=10 full_refit_epoch=7/10 loss=0.22255
+  fit=10 full_refit_epoch=8/10 loss=0.21270
+  fit=10 full_refit_epoch=9/10 loss=0.20275
+  fit=10 full_refit_epoch=10/10 loss=0.19125
+END   seed=13 phase=initial model=resnet18 metric=0.716430511255746 error=None minutes=2.84
+START seed=13 phase=initial model=efficientnet_b0
+--- output 5 ---
+[display_data:text/plain]
+model.safetensors:   0%|          | 0.00/21.4M [00:00<?, ?B/s]
+--- output 6 ---
+[stream:stdout]
+  fit=11 epoch=1/40 loss=0.73443 inner_val_loss=0.66495 best_epoch=1 seconds=22.1
+  fit=11 epoch=2/40 loss=0.29105 inner_val_loss=0.42464 best_epoch=2 seconds=2.6
+  fit=11 epoch=3/40 loss=0.17570 inner_val_loss=0.40723 best_epoch=3 seconds=2.6
+  fit=11 epoch=4/40 loss=0.12420 inner_val_loss=0.40519 best_epoch=4 seconds=2.7
+  fit=11 epoch=5/40 loss=0.09177 inner_val_loss=0.40239 best_epoch=5 seconds=2.7
+  fit=11 epoch=6/40 loss=0.06571 inner_val_loss=0.41104 best_epoch=5 seconds=2.7
+  fit=11 epoch=7/40 loss=0.05313 inner_val_loss=0.40962 best_epoch=5 seconds=2.7
+  fit=11 epoch=8/40 loss=0.03939 inner_val_loss=0.41453 best_epoch=5 seconds=2.7
+  fit=11 epoch=9/40 loss=0.03439 inner_val_loss=0.42818 best_epoch=5 seconds=2.6
+  fit=11 epoch=10/40 loss=0.02795 inner_val_loss=0.43520 best_epoch=5 seconds=2.7
+  fit=11 full_refit_epoch=1/5 loss=0.72593
+  fit=11 full_refit_epoch=2/5 loss=0.28841
+  fit=11 full_refit_epoch=3/5 loss=0.17848
+  fit=11 full_refit_epoch=4/5 loss=0.12321
+  fit=11 full_refit_epoch=5/5 loss=0.08865
+  fit=12 epoch=1/40 loss=0.81148 inner_val_loss=0.62974 best_epoch=1 seconds=3.1
+  fit=12 epoch=2/40 loss=0.28682 inner_val_loss=0.39091 best_epoch=2 seconds=2.7
+  fit=12 epoch=3/40 loss=0.18374 inner_val_loss=0.36659 best_epoch=3 seconds=2.7
+  fit=12 epoch=4/40 loss=0.12454 inner_val_loss=0.36822 best_epoch=3 seconds=2.7
+  fit=12 epoch=5/40 loss=0.08954 inner_val_loss=0.37894 best_epoch=3 seconds=2.7
+  fit=12 epoch=6/40 loss=0.06695 inner_val_loss=0.37689 best_epoch=3 seconds=2.6
+  fit=12 epoch=7/40 loss=0.04839 inner_val_loss=0.38245 best_epoch=3 seconds=2.6
+  fit=12 epoch=8/40 loss=0.04140 inner_val_loss=0.39395 best_epoch=3 seconds=2.7
+  fit=12 full_refit_epoch=1/3 loss=0.77357
+  fit=12 full_refit_epoch=2/3 loss=0.27910
+  fit=12 full_refit_epoch=3/3 loss=0.17907
+  fit=13 epoch=1/40 loss=0.78372 inner_val_loss=0.51465 best_epoch=1 seconds=3.0
+  fit=13 epoch=2/40 loss=0.28358 inner_val_loss=0.38548 best_epoch=2 seconds=2.6
+  fit=13 epoch=3/40 loss=0.18826 inner_val_loss=0.36113 best_epoch=3 seconds=2.6
+  fit=13 epoch=4/40 loss=0.13311 inner_val_loss=0.35927 best_epoch=4 seconds=2.6
+  fit=13 epoch=5/40 loss=0.09418 inner_val_loss=0.36276 best_epoch=4 seconds=2.6
+  fit=13 epoch=6/40 loss=0.07045 inner_val_loss=0.36531 best_epoch=4 seconds=2.5
+  fit=13 epoch=7/40 loss=0.05683 inner_val_loss=0.36474 best_epoch=4 seconds=2.7
+  fit=13 epoch=8/40 loss=0.04489 inner_val_loss=0.37060 best_epoch=4 seconds=2.7
+  fit=13 epoch=9/40 loss=0.03533 inner_val_loss=0.36763 best_epoch=4 seconds=2.7
+  fit=13 full_refit_epoch=1/4 loss=0.75655
+  fit=13 full_refit_epoch=2/4 loss=0.28070
+  fit=13 full_refit_epoch=3/4 loss=0.18514
+  fit=13 full_refit_epoch=4/4 loss=0.12900
+  fit=14 epoch=1/40 loss=0.90033 inner_val_loss=1.08406 best_epoch=1 seconds=2.9
+  fit=14 epoch=2/40 loss=0.32518 inner_val_loss=0.40269 best_epoch=2 seconds=2.7
+  fit=14 epoch=3/40 loss=0.19229 inner_val_loss=0.39015 best_epoch=3 seconds=2.7
+  fit=14 epoch=4/40 loss=0.13343 inner_val_loss=0.38213 best_epoch=4 seconds=2.7
+  fit=14 epoch=5/40 loss=0.09668 inner_val_loss=0.38398 best_epoch=4 seconds=2.6
+  fit=14 epoch=6/40 loss=0.07099 inner_val_loss=0.39052 best_epoch=4 seconds=2.6
+  fit=14 epoch=7/40 loss=0.05543 inner_val_loss=0.38660 best_epoch=4 seconds=2.6
+  fit=14 epoch=8/40 loss=0.04279 inner_val_loss=0.40519 best_epoch=4 seconds=2.5
+  fit=14 epoch=9/40 loss=0.03570 inner_val_loss=0.40460 best_epoch=4 seconds=2.7
+  fit=14 full_refit_epoch=1/4 loss=0.85247
+  fit=14 full_refit_epoch=2/4 loss=0.30099
+  fit=14 full_refit_epoch=3/4 loss=0.18970
+  fit=14 full_refit_epoch=4/4 loss=0.13213
+  fit=15 epoch=1/40 loss=0.87476 inner_val_loss=0.59521 best_epoch=1 seconds=2.9
+  fit=15 epoch=2/40 loss=0.29372 inner_val_loss=0.37247 best_epoch=2 seconds=2.7
+  fit=15 epoch=3/40 loss=0.18128 inner_val_loss=0.35340 best_epoch=3 seconds=2.5
+  fit=15 epoch=4/40 loss=0.12879 inner_val_loss=0.35070 best_epoch=4 seconds=2.7
+  fit=15 epoch=5/40 loss=0.08800 inner_val_loss=0.34671 best_epoch=5 seconds=2.6
+  fit=15 epoch=6/40 loss=0.06549 inner_val_loss=0.35413 best_epoch=5 seconds=2.6
+  fit=15 epoch=7/40 loss=0.04955 inner_val_loss=0.36419 best_epoch=5 seconds=2.5
+  fit=15 epoch=8/40 loss=0.03977 inner_val_loss=0.37011 best_epoch=5 seconds=2.5
+  fit=15 epoch=9/40 loss=0.03148 inner_val_loss=0.37117 best_epoch=5 seconds=2.7
+  fit=15 epoch=10/40 loss=0.02554 inner_val_loss=0.38173 best_epoch=5 seconds=2.7
+  fit=15 full_refit_epoch=1/5 loss=0.85826
+  fit=15 full_refit_epoch=2/5 loss=0.28461
+  fit=15 full_refit_epoch=3/5 loss=0.17792
+  fit=15 full_refit_epoch=4/5 loss=0.12518
+  fit=15 full_refit_epoch=5/5 loss=0.08506
+END   seed=13 phase=initial model=efficientnet_b0 metric=0.6404135985504038 error=None minutes=3.88
+START seed=13 phase=initial_merge model=ensemble:resnet18+efficientnet_b0
+END   seed=13 phase=initial_merge model=ensemble:resnet18+efficientnet_b0 metric=None error=AssertionError:  minutes=0.01
+START seed=13 phase=initial_selected model=resnet18
+  fit=16 epoch=1/40 loss=0.57112 inner_val_loss=0.50720 best_epoch=1 seconds=1.5
+  fit=16 epoch=2/40 loss=0.38930 inner_val_loss=0.35711 best_epoch=2 seconds=1.2
+  fit=16 epoch=3/40 loss=0.31350 inner_val_loss=0.32497 best_epoch=3 seconds=1.2
+  fit=16 epoch=4/40 loss=0.27911 inner_val_loss=0.30585 best_epoch=4 seconds=1.2
+  fit=16 epoch=5/40 loss=0.25945 inner_val_loss=0.29468 best_epoch=5 seconds=1.2
+  fit=16 epoch=6/40 loss=0.24347 inner_val_loss=0.28844 best_epoch=6 seconds=1.2
+  fit=16 epoch=7/40 loss=0.23343 inner_val_loss=0.29056 best_epoch=6 seconds=1.2
+  fit=16 epoch=8/40 loss=0.22236 inner_val_loss=0.28510 best_epoch=8 seconds=1.2
+  fit=16 epoch=9/40 loss=0.21312 inner_val_loss=0.28772 best_epoch=8 seconds=1.2
+  fit=16 epoch=10/40 loss=0.20279 inner_val_loss=0.28378 best_epoch=10 seconds=1.2
+  fit=16 epoch=11/40 loss=0.19471 inner_val_loss=0.28929 best_epoch=10 seconds=1.2
+  fit=16 epoch=12/40 loss=0.18583 inner_val_loss=0.29147 best_epoch=10 seconds=1.2
+  fit=16 epoch=13/40 loss=0.17262 inner_val_loss=0.28908 best_epoch=10 seconds=1.2
+  fit=16 epoch=14/40 loss=0.16403 inner_val_loss=0.29242 best_epoch=10 seconds=1.2
+  fit=16 epoch=15/40 loss=0.15074 inner_val_loss=0.29489 best_epoch=10 seconds=1.1
+  fit=16 full_refit_epoch=1/10 loss=0.55997
+  fit=16 full_refit_epoch=2/10 loss=0.37649
+  fit=16 full_refit_epoch=3/10 loss=0.30339
+  fit=16 full_refit_epoch=4/10 loss=0.27386
+  fit=16 full_refit_epoch=5/10 loss=0.25688
+  fit=16 full_refit_epoch=6/10 loss=0.24426
+  fit=16 full_refit_epoch=7/10 loss=0.23252
+  fit=16 full_refit_epoch=8/10 loss=0.22105
+  fit=16 full_refit_epoch=9/10 loss=0.21131
+  fit=16 full_refit_epoch=10/10 loss=0.19933
+  fit=17 epoch=1/40 loss=0.55462 inner_val_loss=0.47672 best_epoch=1 seconds=1.5
+  fit=17 epoch=2/40 loss=0.38590 inner_val_loss=0.35875 best_epoch=2 seconds=1.2
+  fit=17 epoch=3/40 loss=0.31224 inner_val_loss=0.31726 best_epoch=3 seconds=1.1
+  fit=17 epoch=4/40 loss=0.28022 inner_val_loss=0.29771 best_epoch=4 seconds=1.2
+  fit=17 epoch=5/40 loss=0.25916 inner_val_loss=0.28826 best_epoch=5 seconds=1.2
+  fit=17 epoch=6/40 loss=0.24434 inner_val_loss=0.27961 best_epoch=6 seconds=1.2
+  fit=17 epoch=7/40 loss=0.23198 inner_val_loss=0.27514 best_epoch=7 seconds=1.2
+  fit=17 epoch=8/40 loss=0.22356 inner_val_loss=0.27672 best_epoch=7 seconds=1.2
+  fit=17 epoch=9/40 loss=0.21147 inner_val_loss=0.27273 best_epoch=9 seconds=1.3
+  fit=17 epoch=10/40 loss=0.20128 inner_val_loss=0.26888 best_epoch=10 seconds=1.1
+  fit=17 epoch=11/40 loss=0.19227 inner_val_loss=0.27468 best_epoch=10 seconds=1.1
+  fit=17 epoch=12/40 loss=0.18337 inner_val_loss=0.27055 best_epoch=10 seconds=1.2
+  fit=17 epoch=13/40 loss=0.17214 inner_val_loss=0.26942 best_epoch=10 seconds=1.2
+  fit=17 epoch=14/40 loss=0.16406 inner_val_loss=0.26948 best_epoch=10 seconds=1.2
+  fit=17 epoch=15/40 loss=0.15585 inner_val_loss=0.27577 best_epoch=10 seconds=1.2
+  fit=17 full_refit_epoch=1/10 loss=0.54302
+  fit=17 full_refit_epoch=2/10 loss=0.36825
+  fit=17 full_refit_epoch=3/10 loss=0.29883
+  fit=17 full_refit_epoch=4/10 loss=0.26778
+  fit=17 full_refit_epoch=5/10 loss=0.24998
+  fit=17 full_refit_epoch=6/10 loss=0.23893
+  fit=17 full_refit_epoch=7/10 loss=0.22638
+  fit=17 full_refit_epoch=8/10 loss=0.21447
+  fit=17 full_refit_epoch=9/10 loss=0.20446
+  fit=17 full_refit_epoch=10/10 loss=0.19316
+  fit=18 epoch=1/40 loss=0.56000 inner_val_loss=0.49328 best_epoch=1 seconds=1.5
+  fit=18 epoch=2/40 loss=0.38650 inner_val_loss=0.34721 best_epoch=2 seconds=1.2
+  fit=18 epoch=3/40 loss=0.31378 inner_val_loss=0.30935 best_epoch=3 seconds=1.2
+  fit=18 epoch=4/40 loss=0.27912 inner_val_loss=0.29365 best_epoch=4 seconds=1.2
+  fit=18 epoch=5/40 loss=0.25980 inner_val_loss=0.28445 best_epoch=5 seconds=1.2
+  fit=18 epoch=6/40 loss=0.24807 inner_val_loss=0.27675 best_epoch=6 seconds=1.2
+  fit=18 epoch=7/40 loss=0.23498 inner_val_loss=0.27934 best_epoch=6 seconds=1.2
+  fit=18 epoch=8/40 loss=0.22584 inner_val_loss=0.26876 best_epoch=8 seconds=1.2
+  fit=18 epoch=9/40 loss=0.21426 inner_val_loss=0.26729 best_epoch=9 seconds=1.2
+  fit=18 epoch=10/40 loss=0.20295 inner_val_loss=0.26593 best_epoch=10 seconds=1.2
+  fit=18 epoch=11/40 loss=0.18979 inner_val_loss=0.27181 best_epoch=10 seconds=1.1
+  fit=18 epoch=12/40 loss=0.18088 inner_val_loss=0.26786 best_epoch=10 seconds=1.2
+  fit=18 epoch=13/40 loss=0.16997 inner_val_loss=0.26470 best_epoch=13 seconds=1.2
+  fit=18 epoch=14/40 loss=0.15749 inner_val_loss=0.27249 best_epoch=13 seconds=1.3
+  fit=18 epoch=15/40 loss=0.14644 inner_val_loss=0.27044 best_epoch=13 seconds=1.2
+  fit=18 epoch=16/40 loss=0.13673 inner_val_loss=0.28720 best_epoch=13 seconds=1.2
+  fit=18 epoch=17/40 loss=0.12801 inner_val_loss=0.28208 best_epoch=13 seconds=1.2
+  fit=18 epoch=18/40 loss=0.12198 inner_val_loss=0.28685 best_epoch=13 seconds=1.1
+  fit=18 full_refit_epoch=1/13 loss=0.55076
+  fit=18 full_refit_epoch=2/13 loss=0.37374
+  fit=18 full_refit_epoch=3/13 loss=0.30558
+  fit=18 full_refit_epoch=4/13 loss=0.27507
+  fit=18 full_refit_epoch=5/13 loss=0.25800
+  fit=18 full_refit_epoch=6/13 loss=0.24399
+  fit=18 full_refit_epoch=7/13 loss=0.23186
+  fit=18 full_refit_epoch=8/13 loss=0.22054
+  fit=18 full_refit_epoch=9/13 loss=0.20974
+  fit=18 full_refit_epoch=10/13 loss=0.19871
+  fit=18 full_refit_epoch=11/13 loss=0.18799
+  fit=18 full_refit_epoch=12/13 loss=0.17715
+  fit=18 full_refit_epoch=13/13 loss=0.16562
+  fit=19 epoch=1/40 loss=0.55010 inner_val_loss=0.48836 best_epoch=1 seconds=1.5
+  fit=19 epoch=2/40 loss=0.37723 inner_val_loss=0.36760 best_epoch=2 seconds=1.2
+  fit=19 epoch=3/40 loss=0.30577 inner_val_loss=0.32227 best_epoch=3 seconds=1.2
+  fit=19 epoch=4/40 loss=0.27639 inner_val_loss=0.30440 best_epoch=4 seconds=1.2
+  fit=19 epoch=5/40 loss=0.25902 inner_val_loss=0.30022 best_epoch=5 seconds=1.1
+  fit=19 epoch=6/40 loss=0.24445 inner_val_loss=0.29317 best_epoch=6 seconds=1.1
+  fit=19 epoch=7/40 loss=0.23253 inner_val_loss=0.28945 best_epoch=7 seconds=1.2
+  fit=19 epoch=8/40 loss=0.22492 inner_val_loss=0.28874 best_epoch=8 seconds=1.2
+  fit=19 epoch=9/40 loss=0.21480 inner_val_loss=0.28874 best_epoch=8 seconds=1.2
+  fit=19 epoch=10/40 loss=0.20469 inner_val_loss=0.29076 best_epoch=8 seconds=1.2
+  fit=19 epoch=11/40 loss=0.19623 inner_val_loss=0.28946 best_epoch=8 seconds=1.1
+  fit=19 epoch=12/40 loss=0.18577 inner_val_loss=0.28422 best_epoch=12 seconds=1.2
+  fit=19 epoch=13/40 loss=0.17549 inner_val_loss=0.29124 best_epoch=12 seconds=1.2
+  fit=19 epoch=14/40 loss=0.16313 inner_val_loss=0.28927 best_epoch=12 seconds=1.1
+  fit=19 epoch=15/40 loss=0.15283 inner_val_loss=0.28590 best_epoch=12 seconds=1.2
+  fit=19 epoch=16/40 loss=0.14277 inner_val_loss=0.30162 best_epoch=12 seconds=1.2
+  fit=19 epoch=17/40 loss=0.13365 inner_val_loss=0.30781 best_epoch=12 seconds=1.1
+  fit=19 full_refit_epoch=1/12 loss=0.54092
+  fit=19 full_refit_epoch=2/12 loss=0.36317
+  fit=19 full_refit_epoch=3/12 loss=0.30209
+  fit=19 full_refit_epoch=4/12 loss=0.27526
+  fit=19 full_refit_epoch=5/12 loss=0.25778
+  fit=19 full_refit_epoch=6/12 loss=0.24478
+  fit=19 full_refit_epoch=7/12 loss=0.23529
+  fit=19 full_refit_epoch=8/12 loss=0.22430
+  fit=19 full_refit_epoch=9/12 loss=0.21411
+  fit=19 full_refit_epoch=10/12 loss=0.20431
+  fit=19 full_refit_epoch=11/12 loss=0.19587
+  fit=19 full_refit_epoch=12/12 loss=0.18480
+  fit=20 epoch=1/40 loss=0.59745 inner_val_loss=0.51671 best_epoch=1 seconds=1.5
+  fit=20 epoch=2/40 loss=0.40505 inner_val_loss=0.35814 best_epoch=2 seconds=1.2
+  fit=20 epoch=3/40 loss=0.31317 inner_val_loss=0.30446 best_epoch=3 seconds=1.2
+  fit=20 epoch=4/40 loss=0.27312 inner_val_loss=0.28843 best_epoch=4 seconds=1.2
+  fit=20 epoch=5/40 loss=0.25477 inner_val_loss=0.26631 best_epoch=5 seconds=1.1
+  fit=20 epoch=6/40 loss=0.24124 inner_val_loss=0.26400 best_epoch=6 seconds=1.2
+  fit=20 epoch=7/40 loss=0.22950 inner_val_loss=0.26546 best_epoch=6 seconds=1.2
+  fit=20 epoch=8/40 loss=0.21847 inner_val_loss=0.26020 best_epoch=8 seconds=1.1
+  fit=20 epoch=9/40 loss=0.20848 inner_val_loss=0.26471 best_epoch=8 seconds=1.2
+  fit=20 epoch=10/40 loss=0.19819 inner_val_loss=0.25816 best_epoch=10 seconds=1.2
+  fit=20 epoch=11/40 loss=0.19028 inner_val_loss=0.26555 best_epoch=10 seconds=1.2
+  fit=20 epoch=12/40 loss=0.17781 inner_val_loss=0.26161 best_epoch=10 seconds=1.2
+  fit=20 epoch=13/40 loss=0.16763 inner_val_loss=0.26561 best_epoch=10 seconds=1.2
+  fit=20 epoch=14/40 loss=0.16065 inner_val_loss=0.26753 best_epoch=10 seconds=1.2
+  fit=20 epoch=15/40 loss=0.14802 inner_val_loss=0.26432 best_epoch=10 seconds=1.2
+  fit=20 full_refit_epoch=1/10 loss=0.58455
+  fit=20 full_refit_epoch=2/10 loss=0.38479
+  fit=20 full_refit_epoch=3/10 loss=0.29996
+  fit=20 full_refit_epoch=4/10 loss=0.26513
+  fit=20 full_refit_epoch=5/10 loss=0.24710
+  fit=20 full_refit_epoch=6/10 loss=0.23403
+  fit=20 full_refit_epoch=7/10 loss=0.22255
+  fit=20 full_refit_epoch=8/10 loss=0.21270
+  fit=20 full_refit_epoch=9/10 loss=0.20275
+  fit=20 full_refit_epoch=10/10 loss=0.19125
+END   seed=13 phase=initial_selected model=resnet18 metric=0.716430511255746 error=None minutes=2.94
+START seed=13 phase=ablation model=pass
+END   seed=13 phase=ablation model=pass metric=0.5 error=None minutes=0.18
+START seed=13 phase=refinement model=efficientnet_b0
+  fit=21 epoch=1/40 loss=0.73443 inner_val_loss=0.66495 best_epoch=1 seconds=3.1
+  fit=21 epoch=2/40 loss=0.29105 inner_val_loss=0.42464 best_epoch=2 seconds=2.7
+  fit=21 epoch=3/40 loss=0.17570 inner_val_loss=0.40723 best_epoch=3 seconds=2.6
+  fit=21 epoch=4/40 loss=0.12420 inner_val_loss=0.40519 best_epoch=4 seconds=2.9
+  fit=21 epoch=5/40 loss=0.09177 inner_val_loss=0.40239 best_epoch=5 seconds=2.7
+  fit=21 epoch=6/40 loss=0.06571 inner_val_loss=0.41104 best_epoch=5 seconds=2.7
+  fit=21 epoch=7/40 loss=0.05313 inner_val_loss=0.40962 best_epoch=5 seconds=2.6
+  fit=21 epoch=8/40 loss=0.03939 inner_val_loss=0.41453 best_epoch=5 seconds=2.8
+  fit=21 epoch=9/40 loss=0.03439 inner_val_loss=0.42818 best_epoch=5 seconds=2.8
+  fit=21 epoch=10/40 loss=0.02795 inner_val_loss=0.43520 best_epoch=5 seconds=2.6
+  fit=21 full_refit_epoch=1/5 loss=0.72593
+  fit=21 full_refit_epoch=2/5 loss=0.28841
+  fit=21 full_refit_epoch=3/5 loss=0.17848
+  fit=21 full_refit_epoch=4/5 loss=0.12321
+  fit=21 full_refit_epoch=5/5 loss=0.08865
+  fit=22 epoch=1/40 loss=0.81148 inner_val_loss=0.62974 best_epoch=1 seconds=3.1
+  fit=22 epoch=2/40 loss=0.28682 inner_val_loss=0.39091 best_epoch=2 seconds=2.8
+  fit=22 epoch=3/40 loss=0.18374 inner_val_loss=0.36659 best_epoch=3 seconds=2.8
+  fit=22 epoch=4/40 loss=0.12454 inner_val_loss=0.36822 best_epoch=3 seconds=2.7
+  fit=22 epoch=5/40 loss=0.08954 inner_val_loss=0.37894 best_epoch=3 seconds=2.6
+  fit=22 epoch=6/40 loss=0.06695 inner_val_loss=0.37689 best_epoch=3 seconds=2.7
+  fit=22 epoch=7/40 loss=0.04839 inner_val_loss=0.38245 best_epoch=3 seconds=2.7
+  fit=22 epoch=8/40 loss=0.04140 inner_val_loss=0.39395 best_epoch=3 seconds=2.6
+  fit=22 full_refit_epoch=1/3 loss=0.77357
+  fit=22 full_refit_epoch=2/3 loss=0.27910
+  fit=22 full_refit_epoch=3/3 loss=0.17907
+  fit=23 epoch=1/40 loss=0.78372 inner_val_loss=0.51465 best_epoch=1 seconds=3.0
+  fit=23 epoch=2/40 loss=0.28358 inner_val_loss=0.38548 best_epoch=2 seconds=2.8
+  fit=23 epoch=3/40 loss=0.18826 inner_val_loss=0.36113 best_epoch=3 seconds=2.7
+  fit=23 epoch=4/40 loss=0.13311 inner_val_loss=0.35927 best_epoch=4 seconds=2.7
+  fit=23 epoch=5/40 loss=0.09418 inner_val_loss=0.36276 best_epoch=4 seconds=2.6
+  fit=23 epoch=6/40 loss=0.07045 inner_val_loss=0.36531 best_epoch=4 seconds=2.7
+  fit=23 epoch=7/40 loss=0.05683 inner_val_loss=0.36474 best_epoch=4 seconds=2.7
+  fit=23 epoch=8/40 loss=0.04489 inner_val_loss=0.37060 best_epoch=4 seconds=2.8
+  fit=23 epoch=9/40 loss=0.03533 inner_val_loss=0.36763 best_epoch=4 seconds=2.7
+  fit=23 full_refit_epoch=1/4 loss=0.75655
+  fit=23 full_refit_epoch=2/4 loss=0.28070
+  fit=23 full_refit_epoch=3/4 loss=0.18514
+  fit=23 full_refit_epoch=4/4 loss=0.12900
+  fit=24 epoch=1/40 loss=0.90033 inner_val_loss=1.08406 best_epoch=1 seconds=3.1
+  fit=24 epoch=2/40 loss=0.32518 inner_val_loss=0.40269 best_epoch=2 seconds=2.8
+  fit=24 epoch=3/40 loss=0.19229 inner_val_loss=0.39015 best_epoch=3 seconds=2.8
+  fit=24 epoch=4/40 loss=0.13343 inner_val_loss=0.38213 best_epoch=4 seconds=2.7
+  fit=24 epoch=5/40 loss=0.09668 inner_val_loss=0.38398 best_epoch=4 seconds=2.6
+  fit=24 epoch=6/40 loss=0.07099 inner_val_loss=0.39052 best_epoch=4 seconds=2.7
+  fit=24 epoch=7/40 loss=0.05543 inner_val_loss=0.38660 best_epoch=4 seconds=2.7
+  fit=24 epoch=8/40 loss=0.04279 inner_val_loss=0.40519 best_epoch=4 seconds=2.7
+  fit=24 epoch=9/40 loss=0.03570 inner_val_loss=0.40460 best_epoch=4 seconds=2.7
+  fit=24 full_refit_epoch=1/4 loss=0.85247
+  fit=24 full_refit_epoch=2/4 loss=0.30099
+  fit=24 full_refit_epoch=3/4 loss=0.18970
+  fit=24 full_refit_epoch=4/4 loss=0.13213
+  fit=25 epoch=1/40 loss=0.87476 inner_val_loss=0.59521 best_epoch=1 seconds=3.1
+  fit=25 epoch=2/40 loss=0.29372 inner_val_loss=0.37247 best_epoch=2 seconds=2.7
+  fit=25 epoch=3/40 loss=0.18128 inner_val_loss=0.35340 best_epoch=3 seconds=2.7
+  fit=25 epoch=4/40 loss=0.12879 inner_val_loss=0.35070 best_epoch=4 seconds=2.7
+  fit=25 epoch=5/40 loss=0.08800 inner_val_loss=0.34671 best_epoch=5 seconds=2.6
+  fit=25 epoch=6/40 loss=0.06549 inner_val_loss=0.35413 best_epoch=5 seconds=2.7
+  fit=25 epoch=7/40 loss=0.04955 inner_val_loss=0.36419 best_epoch=5 seconds=2.8
+  fit=25 epoch=8/40 loss=0.03977 inner_val_loss=0.37011 best_epoch=5 seconds=2.7
+  fit=25 epoch=9/40 loss=0.03148 inner_val_loss=0.37117 best_epoch=5 seconds=2.6
+  fit=25 epoch=10/40 loss=0.02554 inner_val_loss=0.38173 best_epoch=5 seconds=2.7
+  fit=25 full_refit_epoch=1/5 loss=0.85826
+  fit=25 full_refit_epoch=2/5 loss=0.28461
+  fit=25 full_refit_epoch=3/5 loss=0.17792
+  fit=25 full_refit_epoch=4/5 loss=0.12518
+  fit=25 full_refit_epoch=5/5 loss=0.08506
+END   seed=13 phase=refinement model=efficientnet_b0 metric=0.6404135985504038 error=None minutes=3.43
+START seed=13 phase=refined_selected model=resnet18
+  fit=26 epoch=1/40 loss=0.57112 inner_val_loss=0.50720 best_epoch=1 seconds=1.5
+  fit=26 epoch=2/40 loss=0.38930 inner_val_loss=0.35711 best_epoch=2 seconds=1.2
+  fit=26 epoch=3/40 loss=0.31350 inner_val_loss=0.32497 best_epoch=3 seconds=1.3
+  fit=26 epoch=4/40 loss=0.27911 inner_val_loss=0.30585 best_epoch=4 seconds=1.3
+  fit=26 epoch=5/40 loss=0.25945 inner_val_loss=0.29468 best_epoch=5 seconds=1.2
+  fit=26 epoch=6/40 loss=0.24347 inner_val_loss=0.28844 best_epoch=6 seconds=1.2
+  fit=26 epoch=7/40 loss=0.23343 inner_val_loss=0.29056 best_epoch=6 seconds=1.2
+  fit=26 epoch=8/40 loss=0.22236 inner_val_loss=0.28510 best_epoch=8 seconds=1.2
+  fit=26 epoch=9/40 loss=0.21312 inner_val_loss=0.28772 best_epoch=8 seconds=1.2
+  fit=26 epoch=10/40 loss=0.20279 inner_val_loss=0.28378 best_epoch=10 seconds=1.2
+  fit=26 epoch=11/40 loss=0.19471 inner_val_loss=0.28929 best_epoch=10 seconds=1.2
+  fit=26 epoch=12/40 loss=0.18583 inner_val_loss=0.29147 best_epoch=10 seconds=1.2
+  fit=26 epoch=13/40 loss=0.17262 inner_val_loss=0.28908 best_epoch=10 seconds=1.1
+  fit=26 epoch=14/40 loss=0.16403 inner_val_loss=0.29242 best_epoch=10 seconds=1.2
+  fit=26 epoch=15/40 loss=0.15074 inner_val_loss=0.29489 best_epoch=10 seconds=1.2
+  fit=26 full_refit_epoch=1/10 loss=0.55997
+  fit=26 full_refit_epoch=2/10 loss=0.37649
+  fit=26 full_refit_epoch=3/10 loss=0.30339
+  fit=26 full_refit_epoch=4/10 loss=0.27386
+  fit=26 full_refit_epoch=5/10 loss=0.25688
+  fit=26 full_refit_epoch=6/10 loss=0.24426
+  fit=26 full_refit_epoch=7/10 loss=0.23252
+  fit=26 full_refit_epoch=8/10 loss=0.22105
+  fit=26 full_refit_epoch=9/10 loss=0.21131
+  fit=26 full_refit_epoch=10/10 loss=0.19933
+  fit=27 epoch=1/40 loss=0.55462 inner_val_loss=0.47672 best_epoch=1 seconds=1.5
+  fit=27 epoch=2/40 loss=0.38590 inner_val_loss=0.35875 best_epoch=2 seconds=1.2
+  fit=27 epoch=3/40 loss=0.31224 inner_val_loss=0.31726 best_epoch=3 seconds=1.2
+  fit=27 epoch=4/40 loss=0.28022 inner_val_loss=0.29771 best_epoch=4 seconds=1.3
+  fit=27 epoch=5/40 loss=0.25916 inner_val_loss=0.28826 best_epoch=5 seconds=1.2
+  fit=27 epoch=6/40 loss=0.24434 inner_val_loss=0.27961 best_epoch=6 seconds=1.2
+  fit=27 epoch=7/40 loss=0.23198 inner_val_loss=0.27514 best_epoch=7 seconds=1.2
+  fit=27 epoch=8/40 loss=0.22356 inner_val_loss=0.27672 best_epoch=7 seconds=1.1
+  fit=27 epoch=9/40 loss=0.21147 inner_val_loss=0.27273 best_epoch=9 seconds=1.1
+  fit=27 epoch=10/40 loss=0.20128 inner_val_loss=0.26888 best_epoch=10 seconds=1.1
+  fit=27 epoch=11/40 loss=0.19227 inner_val_loss=0.27468 best_epoch=10 seconds=1.2
+  fit=27 epoch=12/40 loss=0.18337 inner_val_loss=0.27055 best_epoch=10 seconds=1.2
+  fit=27 epoch=13/40 loss=0.17214 inner_val_loss=0.26942 best_epoch=10 seconds=1.2
+  fit=27 epoch=14/40 loss=0.16406 inner_val_loss=0.26948 best_epoch=10 seconds=1.2
+  fit=27 epoch=15/40 loss=0.15585 inner_val_loss=0.27577 best_epoch=10 seconds=1.3
+  fit=27 full_refit_epoch=1/10 loss=0.54302
+  fit=27 full_refit_epoch=2/10 loss=0.36825
+  fit=27 full_refit_epoch=3/10 loss=0.29883
+  fit=27 full_refit_epoch=4/10 loss=0.26778
+  fit=27 full_refit_epoch=5/10 loss=0.24998
+  fit=27 full_refit_epoch=6/10 loss=0.23893
+  fit=27 full_refit_epoch=7/10 loss=0.22638
+  fit=27 full_refit_epoch=8/10 loss=0.21447
+  fit=27 full_refit_epoch=9/10 loss=0.20446
+  fit=27 full_refit_epoch=10/10 loss=0.19316
+  fit=28 epoch=1/40 loss=0.56000 inner_val_loss=0.49328 best_epoch=1 seconds=1.4
+  fit=28 epoch=2/40 loss=0.38650 inner_val_loss=0.34721 best_epoch=2 seconds=1.2
+  fit=28 epoch=3/40 loss=0.31378 inner_val_loss=0.30935 best_epoch=3 seconds=1.2
+  fit=28 epoch=4/40 loss=0.27912 inner_val_loss=0.29365 best_epoch=4 seconds=1.2
+  fit=28 epoch=5/40 loss=0.25980 inner_val_loss=0.28445 best_epoch=5 seconds=1.2
+  fit=28 epoch=6/40 loss=0.24807 inner_val_loss=0.27675 best_epoch=6 seconds=1.1
+  fit=28 epoch=7/40 loss=0.23498 inner_val_loss=0.27934 best_epoch=6 seconds=1.2
+  fit=28 epoch=8/40 loss=0.22584 inner_val_loss=0.26876 best_epoch=8 seconds=1.2
+  fit=28 epoch=9/40 loss=0.21426 inner_val_loss=0.26729 best_epoch=9 seconds=1.2
+  fit=28 epoch=10/40 loss=0.20295 inner_val_loss=0.26593 best_epoch=10 seconds=1.2
+  fit=28 epoch=11/40 loss=0.18979 inner_val_loss=0.27181 best_epoch=10 seconds=1.1
+  fit=28 epoch=12/40 loss=0.18088 inner_val_loss=0.26786 best_epoch=10 seconds=1.1
+  fit=28 epoch=13/40 loss=0.16997 inner_val_loss=0.26470 best_epoch=13 seconds=1.2
+  fit=28 epoch=14/40 loss=0.15749 inner_val_loss=0.27249 best_epoch=13 seconds=1.2
+  fit=28 epoch=15/40 loss=0.14644 inner_val_loss=0.27044 best_epoch=13 seconds=1.1
+  fit=28 epoch=16/40 loss=0.13673 inner_val_loss=0.28720 best_epoch=13 seconds=1.1
+  fit=28 epoch=17/40 loss=0.12801 inner_val_loss=0.28208 best_epoch=13 seconds=1.2
+  fit=28 epoch=18/40 loss=0.12198 inner_val_loss=0.28685 best_epoch=13 seconds=1.2
+  fit=28 full_refit_epoch=1/13 loss=0.55076
+  fit=28 full_refit_epoch=2/13 loss=0.37374
+  fit=28 full_refit_epoch=3/13 loss=0.30558
+  fit=28 full_refit_epoch=4/13 loss=0.27507
+  fit=28 full_refit_epoch=5/13 loss=0.25800
+  fit=28 full_refit_epoch=6/13 loss=0.24399
+  fit=28 full_refit_epoch=7/13 loss=0.23186
+  fit=28 full_refit_epoch=8/13 loss=0.22054
+  fit=28 full_refit_epoch=9/13 loss=0.20974
+  fit=28 full_refit_epoch=10/13 loss=0.19871
+  fit=28 full_refit_epoch=11/13 loss=0.18799
+  fit=28 full_refit_epoch=12/13 loss=0.17715
+  fit=28 full_refit_epoch=13/13 loss=0.16562
+  fit=29 epoch=1/40 loss=0.55010 inner_val_loss=0.48836 best_epoch=1 seconds=1.5
+  fit=29 epoch=2/40 loss=0.37723 inner_val_loss=0.36760 best_epoch=2 seconds=1.2
+  fit=29 epoch=3/40 loss=0.30577 inner_val_loss=0.32227 best_epoch=3 seconds=1.2
+  fit=29 epoch=4/40 loss=0.27639 inner_val_loss=0.30440 best_epoch=4 seconds=1.1
+  fit=29 epoch=5/40 loss=0.25902 inner_val_loss=0.30022 best_epoch=5 seconds=1.2
+  fit=29 epoch=6/40 loss=0.24445 inner_val_loss=0.29317 best_epoch=6 seconds=1.2
+  fit=29 epoch=7/40 loss=0.23253 inner_val_loss=0.28945 best_epoch=7 seconds=1.2
+  fit=29 epoch=8/40 loss=0.22492 inner_val_loss=0.28874 best_epoch=8 seconds=1.2
+  fit=29 epoch=9/40 loss=0.21480 inner_val_loss=0.28874 best_epoch=8 seconds=1.2
+  fit=29 epoch=10/40 loss=0.20469 inner_val_loss=0.29076 best_epoch=8 seconds=1.2
+  fit=29 epoch=11/40 loss=0.19623 inner_val_loss=0.28946 best_epoch=8 seconds=1.2
+  fit=29 epoch=12/40 loss=0.18577 inner_val_loss=0.28422 best_epoch=12 seconds=1.2
+  fit=29 epoch=13/40 loss=0.17549 inner_val_loss=0.29124 best_epoch=12 seconds=1.2
+  fit=29 epoch=14/40 loss=0.16313 inner_val_loss=0.28927 best_epoch=12 seconds=1.2
+  fit=29 epoch=15/40 loss=0.15283 inner_val_loss=0.28590 best_epoch=12 seconds=1.1
+  fit=29 epoch=16/40 loss=0.14277 inner_val_loss=0.30162 best_epoch=12 seconds=1.2
+  fit=29 epoch=17/40 loss=0.13365 inner_val_loss=0.30781 best_epoch=12 seconds=1.2
+  fit=29 full_refit_epoch=1/12 loss=0.54092
+  fit=29 full_refit_epoch=2/12 loss=0.36317
+  fit=29 full_refit_epoch=3/12 loss=0.30209
+  fit=29 full_refit_epoch=4/12 loss=0.27526
+  fit=29 full_refit_epoch=5/12 loss=0.25778
+  fit=29 full_refit_epoch=6/12 loss=0.24478
+  fit=29 full_refit_epoch=7/12 loss=0.23529
+  fit=29 full_refit_epoch=8/12 loss=0.22430
+  fit=29 full_refit_epoch=9/12 loss=0.21411
+  fit=29 full_refit_epoch=10/12 loss=0.20431
+  fit=29 full_refit_epoch=11/12 loss=0.19587
+  fit=29 full_refit_epoch=12/12 loss=0.18480
+  fit=30 epoch=1/40 loss=0.59745 inner_val_loss=0.51671 best_epoch=1 seconds=1.5
+  fit=30 epoch=2/40 loss=0.40505 inner_val_loss=0.35814 best_epoch=2 seconds=1.2
+  fit=30 epoch=3/40 loss=0.31317 inner_val_loss=0.30446 best_epoch=3 seconds=1.2
+  fit=30 epoch=4/40 loss=0.27312 inner_val_loss=0.28843 best_epoch=4 seconds=1.2
+  fit=30 epoch=5/40 loss=0.25477 inner_val_loss=0.26631 best_epoch=5 seconds=1.2
+  fit=30 epoch=6/40 loss=0.24124 inner_val_loss=0.26400 best_epoch=6 seconds=1.2
+  fit=30 epoch=7/40 loss=0.22950 inner_val_loss=0.26546 best_epoch=6 seconds=1.2
+  fit=30 epoch=8/40 loss=0.21847 inner_val_loss=0.26020 best_epoch=8 seconds=1.2
+  fit=30 epoch=9/40 loss=0.20848 inner_val_loss=0.26471 best_epoch=8 seconds=1.2
+  fit=30 epoch=10/40 loss=0.19819 inner_val_loss=0.25816 best_epoch=10 seconds=1.2
+  fit=30 epoch=11/40 loss=0.19028 inner_val_loss=0.26555 best_epoch=10 seconds=1.1
+  fit=30 epoch=12/40 loss=0.17781 inner_val_loss=0.26161 best_epoch=10 seconds=1.2
+  fit=30 epoch=13/40 loss=0.16763 inner_val_loss=0.26561 best_epoch=10 seconds=1.2
+  fit=30 epoch=14/40 loss=0.16065 inner_val_loss=0.26753 best_epoch=10 seconds=1.2
+  fit=30 epoch=15/40 loss=0.14802 inner_val_loss=0.26432 best_epoch=10 seconds=1.2
+  fit=30 full_refit_epoch=1/10 loss=0.58455
+  fit=30 full_refit_epoch=2/10 loss=0.38479
+  fit=30 full_refit_epoch=3/10 loss=0.29996
+  fit=30 full_refit_epoch=4/10 loss=0.26513
+  fit=30 full_refit_epoch=5/10 loss=0.24710
+  fit=30 full_refit_epoch=6/10 loss=0.23403
+  fit=30 full_refit_epoch=7/10 loss=0.22255
+  fit=30 full_refit_epoch=8/10 loss=0.21270
+  fit=30 full_refit_epoch=9/10 loss=0.20275
+  fit=30 full_refit_epoch=10/10 loss=0.19125
+END   seed=13 phase=refined_selected model=resnet18 metric=0.716430511255746 error=None minutes=2.96
+START seed=29 phase=baseline model=resnet18
+  fit=1 epoch=1/40 loss=0.58814 inner_val_loss=0.49228 best_epoch=1 seconds=1.5
+  fit=1 epoch=2/40 loss=0.40454 inner_val_loss=0.34673 best_epoch=2 seconds=1.2
+  fit=1 epoch=3/40 loss=0.31550 inner_val_loss=0.29779 best_epoch=3 seconds=1.1
+  fit=1 epoch=4/40 loss=0.27930 inner_val_loss=0.28154 best_epoch=4 seconds=1.2
+  fit=1 epoch=5/40 loss=0.25842 inner_val_loss=0.27162 best_epoch=5 seconds=1.2
+  fit=1 epoch=6/40 loss=0.24347 inner_val_loss=0.26374 best_epoch=6 seconds=1.2
+  fit=1 epoch=7/40 loss=0.23232 inner_val_loss=0.26340 best_epoch=7 seconds=1.1
+  fit=1 epoch=8/40 loss=0.22057 inner_val_loss=0.26151 best_epoch=8 seconds=1.1
+  fit=1 epoch=9/40 loss=0.20916 inner_val_loss=0.26414 best_epoch=8 seconds=1.2
+  fit=1 epoch=10/40 loss=0.19706 inner_val_loss=0.26184 best_epoch=8 seconds=1.2
+  fit=1 epoch=11/40 loss=0.18605 inner_val_loss=0.26125 best_epoch=11 seconds=1.2
+  fit=1 epoch=12/40 loss=0.17694 inner_val_loss=0.26840 best_epoch=11 seconds=1.2
+  fit=1 epoch=13/40 loss=0.16556 inner_val_loss=0.26389 best_epoch=11 seconds=1.1
+  fit=1 epoch=14/40 loss=0.15446 inner_val_loss=0.27458 best_epoch=11 seconds=1.2
+  fit=1 epoch=15/40 loss=0.14199 inner_val_loss=0.28657 best_epoch=11 seconds=1.1
+  fit=1 epoch=16/40 loss=0.13345 inner_val_loss=0.27891 best_epoch=11 seconds=1.1
+  fit=1 full_refit_epoch=1/11 loss=0.57463
+  fit=1 full_refit_epoch=2/11 loss=0.38122
+  fit=1 full_refit_epoch=3/11 loss=0.30121
+  fit=1 full_refit_epoch=4/11 loss=0.26927
+  fit=1 full_refit_epoch=5/11 loss=0.25060
+  fit=1 full_refit_epoch=6/11 loss=0.23742
+  fit=1 full_refit_epoch=7/11 loss=0.22576
+  fit=1 full_refit_epoch=8/11 loss=0.21393
+  fit=1 full_refit_epoch=9/11 loss=0.20259
+  fit=1 full_refit_epoch=10/11 loss=0.19101
+  fit=1 full_refit_epoch=11/11 loss=0.17903
+  fit=2 epoch=1/40 loss=0.58485 inner_val_loss=0.50825 best_epoch=1 seconds=1.5
+  fit=2 epoch=2/40 loss=0.40206 inner_val_loss=0.37203 best_epoch=2 seconds=1.2
+  fit=2 epoch=3/40 loss=0.31688 inner_val_loss=0.31751 best_epoch=3 seconds=1.2
+  fit=2 epoch=4/40 loss=0.28118 inner_val_loss=0.29773 best_epoch=4 seconds=1.2
+  fit=2 epoch=5/40 loss=0.26108 inner_val_loss=0.28683 best_epoch=5 seconds=1.1
+  fit=2 epoch=6/40 loss=0.24530 inner_val_loss=0.28099 best_epoch=6 seconds=1.2
+  fit=2 epoch=7/40 loss=0.23440 inner_val_loss=0.27178 best_epoch=7 seconds=1.1
+  fit=2 epoch=8/40 loss=0.22167 inner_val_loss=0.27088 best_epoch=8 seconds=1.2
+  fit=2 epoch=9/40 loss=0.21299 inner_val_loss=0.27267 best_epoch=8 seconds=1.1
+  fit=2 epoch=10/40 loss=0.20280 inner_val_loss=0.26957 best_epoch=10 seconds=1.1
+  fit=2 epoch=11/40 loss=0.19316 inner_val_loss=0.27223 best_epoch=10 seconds=1.1
+  fit=2 epoch=12/40 loss=0.18177 inner_val_loss=0.26339 best_epoch=12 seconds=1.2
+  fit=2 epoch=13/40 loss=0.17090 inner_val_loss=0.26300 best_epoch=13 seconds=1.2
+  fit=2 epoch=14/40 loss=0.16254 inner_val_loss=0.26056 best_epoch=14 seconds=1.2
+  fit=2 epoch=15/40 loss=0.15065 inner_val_loss=0.26351 best_epoch=14 seconds=1.2
+  fit=2 epoch=16/40 loss=0.14172 inner_val_loss=0.26037 best_epoch=16 seconds=1.2
+  fit=2 epoch=17/40 loss=0.13172 inner_val_loss=0.26145 best_epoch=16 seconds=1.1
+  fit=2 epoch=18/40 loss=0.12027 inner_val_loss=0.26529 best_epoch=16 seconds=1.2
+  fit=2 epoch=19/40 loss=0.11386 inner_val_loss=0.26808 best_epoch=16 seconds=1.1
+  fit=2 epoch=20/40 loss=0.10788 inner_val_loss=0.27658 best_epoch=16 seconds=1.2
+  fit=2 epoch=21/40 loss=0.09733 inner_val_loss=0.27017 best_epoch=16 seconds=1.1
+  fit=2 full_refit_epoch=1/16 loss=0.57470
+  fit=2 full_refit_epoch=2/16 loss=0.38466
+  fit=2 full_refit_epoch=3/16 loss=0.30781
+  fit=2 full_refit_epoch=4/16 loss=0.27487
+  fit=2 full_refit_epoch=5/16 loss=0.25474
+  fit=2 full_refit_epoch=6/16 loss=0.24052
+  fit=2 full_refit_epoch=7/16 loss=0.22776
+  fit=2 full_refit_epoch=8/16 loss=0.21698
+  fit=2 full_refit_epoch=9/16 loss=0.20391
+  fit=2 full_refit_epoch=10/16 loss=0.19306
+  fit=2 full_refit_epoch=11/16 loss=0.18173
+  fit=2 full_refit_epoch=12/16 loss=0.17111
+  fit=2 full_refit_epoch=13/16 loss=0.15964
+  fit=2 full_refit_epoch=14/16 loss=0.14782
+  fit=2 full_refit_epoch=15/16 loss=0.13803
+  fit=2 full_refit_epoch=16/16 loss=0.12640
+  fit=3 epoch=1/40 loss=0.57348 inner_val_loss=0.49306 best_epoch=1 seconds=1.5
+  fit=3 epoch=2/40 loss=0.38950 inner_val_loss=0.36184 best_epoch=2 seconds=1.2
+  fit=3 epoch=3/40 loss=0.30797 inner_val_loss=0.30994 best_epoch=3 seconds=1.2
+  fit=3 epoch=4/40 loss=0.27375 inner_val_loss=0.29359 best_epoch=4 seconds=1.2
+  fit=3 epoch=5/40 loss=0.25468 inner_val_loss=0.28066 best_epoch=5 seconds=1.2
+  fit=3 epoch=6/40 loss=0.24246 inner_val_loss=0.27681 best_epoch=6 seconds=1.2
+  fit=3 epoch=7/40 loss=0.23012 inner_val_loss=0.26915 best_epoch=7 seconds=1.2
+  fit=3 epoch=8/40 loss=0.22123 inner_val_loss=0.26731 best_epoch=8 seconds=1.2
+  fit=3 epoch=9/40 loss=0.20945 inner_val_loss=0.26604 best_epoch=9 seconds=1.2
+  fit=3 epoch=10/40 loss=0.19994 inner_val_loss=0.26959 best_epoch=9 seconds=1.2
+  fit=3 epoch=11/40 loss=0.18995 inner_val_loss=0.26422 best_epoch=11 seconds=1.1
+  fit=3 epoch=12/40 loss=0.17880 inner_val_loss=0.26585 best_epoch=11 seconds=1.2
+  fit=3 epoch=13/40 loss=0.16775 inner_val_loss=0.26942 best_epoch=11 seconds=1.1
+  fit=3 epoch=14/40 loss=0.15718 inner_val_loss=0.27107 best_epoch=11 seconds=1.2
+  fit=3 epoch=15/40 loss=0.14900 inner_val_loss=0.26516 best_epoch=11 seconds=1.2
+  fit=3 epoch=16/40 loss=0.13834 inner_val_loss=0.27344 best_epoch=11 seconds=1.1
+  fit=3 full_refit_epoch=1/11 loss=0.56165
+  fit=3 full_refit_epoch=2/11 loss=0.37292
+  fit=3 full_refit_epoch=3/11 loss=0.29922
+  fit=3 full_refit_epoch=4/11 loss=0.27113
+  fit=3 full_refit_epoch=5/11 loss=0.25251
+  fit=3 full_refit_epoch=6/11 loss=0.23909
+  fit=3 full_refit_epoch=7/11 loss=0.22746
+  fit=3 full_refit_epoch=8/11 loss=0.21626
+  fit=3 full_refit_epoch=9/11 loss=0.20592
+  fit=3 full_refit_epoch=10/11 loss=0.19461
+  fit=3 full_refit_epoch=11/11 loss=0.18334
+  fit=4 epoch=1/40 loss=0.58192 inner_val_loss=0.49342 best_epoch=1 seconds=1.5
+  fit=4 epoch=2/40 loss=0.39798 inner_val_loss=0.36081 best_epoch=2 seconds=1.2
+  fit=4 epoch=3/40 loss=0.31313 inner_val_loss=0.29638 best_epoch=3 seconds=1.1
+  fit=4 epoch=4/40 loss=0.27931 inner_val_loss=0.28103 best_epoch=4 seconds=1.1
+  fit=4 epoch=5/40 loss=0.25800 inner_val_loss=0.27499 best_epoch=5 seconds=1.1
+  fit=4 epoch=6/40 loss=0.24278 inner_val_loss=0.27125 best_epoch=6 seconds=1.2
+  fit=4 epoch=7/40 loss=0.23258 inner_val_loss=0.26552 best_epoch=7 seconds=1.1
+  fit=4 epoch=8/40 loss=0.22195 inner_val_loss=0.26351 best_epoch=8 seconds=1.1
+  fit=4 epoch=9/40 loss=0.21476 inner_val_loss=0.26254 best_epoch=9 seconds=1.1
+  fit=4 epoch=10/40 loss=0.20208 inner_val_loss=0.26687 best_epoch=9 seconds=1.2
+  fit=4 epoch=11/40 loss=0.18991 inner_val_loss=0.26460 best_epoch=9 seconds=1.2
+  fit=4 epoch=12/40 loss=0.18063 inner_val_loss=0.26629 best_epoch=9 seconds=1.2
+  fit=4 epoch=13/40 loss=0.17466 inner_val_loss=0.26704 best_epoch=9 seconds=1.1
+  fit=4 epoch=14/40 loss=0.16087 inner_val_loss=0.26496 best_epoch=9 seconds=1.2
+  fit=4 full_refit_epoch=1/9 loss=0.57019
+  fit=4 full_refit_epoch=2/9 loss=0.38422
+  fit=4 full_refit_epoch=3/9 loss=0.30593
+  fit=4 full_refit_epoch=4/9 loss=0.27295
+  fit=4 full_refit_epoch=5/9 loss=0.25472
+  fit=4 full_refit_epoch=6/9 loss=0.24098
+  fit=4 full_refit_epoch=7/9 loss=0.22995
+  fit=4 full_refit_epoch=8/9 loss=0.21857
+  fit=4 full_refit_epoch=9/9 loss=0.20786
+  fit=5 epoch=1/40 loss=0.58387 inner_val_loss=0.49619 best_epoch=1 seconds=1.5
+  fit=5 epoch=2/40 loss=0.39778 inner_val_loss=0.35999 best_epoch=2 seconds=1.2
+  fit=5 epoch=3/40 loss=0.31364 inner_val_loss=0.32502 best_epoch=3 seconds=1.2
+  fit=5 epoch=4/40 loss=0.27996 inner_val_loss=0.30325 best_epoch=4 seconds=1.2
+  fit=5 epoch=5/40 loss=0.25923 inner_val_loss=0.29806 best_epoch=5 seconds=1.2
+  fit=5 epoch=6/40 loss=0.24623 inner_val_loss=0.29306 best_epoch=6 seconds=1.2
+  fit=5 epoch=7/40 loss=0.23481 inner_val_loss=0.28980 best_epoch=7 seconds=1.2
+  fit=5 epoch=8/40 loss=0.22262 inner_val_loss=0.29022 best_epoch=7 seconds=1.2
+  fit=5 epoch=9/40 loss=0.21360 inner_val_loss=0.28873 best_epoch=9 seconds=1.2
+  fit=5 epoch=10/40 loss=0.20523 inner_val_loss=0.29041 best_epoch=9 seconds=1.2
+  fit=5 epoch=11/40 loss=0.19348 inner_val_loss=0.29017 best_epoch=9 seconds=1.1
+  fit=5 epoch=12/40 loss=0.18322 inner_val_loss=0.29730 best_epoch=9 seconds=1.2
+  fit=5 epoch=13/40 loss=0.17470 inner_val_loss=0.29838 best_epoch=9 seconds=1.2
+  fit=5 epoch=14/40 loss=0.16107 inner_val_loss=0.30267 best_epoch=9 seconds=1.2
+  fit=5 full_refit_epoch=1/9 loss=0.57203
+  fit=5 full_refit_epoch=2/9 loss=0.38402
+  fit=5 full_refit_epoch=3/9 loss=0.30864
+  fit=5 full_refit_epoch=4/9 loss=0.27880
+  fit=5 full_refit_epoch=5/9 loss=0.26028
+  fit=5 full_refit_epoch=6/9 loss=0.24693
+  fit=5 full_refit_epoch=7/9 loss=0.23545
+  fit=5 full_refit_epoch=8/9 loss=0.22524
+  fit=5 full_refit_epoch=9/9 loss=0.21462
+END   seed=29 phase=baseline model=resnet18 metric=0.7152889070088977 error=None minutes=2.97
+START seed=29 phase=initial model=resnet18
+  fit=6 epoch=1/40 loss=0.58814 inner_val_loss=0.49228 best_epoch=1 seconds=1.5
+  fit=6 epoch=2/40 loss=0.40454 inner_val_loss=0.34673 best_epoch=2 seconds=1.2
+  fit=6 epoch=3/40 loss=0.31550 inner_val_loss=0.29779 best_epoch=3 seconds=1.2
+  fit=6 epoch=4/40 loss=0.27930 inner_val_loss=0.28154 best_epoch=4 seconds=1.2
+  fit=6 epoch=5/40 loss=0.25842 inner_val_loss=0.27162 best_epoch=5 seconds=1.2
+  fit=6 epoch=6/40 loss=0.24347 inner_val_loss=0.26374 best_epoch=6 seconds=1.2
+  fit=6 epoch=7/40 loss=0.23232 inner_val_loss=0.26340 best_epoch=7 seconds=1.2
+  fit=6 epoch=8/40 loss=0.22057 inner_val_loss=0.26151 best_epoch=8 seconds=1.2
+  fit=6 epoch=9/40 loss=0.20916 inner_val_loss=0.26414 best_epoch=8 seconds=1.2
+  fit=6 epoch=10/40 loss=0.19706 inner_val_loss=0.26184 best_epoch=8 seconds=1.1
+  fit=6 epoch=11/40 loss=0.18605 inner_val_loss=0.26125 best_epoch=11 seconds=1.1
+  fit=6 epoch=12/40 loss=0.17694 inner_val_loss=0.26840 best_epoch=11 seconds=1.2
+  fit=6 epoch=13/40 loss=0.16556 inner_val_loss=0.26389 best_epoch=11 seconds=1.2
+  fit=6 epoch=14/40 loss=0.15446 inner_val_loss=0.27458 best_epoch=11 seconds=1.2
+  fit=6 epoch=15/40 loss=0.14199 inner_val_loss=0.28657 best_epoch=11 seconds=1.2
+  fit=6 epoch=16/40 loss=0.13345 inner_val_loss=0.27891 best_epoch=11 seconds=1.1
+  fit=6 full_refit_epoch=1/11 loss=0.57463
+  fit=6 full_refit_epoch=2/11 loss=0.38122
+  fit=6 full_refit_epoch=3/11 loss=0.30121
+  fit=6 full_refit_epoch=4/11 loss=0.26927
+  fit=6 full_refit_epoch=5/11 loss=0.25060
+  fit=6 full_refit_epoch=6/11 loss=0.23742
+  fit=6 full_refit_epoch=7/11 loss=0.22576
+  fit=6 full_refit_epoch=8/11 loss=0.21393
+  fit=6 full_refit_epoch=9/11 loss=0.20259
+  fit=6 full_refit_epoch=10/11 loss=0.19101
+  fit=6 full_refit_epoch=11/11 loss=0.17903
+  fit=7 epoch=1/40 loss=0.58485 inner_val_loss=0.50825 best_epoch=1 seconds=1.5
+  fit=7 epoch=2/40 loss=0.40206 inner_val_loss=0.37203 best_epoch=2 seconds=1.2
+  fit=7 epoch=3/40 loss=0.31688 inner_val_loss=0.31751 best_epoch=3 seconds=1.2
+  fit=7 epoch=4/40 loss=0.28118 inner_val_loss=0.29773 best_epoch=4 seconds=1.2
+  fit=7 epoch=5/40 loss=0.26108 inner_val_loss=0.28683 best_epoch=5 seconds=1.2
+  fit=7 epoch=6/40 loss=0.24530 inner_val_loss=0.28099 best_epoch=6 seconds=1.2
+  fit=7 epoch=7/40 loss=0.23440 inner_val_loss=0.27178 best_epoch=7 seconds=1.2
+  fit=7 epoch=8/40 loss=0.22167 inner_val_loss=0.27088 best_epoch=8 seconds=1.2
+  fit=7 epoch=9/40 loss=0.21299 inner_val_loss=0.27267 best_epoch=8 seconds=1.2
+  fit=7 epoch=10/40 loss=0.20280 inner_val_loss=0.26957 best_epoch=10 seconds=1.2
+  fit=7 epoch=11/40 loss=0.19316 inner_val_loss=0.27223 best_epoch=10 seconds=1.2
+  fit=7 epoch=12/40 loss=0.18177 inner_val_loss=0.26339 best_epoch=12 seconds=1.2
+  fit=7 epoch=13/40 loss=0.17090 inner_val_loss=0.26300 best_epoch=13 seconds=1.2
+  fit=7 epoch=14/40 loss=0.16254 inner_val_loss=0.26056 best_epoch=14 seconds=1.1
+  fit=7 epoch=15/40 loss=0.15065 inner_val_loss=0.26351 best_epoch=14 seconds=1.2
+  fit=7 epoch=16/40 loss=0.14172 inner_val_loss=0.26037 best_epoch=16 seconds=1.2
+  fit=7 epoch=17/40 loss=0.13172 inner_val_loss=0.26145 best_epoch=16 seconds=1.2
+  fit=7 epoch=18/40 loss=0.12027 inner_val_loss=0.26529 best_epoch=16 seconds=1.2
+  fit=7 epoch=19/40 loss=0.11386 inner_val_loss=0.26808 best_epoch=16 seconds=1.1
+  fit=7 epoch=20/40 loss=0.10788 inner_val_loss=0.27658 best_epoch=16 seconds=1.1
+  fit=7 epoch=21/40 loss=0.09733 inner_val_loss=0.27017 best_epoch=16 seconds=1.2
+  fit=7 full_refit_epoch=1/16 loss=0.57470
+  fit=7 full_refit_epoch=2/16 loss=0.38466
+  fit=7 full_refit_epoch=3/16 loss=0.30781
+  fit=7 full_refit_epoch=4/16 loss=0.27487
+  fit=7 full_refit_epoch=5/16 loss=0.25474
+  fit=7 full_refit_epoch=6/16 loss=0.24052
+  fit=7 full_refit_epoch=7/16 loss=0.22776
+  fit=7 full_refit_epoch=8/16 loss=0.21698
+  fit=7 full_refit_epoch=9/16 loss=0.20391
+  fit=7 full_refit_epoch=10/16 loss=0.19306
+  fit=7 full_refit_epoch=11/16 loss=0.18173
+  fit=7 full_refit_epoch=12/16 loss=0.17111
+  fit=7 full_refit_epoch=13/16 loss=0.15964
+  fit=7 full_refit_epoch=14/16 loss=0.14782
+  fit=7 full_refit_epoch=15/16 loss=0.13803
+  fit=7 full_refit_epoch=16/16 loss=0.12640
+  fit=8 epoch=1/40 loss=0.57348 inner_val_loss=0.49306 best_epoch=1 seconds=1.5
+  fit=8 epoch=2/40 loss=0.38950 inner_val_loss=0.36184 best_epoch=2 seconds=1.2
+  fit=8 epoch=3/40 loss=0.30797 inner_val_loss=0.30994 best_epoch=3 seconds=1.2
+  fit=8 epoch=4/40 loss=0.27375 inner_val_loss=0.29359 best_epoch=4 seconds=1.2
+  fit=8 epoch=5/40 loss=0.25468 inner_val_loss=0.28066 best_epoch=5 seconds=1.2
+  fit=8 epoch=6/40 loss=0.24246 inner_val_loss=0.27681 best_epoch=6 seconds=1.1
+  fit=8 epoch=7/40 loss=0.23012 inner_val_loss=0.26915 best_epoch=7 seconds=1.2
+  fit=8 epoch=8/40 loss=0.22123 inner_val_loss=0.26731 best_epoch=8 seconds=1.2
+  fit=8 epoch=9/40 loss=0.20945 inner_val_loss=0.26604 best_epoch=9 seconds=1.2
+  fit=8 epoch=10/40 loss=0.19994 inner_val_loss=0.26959 best_epoch=9 seconds=1.2
+  fit=8 epoch=11/40 loss=0.18995 inner_val_loss=0.26422 best_epoch=11 seconds=1.2
+  fit=8 epoch=12/40 loss=0.17880 inner_val_loss=0.26585 best_epoch=11 seconds=1.2
+  fit=8 epoch=13/40 loss=0.16775 inner_val_loss=0.26942 best_epoch=11 seconds=1.2
+  fit=8 epoch=14/40 loss=0.15718 inner_val_loss=0.27107 best_epoch=11 seconds=1.2
+  fit=8 epoch=15/40 loss=0.14900 inner_val_loss=0.26516 best_epoch=11 seconds=1.2
+  fit=8 epoch=16/40 loss=0.13834 inner_val_loss=0.27344 best_epoch=11 seconds=1.2
+  fit=8 full_refit_epoch=1/11 loss=0.56165
+  fit=8 full_refit_epoch=2/11 loss=0.37292
+  fit=8 full_refit_epoch=3/11 loss=0.29922
+  fit=8 full_refit_epoch=4/11 loss=0.27113
+  fit=8 full_refit_epoch=5/11 loss=0.25251
+  fit=8 full_refit_epoch=6/11 loss=0.23909
+  fit=8 full_refit_epoch=7/11 loss=0.22746
+  fit=8 full_refit_epoch=8/11 loss=0.21626
+  fit=8 full_refit_epoch=9/11 loss=0.20592
+  fit=8 full_refit_epoch=10/11 loss=0.19461
+  fit=8 full_refit_epoch=11/11 loss=0.18334
+  fit=9 epoch=1/40 loss=0.58192 inner_val_loss=0.49342 best_epoch=1 seconds=1.5
+  fit=9 epoch=2/40 loss=0.39798 inner_val_loss=0.36081 best_epoch=2 seconds=1.2
+  fit=9 epoch=3/40 loss=0.31313 inner_val_loss=0.29638 best_epoch=3 seconds=1.2
+  fit=9 epoch=4/40 loss=0.27931 inner_val_loss=0.28103 best_epoch=4 seconds=1.2
+  fit=9 epoch=5/40 loss=0.25800 inner_val_loss=0.27499 best_epoch=5 seconds=1.2
+  fit=9 epoch=6/40 loss=0.24278 inner_val_loss=0.27125 best_epoch=6 seconds=1.2
+  fit=9 epoch=7/40 loss=0.23258 inner_val_loss=0.26552 best_epoch=7 seconds=1.2
+  fit=9 epoch=8/40 loss=0.22195 inner_val_loss=0.26351 best_epoch=8 seconds=1.1
+  fit=9 epoch=9/40 loss=0.21476 inner_val_loss=0.26254 best_epoch=9 seconds=1.1
+  fit=9 epoch=10/40 loss=0.20208 inner_val_loss=0.26687 best_epoch=9 seconds=1.2
+  fit=9 epoch=11/40 loss=0.18991 inner_val_loss=0.26460 best_epoch=9 seconds=1.2
+  fit=9 epoch=12/40 loss=0.18063 inner_val_loss=0.26629 best_epoch=9 seconds=1.2
+  fit=9 epoch=13/40 loss=0.17466 inner_val_loss=0.26704 best_epoch=9 seconds=1.2
+  fit=9 epoch=14/40 loss=0.16087 inner_val_loss=0.26496 best_epoch=9 seconds=1.2
+  fit=9 full_refit_epoch=1/9 loss=0.57019
+  fit=9 full_refit_epoch=2/9 loss=0.38422
+  fit=9 full_refit_epoch=3/9 loss=0.30593
+  fit=9 full_refit_epoch=4/9 loss=0.27295
+  fit=9 full_refit_epoch=5/9 loss=0.25472
+  fit=9 full_refit_epoch=6/9 loss=0.24098
+  fit=9 full_refit_epoch=7/9 loss=0.22995
+  fit=9 full_refit_epoch=8/9 loss=0.21857
+  fit=9 full_refit_epoch=9/9 loss=0.20786
+  fit=10 epoch=1/40 loss=0.58387 inner_val_loss=0.49619 best_epoch=1 seconds=1.5
+  fit=10 epoch=2/40 loss=0.39778 inner_val_loss=0.35999 best_epoch=2 seconds=1.2
+  fit=10 epoch=3/40 loss=0.31364 inner_val_loss=0.32502 best_epoch=3 seconds=1.2
+  fit=10 epoch=4/40 loss=0.27996 inner_val_loss=0.30325 best_epoch=4 seconds=1.2
+  fit=10 epoch=5/40 loss=0.25923 inner_val_loss=0.29806 best_epoch=5 seconds=1.2
+  fit=10 epoch=6/40 loss=0.24623 inner_val_loss=0.29306 best_epoch=6 seconds=1.1
+  fit=10 epoch=7/40 loss=0.23481 inner_val_loss=0.28980 best_epoch=7 seconds=1.2
+  fit=10 epoch=8/40 loss=0.22262 inner_val_loss=0.29022 best_epoch=7 seconds=1.2
+  fit=10 epoch=9/40 loss=0.21360 inner_val_loss=0.28873 best_epoch=9 seconds=1.2
+  fit=10 epoch=10/40 loss=0.20523 inner_val_loss=0.29041 best_epoch=9 seconds=1.2
+  fit=10 epoch=11/40 loss=0.19348 inner_val_loss=0.29017 best_epoch=9 seconds=1.2
+  fit=10 epoch=12/40 loss=0.18322 inner_val_loss=0.29730 best_epoch=9 seconds=1.2
+  fit=10 epoch=13/40 loss=0.17470 inner_val_loss=0.29838 best_epoch=9 seconds=1.2
+  fit=10 epoch=14/40 loss=0.16107 inner_val_loss=0.30267 best_epoch=9 seconds=1.2
+  fit=10 full_refit_epoch=1/9 loss=0.57203
+  fit=10 full_refit_epoch=2/9 loss=0.38402
+  fit=10 full_refit_epoch=3/9 loss=0.30864
+  fit=10 full_refit_epoch=4/9 loss=0.27880
+  fit=10 full_refit_epoch=5/9 loss=0.26028
+  fit=10 full_refit_epoch=6/9 loss=0.24693
+  fit=10 full_refit_epoch=7/9 loss=0.23545
+  fit=10 full_refit_epoch=8/9 loss=0.22524
+  fit=10 full_refit_epoch=9/9 loss=0.21462
+END   seed=29 phase=initial model=resnet18 metric=0.7152889070088977 error=None minutes=2.99
+START seed=29 phase=initial model=efficientnet_b0
+  fit=11 epoch=1/40 loss=0.76934 inner_val_loss=0.52679 best_epoch=1 seconds=3.0
+  fit=11 epoch=2/40 loss=0.28877 inner_val_loss=0.35525 best_epoch=2 seconds=2.8
+  fit=11 epoch=3/40 loss=0.17859 inner_val_loss=0.33480 best_epoch=3 seconds=2.7
+  fit=11 epoch=4/40 loss=0.12389 inner_val_loss=0.33324 best_epoch=4 seconds=2.6
+  fit=11 epoch=5/40 loss=0.08660 inner_val_loss=0.33584 best_epoch=4 seconds=2.5
+  fit=11 epoch=6/40 loss=0.06472 inner_val_loss=0.34164 best_epoch=4 seconds=2.6
+  fit=11 epoch=7/40 loss=0.05107 inner_val_loss=0.34505 best_epoch=4 seconds=2.7
+  fit=11 epoch=8/40 loss=0.04057 inner_val_loss=0.34088 best_epoch=4 seconds=2.7
+  fit=11 epoch=9/40 loss=0.03227 inner_val_loss=0.35100 best_epoch=4 seconds=2.7
+  fit=11 full_refit_epoch=1/4 loss=0.72948
+  fit=11 full_refit_epoch=2/4 loss=0.26951
+  fit=11 full_refit_epoch=3/4 loss=0.17170
+  fit=11 full_refit_epoch=4/4 loss=0.11659
+  fit=12 epoch=1/40 loss=0.81731 inner_val_loss=0.67180 best_epoch=1 seconds=2.9
+  fit=12 epoch=2/40 loss=0.31203 inner_val_loss=0.39662 best_epoch=2 seconds=2.7
+  fit=12 epoch=3/40 loss=0.18681 inner_val_loss=0.37993 best_epoch=3 seconds=2.7
+  fit=12 epoch=4/40 loss=0.12839 inner_val_loss=0.36504 best_epoch=4 seconds=2.7
+  fit=12 epoch=5/40 loss=0.09445 inner_val_loss=0.36285 best_epoch=5 seconds=2.6
+  fit=12 epoch=6/40 loss=0.07144 inner_val_loss=0.37400 best_epoch=5 seconds=2.7
+  fit=12 epoch=7/40 loss=0.05483 inner_val_loss=0.37210 best_epoch=5 seconds=2.7
+  fit=12 epoch=8/40 loss=0.04115 inner_val_loss=0.37478 best_epoch=5 seconds=2.6
+  fit=12 epoch=9/40 loss=0.03675 inner_val_loss=0.38750 best_epoch=5 seconds=2.7
+  fit=12 epoch=10/40 loss=0.03024 inner_val_loss=0.38527 best_epoch=5 seconds=2.6
+  fit=12 full_refit_epoch=1/5 loss=0.79014
+  fit=12 full_refit_epoch=2/5 loss=0.29242
+  fit=12 full_refit_epoch=3/5 loss=0.18181
+  fit=12 full_refit_epoch=4/5 loss=0.12699
+  fit=12 full_refit_epoch=5/5 loss=0.08796
+  fit=13 epoch=1/40 loss=0.88383 inner_val_loss=0.58002 best_epoch=1 seconds=2.9
+  fit=13 epoch=2/40 loss=0.29442 inner_val_loss=0.35857 best_epoch=2 seconds=2.7
+  fit=13 epoch=3/40 loss=0.18524 inner_val_loss=0.35513 best_epoch=3 seconds=2.7
+  fit=13 epoch=4/40 loss=0.13151 inner_val_loss=0.35060 best_epoch=4 seconds=2.7
+  fit=13 epoch=5/40 loss=0.09377 inner_val_loss=0.34797 best_epoch=5 seconds=2.7
+  fit=13 epoch=6/40 loss=0.06967 inner_val_loss=0.36224 best_epoch=5 seconds=2.6
+  fit=13 epoch=7/40 loss=0.05372 inner_val_loss=0.36577 best_epoch=5 seconds=2.6
+  fit=13 epoch=8/40 loss=0.04591 inner_val_loss=0.38591 best_epoch=5 seconds=2.6
+  fit=13 epoch=9/40 loss=0.03293 inner_val_loss=0.38141 best_epoch=5 seconds=2.7
+  fit=13 epoch=10/40 loss=0.02871 inner_val_loss=0.38480 best_epoch=5 seconds=2.7
+  fit=13 full_refit_epoch=1/5 loss=0.85399
+  fit=13 full_refit_epoch=2/5 loss=0.28268
+  fit=13 full_refit_epoch=3/5 loss=0.18103
+  fit=13 full_refit_epoch=4/5 loss=0.12855
+  fit=13 full_refit_epoch=5/5 loss=0.09022
+  fit=14 epoch=1/40 loss=0.79972 inner_val_loss=0.53116 best_epoch=1 seconds=3.0
+  fit=14 epoch=2/40 loss=0.29627 inner_val_loss=0.36726 best_epoch=2 seconds=2.7
+  fit=14 epoch=3/40 loss=0.18179 inner_val_loss=0.34663 best_epoch=3 seconds=2.7
+  fit=14 epoch=4/40 loss=0.13073 inner_val_loss=0.33646 best_epoch=4 seconds=2.7
+  fit=14 epoch=5/40 loss=0.08965 inner_val_loss=0.34000 best_epoch=4 seconds=2.6
+  fit=14 epoch=6/40 loss=0.06727 inner_val_loss=0.34241 best_epoch=4 seconds=2.6
+  fit=14 epoch=7/40 loss=0.05033 inner_val_loss=0.35168 best_epoch=4 seconds=2.6
+  fit=14 epoch=8/40 loss=0.04141 inner_val_loss=0.35495 best_epoch=4 seconds=2.7
+  fit=14 epoch=9/40 loss=0.03706 inner_val_loss=0.36631 best_epoch=4 seconds=2.7
+  fit=14 full_refit_epoch=1/4 loss=0.77608
+  fit=14 full_refit_epoch=2/4 loss=0.28693
+  fit=14 full_refit_epoch=3/4 loss=0.17914
+  fit=14 full_refit_epoch=4/4 loss=0.12245
+  fit=15 epoch=1/40 loss=0.85508 inner_val_loss=0.70817 best_epoch=1 seconds=3.1
+  fit=15 epoch=2/40 loss=0.29359 inner_val_loss=0.39589 best_epoch=2 seconds=2.8
+  fit=15 epoch=3/40 loss=0.18795 inner_val_loss=0.36599 best_epoch=3 seconds=2.8
+  fit=15 epoch=4/40 loss=0.13270 inner_val_loss=0.36804 best_epoch=3 seconds=2.6
+  fit=15 epoch=5/40 loss=0.09559 inner_val_loss=0.37143 best_epoch=3 seconds=2.7
+  fit=15 epoch=6/40 loss=0.06954 inner_val_loss=0.37254 best_epoch=3 seconds=2.7
+  fit=15 epoch=7/40 loss=0.05449 inner_val_loss=0.37321 best_epoch=3 seconds=2.7
+  fit=15 epoch=8/40 loss=0.04248 inner_val_loss=0.38808 best_epoch=3 seconds=2.7
+  fit=15 full_refit_epoch=1/3 loss=0.82688
+  fit=15 full_refit_epoch=2/3 loss=0.28916
+  fit=15 full_refit_epoch=3/3 loss=0.18630
+END   seed=29 phase=initial model=efficientnet_b0 metric=0.6361423817869482 error=None minutes=3.38
+START seed=29 phase=initial_merge model=ensemble:resnet18+efficientnet_b0
+END   seed=29 phase=initial_merge model=ensemble:resnet18+efficientnet_b0 metric=None error=AssertionError:  minutes=0.00
+START seed=29 phase=initial_selected model=resnet18
+  fit=16 epoch=1/40 loss=0.58814 inner_val_loss=0.49228 best_epoch=1 seconds=1.5
+  fit=16 epoch=2/40 loss=0.40454 inner_val_loss=0.34673 best_epoch=2 seconds=1.2
+  fit=16 epoch=3/40 loss=0.31550 inner_val_loss=0.29779 best_epoch=3 seconds=1.2
+  fit=16 epoch=4/40 loss=0.27930 inner_val_loss=0.28154 best_epoch=4 seconds=1.2
+  fit=16 epoch=5/40 loss=0.25842 inner_val_loss=0.27162 best_epoch=5 seconds=1.2
+  fit=16 epoch=6/40 loss=0.24347 inner_val_loss=0.26374 best_epoch=6 seconds=1.2
+  fit=16 epoch=7/40 loss=0.23232 inner_val_loss=0.26340 best_epoch=7 seconds=1.2
+  fit=16 epoch=8/40 loss=0.22057 inner_val_loss=0.26151 best_epoch=8 seconds=1.2
+  fit=16 epoch=9/40 loss=0.20916 inner_val_loss=0.26414 best_epoch=8 seconds=1.2
+  fit=16 epoch=10/40 loss=0.19706 inner_val_loss=0.26184 best_epoch=8 seconds=1.2
+  fit=16 epoch=11/40 loss=0.18605 inner_val_loss=0.26125 best_epoch=11 seconds=1.2
+  fit=16 epoch=12/40 loss=0.17694 inner_val_loss=0.26840 best_epoch=11 seconds=1.1
+  fit=16 epoch=13/40 loss=0.16556 inner_val_loss=0.26389 best_epoch=11 seconds=1.2
+  fit=16 epoch=14/40 loss=0.15446 inner_val_loss=0.27458 best_epoch=11 seconds=1.2
+  fit=16 epoch=15/40 loss=0.14199 inner_val_loss=0.28657 best_epoch=11 seconds=1.2
+  fit=16 epoch=16/40 loss=0.13345 inner_val_loss=0.27891 best_epoch=11 seconds=1.2
+  fit=16 full_refit_epoch=1/11 loss=0.57463
+  fit=16 full_refit_epoch=2/11 loss=0.38122
+  fit=16 full_refit_epoch=3/11 loss=0.30121
+  fit=16 full_refit_epoch=4/11 loss=0.26927
+  fit=16 full_refit_epoch=5/11 loss=0.25060
+  fit=16 full_refit_epoch=6/11 loss=0.23742
+  fit=16 full_refit_epoch=7/11 loss=0.22576
+  fit=16 full_refit_epoch=8/11 loss=0.21393
+  fit=16 full_refit_epoch=9/11 loss=0.20259
+  fit=16 full_refit_epoch=10/11 loss=0.19101
+  fit=16 full_refit_epoch=11/11 loss=0.17903
+  fit=17 epoch=1/40 loss=0.58485 inner_val_loss=0.50825 best_epoch=1 seconds=1.5
+  fit=17 epoch=2/40 loss=0.40206 inner_val_loss=0.37203 best_epoch=2 seconds=1.2
+  fit=17 epoch=3/40 loss=0.31688 inner_val_loss=0.31751 best_epoch=3 seconds=1.2
+  fit=17 epoch=4/40 loss=0.28118 inner_val_loss=0.29773 best_epoch=4 seconds=1.2
+  fit=17 epoch=5/40 loss=0.26108 inner_val_loss=0.28683 best_epoch=5 seconds=1.2
+  fit=17 epoch=6/40 loss=0.24530 inner_val_loss=0.28099 best_epoch=6 seconds=1.2
+  fit=17 epoch=7/40 loss=0.23440 inner_val_loss=0.27178 best_epoch=7 seconds=1.2
+  fit=17 epoch=8/40 loss=0.22167 inner_val_loss=0.27088 best_epoch=8 seconds=1.2
+  fit=17 epoch=9/40 loss=0.21299 inner_val_loss=0.27267 best_epoch=8 seconds=1.2
+  fit=17 epoch=10/40 loss=0.20280 inner_val_loss=0.26957 best_epoch=10 seconds=1.2
+  fit=17 epoch=11/40 loss=0.19316 inner_val_loss=0.27223 best_epoch=10 seconds=1.2
+  fit=17 epoch=12/40 loss=0.18177 inner_val_loss=0.26339 best_epoch=12 seconds=1.2
+  fit=17 epoch=13/40 loss=0.17090 inner_val_loss=0.26300 best_epoch=13 seconds=1.2
+  fit=17 epoch=14/40 loss=0.16254 inner_val_loss=0.26056 best_epoch=14 seconds=1.2
+  fit=17 epoch=15/40 loss=0.15065 inner_val_loss=0.26351 best_epoch=14 seconds=1.2
+  fit=17 epoch=16/40 loss=0.14172 inner_val_loss=0.26037 best_epoch=16 seconds=1.2
+  fit=17 epoch=17/40 loss=0.13172 inner_val_loss=0.26145 best_epoch=16 seconds=1.1
+  fit=17 epoch=18/40 loss=0.12027 inner_val_loss=0.26529 best_epoch=16 seconds=1.2
+  fit=17 epoch=19/40 loss=0.11386 inner_val_loss=0.26808 best_epoch=16 seconds=1.1
+  fit=17 epoch=20/40 loss=0.10788 inner_val_loss=0.27658 best_epoch=16 seconds=1.2
+  fit=17 epoch=21/40 loss=0.09733 inner_val_loss=0.27017 best_epoch=16 seconds=1.2
+  fit=17 full_refit_epoch=1/16 loss=0.57470
+  fit=17 full_refit_epoch=2/16 loss=0.38466
+  fit=17 full_refit_epoch=3/16 loss=0.30781
+  fit=17 full_refit_epoch=4/16 loss=0.27487
+  fit=17 full_refit_epoch=5/16 loss=0.25474
+  fit=17 full_refit_epoch=6/16 loss=0.24052
+  fit=17 full_refit_epoch=7/16 loss=0.22776
+  fit=17 full_refit_epoch=8/16 loss=0.21698
+  fit=17 full_refit_epoch=9/16 loss=0.20391
+  fit=17 full_refit_epoch=10/16 loss=0.19306
+  fit=17 full_refit_epoch=11/16 loss=0.18173
+  fit=17 full_refit_epoch=12/16 loss=0.17111
+  fit=17 full_refit_epoch=13/16 loss=0.15964
+  fit=17 full_refit_epoch=14/16 loss=0.14782
+  fit=17 full_refit_epoch=15/16 loss=0.13803
+  fit=17 full_refit_epoch=16/16 loss=0.12640
+  fit=18 epoch=1/40 loss=0.57348 inner_val_loss=0.49306 best_epoch=1 seconds=1.5
+  fit=18 epoch=2/40 loss=0.38950 inner_val_loss=0.36184 best_epoch=2 seconds=1.2
+  fit=18 epoch=3/40 loss=0.30797 inner_val_loss=0.30994 best_epoch=3 seconds=1.2
+  fit=18 epoch=4/40 loss=0.27375 inner_val_loss=0.29359 best_epoch=4 seconds=1.2
+  fit=18 epoch=5/40 loss=0.25468 inner_val_loss=0.28066 best_epoch=5 seconds=1.2
+  fit=18 epoch=6/40 loss=0.24246 inner_val_loss=0.27681 best_epoch=6 seconds=1.2
+  fit=18 epoch=7/40 loss=0.23012 inner_val_loss=0.26915 best_epoch=7 seconds=1.2
+  fit=18 epoch=8/40 loss=0.22123 inner_val_loss=0.26731 best_epoch=8 seconds=1.1
+  fit=18 epoch=9/40 loss=0.20945 inner_val_loss=0.26604 best_epoch=9 seconds=1.1
+  fit=18 epoch=10/40 loss=0.19994 inner_val_loss=0.26959 best_epoch=9 seconds=1.2
+  fit=18 epoch=11/40 loss=0.18995 inner_val_loss=0.26422 best_epoch=11 seconds=1.2
+  fit=18 epoch=12/40 loss=0.17880 inner_val_loss=0.26585 best_epoch=11 seconds=1.2
+  fit=18 epoch=13/40 loss=0.16775 inner_val_loss=0.26942 best_epoch=11 seconds=1.2
+  fit=18 epoch=14/40 loss=0.15718 inner_val_loss=0.27107 best_epoch=11 seconds=1.2
+  fit=18 epoch=15/40 loss=0.14900 inner_val_loss=0.26516 best_epoch=11 seconds=1.2
+  fit=18 epoch=16/40 loss=0.13834 inner_val_loss=0.27344 best_epoch=11 seconds=1.2
+  fit=18 full_refit_epoch=1/11 loss=0.56165
+  fit=18 full_refit_epoch=2/11 loss=0.37292
+  fit=18 full_refit_epoch=3/11 loss=0.29922
+  fit=18 full_refit_epoch=4/11 loss=0.27113
+  fit=18 full_refit_epoch=5/11 loss=0.25251
+  fit=18 full_refit_epoch=6/11 loss=0.23909
+  fit=18 full_refit_epoch=7/11 loss=0.22746
+  fit=18 full_refit_epoch=8/11 loss=0.21626
+  fit=18 full_refit_epoch=9/11 loss=0.20592
+  fit=18 full_refit_epoch=10/11 loss=0.19461
+  fit=18 full_refit_epoch=11/11 loss=0.18334
+  fit=19 epoch=1/40 loss=0.58192 inner_val_loss=0.49342 best_epoch=1 seconds=1.5
+  fit=19 epoch=2/40 loss=0.39798 inner_val_loss=0.36081 best_epoch=2 seconds=1.2
+  fit=19 epoch=3/40 loss=0.31313 inner_val_loss=0.29638 best_epoch=3 seconds=1.1
+  fit=19 epoch=4/40 loss=0.27931 inner_val_loss=0.28103 best_epoch=4 seconds=1.2
+  fit=19 epoch=5/40 loss=0.25800 inner_val_loss=0.27499 best_epoch=5 seconds=1.2
+  fit=19 epoch=6/40 loss=0.24278 inner_val_loss=0.27125 best_epoch=6 seconds=1.2
+  fit=19 epoch=7/40 loss=0.23258 inner_val_loss=0.26552 best_epoch=7 seconds=1.2
+  fit=19 epoch=8/40 loss=0.22195 inner_val_loss=0.26351 best_epoch=8 seconds=1.1
+  fit=19 epoch=9/40 loss=0.21476 inner_val_loss=0.26254 best_epoch=9 seconds=1.2
+  fit=19 epoch=10/40 loss=0.20208 inner_val_loss=0.26687 best_epoch=9 seconds=1.2
+  fit=19 epoch=11/40 loss=0.18991 inner_val_loss=0.26460 best_epoch=9 seconds=1.2
+  fit=19 epoch=12/40 loss=0.18063 inner_val_loss=0.26629 best_epoch=9 seconds=1.2
+  fit=19 epoch=13/40 loss=0.17466 inner_val_loss=0.26704 best_epoch=9 seconds=1.1
+  fit=19 epoch=14/40 loss=0.16087 inner_val_loss=0.26496 best_epoch=9 seconds=1.2
+  fit=19 full_refit_epoch=1/9 loss=0.57019
+  fit=19 full_refit_epoch=2/9 loss=0.38422
+  fit=19 full_refit_epoch=3/9 loss=0.30593
+  fit=19 full_refit_epoch=4/9 loss=0.27295
+  fit=19 full_refit_epoch=5/9 loss=0.25472
+  fit=19 full_refit_epoch=6/9 loss=0.24098
+  fit=19 full_refit_epoch=7/9 loss=0.22995
+  fit=19 full_refit_epoch=8/9 loss=0.21857
+  fit=19 full_refit_epoch=9/9 loss=0.20786
+  fit=20 epoch=1/40 loss=0.58387 inner_val_loss=0.49619 best_epoch=1 seconds=1.4
+  fit=20 epoch=2/40 loss=0.39778 inner_val_loss=0.35999 best_epoch=2 seconds=1.2
+  fit=20 epoch=3/40 loss=0.31364 inner_val_loss=0.32502 best_epoch=3 seconds=1.2
+  fit=20 epoch=4/40 loss=0.27996 inner_val_loss=0.30325 best_epoch=4 seconds=1.2
+  fit=20 epoch=5/40 loss=0.25923 inner_val_loss=0.29806 best_epoch=5 seconds=1.2
+  fit=20 epoch=6/40 loss=0.24623 inner_val_loss=0.29306 best_epoch=6 seconds=1.2
+  fit=20 epoch=7/40 loss=0.23481 inner_val_loss=0.28980 best_epoch=7 seconds=1.1
+  fit=20 epoch=8/40 loss=0.22262 inner_val_loss=0.29022 best_epoch=7 seconds=1.1
+  fit=20 epoch=9/40 loss=0.21360 inner_val_loss=0.28873 best_epoch=9 seconds=1.1
+  fit=20 epoch=10/40 loss=0.20523 inner_val_loss=0.29041 best_epoch=9 seconds=1.1
+  fit=20 epoch=11/40 loss=0.19348 inner_val_loss=0.29017 best_epoch=9 seconds=1.2
+  fit=20 epoch=12/40 loss=0.18322 inner_val_loss=0.29730 best_epoch=9 seconds=1.2
+  fit=20 epoch=13/40 loss=0.17470 inner_val_loss=0.29838 best_epoch=9 seconds=1.2
+  fit=20 epoch=14/40 loss=0.16107 inner_val_loss=0.30267 best_epoch=9 seconds=1.2
+  fit=20 full_refit_epoch=1/9 loss=0.57203
+  fit=20 full_refit_epoch=2/9 loss=0.38402
+  fit=20 full_refit_epoch=3/9 loss=0.30864
+  fit=20 full_refit_epoch=4/9 loss=0.27880
+  fit=20 full_refit_epoch=5/9 loss=0.26028
+  fit=20 full_refit_epoch=6/9 loss=0.24693
+  fit=20 full_refit_epoch=7/9 loss=0.23545
+  fit=20 full_refit_epoch=8/9 loss=0.22524
+  fit=20 full_refit_epoch=9/9 loss=0.21462
+END   seed=29 phase=initial_selected model=resnet18 metric=0.7152889070088977 error=None minutes=2.98
+START seed=29 phase=ablation model=pass
+END   seed=29 phase=ablation model=pass metric=0.5 error=None minutes=0.17
+START seed=29 phase=refinement model=efficientnet_b0
+  fit=21 epoch=1/40 loss=0.76934 inner_val_loss=0.52679 best_epoch=1 seconds=3.1
+  fit=21 epoch=2/40 loss=0.28877 inner_val_loss=0.35525 best_epoch=2 seconds=2.6
+  fit=21 epoch=3/40 loss=0.17859 inner_val_loss=0.33480 best_epoch=3 seconds=2.6
+  fit=21 epoch=4/40 loss=0.12389 inner_val_loss=0.33324 best_epoch=4 seconds=2.8
+  fit=21 epoch=5/40 loss=0.08660 inner_val_loss=0.33584 best_epoch=4 seconds=2.7
+  fit=21 epoch=6/40 loss=0.06472 inner_val_loss=0.34164 best_epoch=4 seconds=2.7
+  fit=21 epoch=7/40 loss=0.05107 inner_val_loss=0.34505 best_epoch=4 seconds=2.6
+  fit=21 epoch=8/40 loss=0.04057 inner_val_loss=0.34088 best_epoch=4 seconds=2.6
+  fit=21 epoch=9/40 loss=0.03227 inner_val_loss=0.35100 best_epoch=4 seconds=2.6
+  fit=21 full_refit_epoch=1/4 loss=0.72948
+  fit=21 full_refit_epoch=2/4 loss=0.26951
+  fit=21 full_refit_epoch=3/4 loss=0.17170
+  fit=21 full_refit_epoch=4/4 loss=0.11659
+  fit=22 epoch=1/40 loss=0.81731 inner_val_loss=0.67180 best_epoch=1 seconds=3.0
+  fit=22 epoch=2/40 loss=0.31203 inner_val_loss=0.39662 best_epoch=2 seconds=2.6
+  fit=22 epoch=3/40 loss=0.18681 inner_val_loss=0.37993 best_epoch=3 seconds=2.5
+  fit=22 epoch=4/40 loss=0.12839 inner_val_loss=0.36504 best_epoch=4 seconds=2.5
+  fit=22 epoch=5/40 loss=0.09445 inner_val_loss=0.36285 best_epoch=5 seconds=2.7
+  fit=22 epoch=6/40 loss=0.07144 inner_val_loss=0.37400 best_epoch=5 seconds=2.6
+  fit=22 epoch=7/40 loss=0.05483 inner_val_loss=0.37210 best_epoch=5 seconds=2.6
+  fit=22 epoch=8/40 loss=0.04115 inner_val_loss=0.37478 best_epoch=5 seconds=2.6
+  fit=22 epoch=9/40 loss=0.03675 inner_val_loss=0.38750 best_epoch=5 seconds=2.6
+  fit=22 epoch=10/40 loss=0.03024 inner_val_loss=0.38527 best_epoch=5 seconds=2.6
+  fit=22 full_refit_epoch=1/5 loss=0.79014
+  fit=22 full_refit_epoch=2/5 loss=0.29242
+  fit=22 full_refit_epoch=3/5 loss=0.18181
+  fit=22 full_refit_epoch=4/5 loss=0.12699
+  fit=22 full_refit_epoch=5/5 loss=0.08796
+  fit=23 epoch=1/40 loss=0.88383 inner_val_loss=0.58002 best_epoch=1 seconds=2.9
+  fit=23 epoch=2/40 loss=0.29442 inner_val_loss=0.35857 best_epoch=2 seconds=2.6
+  fit=23 epoch=3/40 loss=0.18524 inner_val_loss=0.35513 best_epoch=3 seconds=2.7
+  fit=23 epoch=4/40 loss=0.13151 inner_val_loss=0.35060 best_epoch=4 seconds=2.6
+  fit=23 epoch=5/40 loss=0.09377 inner_val_loss=0.34797 best_epoch=5 seconds=2.6
+  fit=23 epoch=6/40 loss=0.06967 inner_val_loss=0.36224 best_epoch=5 seconds=2.6
+  fit=23 epoch=7/40 loss=0.05372 inner_val_loss=0.36577 best_epoch=5 seconds=2.5
+  fit=23 epoch=8/40 loss=0.04591 inner_val_loss=0.38591 best_epoch=5 seconds=2.6
+  fit=23 epoch=9/40 loss=0.03293 inner_val_loss=0.38141 best_epoch=5 seconds=2.7
+  fit=23 epoch=10/40 loss=0.02871 inner_val_loss=0.38480 best_epoch=5 seconds=2.5
+  fit=23 full_refit_epoch=1/5 loss=0.85399
+  fit=23 full_refit_epoch=2/5 loss=0.28268
+  fit=23 full_refit_epoch=3/5 loss=0.18103
+  fit=23 full_refit_epoch=4/5 loss=0.12855
+  fit=23 full_refit_epoch=5/5 loss=0.09022
+  fit=24 epoch=1/40 loss=0.79972 inner_val_loss=0.53116 best_epoch=1 seconds=3.0
+  fit=24 epoch=2/40 loss=0.29627 inner_val_loss=0.36726 best_epoch=2 seconds=2.6
+  fit=24 epoch=3/40 loss=0.18179 inner_val_loss=0.34663 best_epoch=3 seconds=2.6
+  fit=24 epoch=4/40 loss=0.13073 inner_val_loss=0.33646 best_epoch=4 seconds=2.5
+  fit=24 epoch=5/40 loss=0.08965 inner_val_loss=0.34000 best_epoch=4 seconds=2.7
+  fit=24 epoch=6/40 loss=0.06727 inner_val_loss=0.34241 best_epoch=4 seconds=2.8
+  fit=24 epoch=7/40 loss=0.05033 inner_val_loss=0.35168 best_epoch=4 seconds=2.5
+  fit=24 epoch=8/40 loss=0.04141 inner_val_loss=0.35495 best_epoch=4 seconds=2.6
+  fit=24 epoch=9/40 loss=0.03706 inner_val_loss=0.36631 best_epoch=4 seconds=2.5
+  fit=24 full_refit_epoch=1/4 loss=0.77608
+  fit=24 full_refit_epoch=2/4 loss=0.28693
+  fit=24 full_refit_epoch=3/4 loss=0.17914
+  fit=24 full_refit_epoch=4/4 loss=0.12245
+  fit=25 epoch=1/40 loss=0.85508 inner_val_loss=0.70817 best_epoch=1 seconds=2.9
+  fit=25 epoch=2/40 loss=0.29359 inner_val_loss=0.39589 best_epoch=2 seconds=2.7
+  fit=25 epoch=3/40 loss=0.18795 inner_val_loss=0.36599 best_epoch=3 seconds=2.6
+  fit=25 epoch=4/40 loss=0.13270 inner_val_loss=0.36804 best_epoch=3 seconds=2.5
+  fit=25 epoch=5/40 loss=0.09559 inner_val_loss=0.37143 best_epoch=3 seconds=2.6
+  fit=25 epoch=6/40 loss=0.06954 inner_val_loss=0.37254 best_epoch=3 seconds=2.6
+  fit=25 epoch=7/40 loss=0.05449 inner_val_loss=0.37321 best_epoch=3 seconds=2.6
+  fit=25 epoch=8/40 loss=0.04248 inner_val_loss=0.38808 best_epoch=3 seconds=2.6
+  fit=25 full_refit_epoch=1/3 loss=0.82688
+  fit=25 full_refit_epoch=2/3 loss=0.28916
+  fit=25 full_refit_epoch=3/3 loss=0.18630
+END   seed=29 phase=refinement model=efficientnet_b0 metric=0.6361423817869482 error=None minutes=3.31
+START seed=29 phase=refined_selected model=resnet18
+  fit=26 epoch=1/40 loss=0.58814 inner_val_loss=0.49228 best_epoch=1 seconds=1.5
+  fit=26 epoch=2/40 loss=0.40454 inner_val_loss=0.34673 best_epoch=2 seconds=1.1
+  fit=26 epoch=3/40 loss=0.31550 inner_val_loss=0.29779 best_epoch=3 seconds=1.1
+  fit=26 epoch=4/40 loss=0.27930 inner_val_loss=0.28154 best_epoch=4 seconds=1.2
+  fit=26 epoch=5/40 loss=0.25842 inner_val_loss=0.27162 best_epoch=5 seconds=1.2
+  fit=26 epoch=6/40 loss=0.24347 inner_val_loss=0.26374 best_epoch=6 seconds=1.1
+  fit=26 epoch=7/40 loss=0.23232 inner_val_loss=0.26340 best_epoch=7 seconds=1.2
+  fit=26 epoch=8/40 loss=0.22057 inner_val_loss=0.26151 best_epoch=8 seconds=1.1
+  fit=26 epoch=9/40 loss=0.20916 inner_val_loss=0.26414 best_epoch=8 seconds=1.1
+  fit=26 epoch=10/40 loss=0.19706 inner_val_loss=0.26184 best_epoch=8 seconds=1.1
+  fit=26 epoch=11/40 loss=0.18605 inner_val_loss=0.26125 best_epoch=11 seconds=1.1
+  fit=26 epoch=12/40 loss=0.17694 inner_val_loss=0.26840 best_epoch=11 seconds=1.1
+  fit=26 epoch=13/40 loss=0.16556 inner_val_loss=0.26389 best_epoch=11 seconds=1.1
+  fit=26 epoch=14/40 loss=0.15446 inner_val_loss=0.27458 best_epoch=11 seconds=1.1
+  fit=26 epoch=15/40 loss=0.14199 inner_val_loss=0.28657 best_epoch=11 seconds=1.1
+  fit=26 epoch=16/40 loss=0.13345 inner_val_loss=0.27891 best_epoch=11 seconds=1.1
+  fit=26 full_refit_epoch=1/11 loss=0.57463
+  fit=26 full_refit_epoch=2/11 loss=0.38122
+  fit=26 full_refit_epoch=3/11 loss=0.30121
+  fit=26 full_refit_epoch=4/11 loss=0.26927
+  fit=26 full_refit_epoch=5/11 loss=0.25060
+  fit=26 full_refit_epoch=6/11 loss=0.23742
+  fit=26 full_refit_epoch=7/11 loss=0.22576
+  fit=26 full_refit_epoch=8/11 loss=0.21393
+  fit=26 full_refit_epoch=9/11 loss=0.20259
+  fit=26 full_refit_epoch=10/11 loss=0.19101
+  fit=26 full_refit_epoch=11/11 loss=0.17903
+  fit=27 epoch=1/40 loss=0.58485 inner_val_loss=0.50825 best_epoch=1 seconds=1.5
+  fit=27 epoch=2/40 loss=0.40206 inner_val_loss=0.37203 best_epoch=2 seconds=1.2
+  fit=27 epoch=3/40 loss=0.31688 inner_val_loss=0.31751 best_epoch=3 seconds=1.2
+  fit=27 epoch=4/40 loss=0.28118 inner_val_loss=0.29773 best_epoch=4 seconds=1.2
+  fit=27 epoch=5/40 loss=0.26108 inner_val_loss=0.28683 best_epoch=5 seconds=1.1
+  fit=27 epoch=6/40 loss=0.24530 inner_val_loss=0.28099 best_epoch=6 seconds=1.1
+  fit=27 epoch=7/40 loss=0.23440 inner_val_loss=0.27178 best_epoch=7 seconds=1.1
+  fit=27 epoch=8/40 loss=0.22167 inner_val_loss=0.27088 best_epoch=8 seconds=1.1
+  fit=27 epoch=9/40 loss=0.21299 inner_val_loss=0.27267 best_epoch=8 seconds=1.1
+  fit=27 epoch=10/40 loss=0.20280 inner_val_loss=0.26957 best_epoch=10 seconds=1.1
+  fit=27 epoch=11/40 loss=0.19316 inner_val_loss=0.27223 best_epoch=10 seconds=1.1
+  fit=27 epoch=12/40 loss=0.18177 inner_val_loss=0.26339 best_epoch=12 seconds=1.2
+  fit=27 epoch=13/40 loss=0.17090 inner_val_loss=0.26300 best_epoch=13 seconds=1.1
+  fit=27 epoch=14/40 loss=0.16254 inner_val_loss=0.26056 best_epoch=14 seconds=1.1
+  fit=27 epoch=15/40 loss=0.15065 inner_val_loss=0.26351 best_epoch=14 seconds=1.1
+  fit=27 epoch=16/40 loss=0.14172 inner_val_loss=0.26037 best_epoch=16 seconds=1.2
+  fit=27 epoch=17/40 loss=0.13172 inner_val_loss=0.26145 best_epoch=16 seconds=1.2
+  fit=27 epoch=18/40 loss=0.12027 inner_val_loss=0.26529 best_epoch=16 seconds=1.1
+  fit=27 epoch=19/40 loss=0.11386 inner_val_loss=0.26808 best_epoch=16 seconds=1.1
+  fit=27 epoch=20/40 loss=0.10788 inner_val_loss=0.27658 best_epoch=16 seconds=1.1
+  fit=27 epoch=21/40 loss=0.09733 inner_val_loss=0.27017 best_epoch=16 seconds=1.1
+  fit=27 full_refit_epoch=1/16 loss=0.57470
+  fit=27 full_refit_epoch=2/16 loss=0.38466
+  fit=27 full_refit_epoch=3/16 loss=0.30781
+  fit=27 full_refit_epoch=4/16 loss=0.27487
+  fit=27 full_refit_epoch=5/16 loss=0.25474
+  fit=27 full_refit_epoch=6/16 loss=0.24052
+  fit=27 full_refit_epoch=7/16 loss=0.22776
+  fit=27 full_refit_epoch=8/16 loss=0.21698
+  fit=27 full_refit_epoch=9/16 loss=0.20391
+  fit=27 full_refit_epoch=10/16 loss=0.19306
+  fit=27 full_refit_epoch=11/16 loss=0.18173
+  fit=27 full_refit_epoch=12/16 loss=0.17111
+  fit=27 full_refit_epoch=13/16 loss=0.15964
+  fit=27 full_refit_epoch=14/16 loss=0.14782
+  fit=27 full_refit_epoch=15/16 loss=0.13803
+  fit=27 full_refit_epoch=16/16 loss=0.12640
+  fit=28 epoch=1/40 loss=0.57348 inner_val_loss=0.49306 best_epoch=1 seconds=1.4
+  fit=28 epoch=2/40 loss=0.38950 inner_val_loss=0.36184 best_epoch=2 seconds=1.2
+  fit=28 epoch=3/40 loss=0.30797 inner_val_loss=0.30994 best_epoch=3 seconds=1.2
+  fit=28 epoch=4/40 loss=0.27375 inner_val_loss=0.29359 best_epoch=4 seconds=1.2
+  fit=28 epoch=5/40 loss=0.25468 inner_val_loss=0.28066 best_epoch=5 seconds=1.2
+  fit=28 epoch=6/40 loss=0.24246 inner_val_loss=0.27681 best_epoch=6 seconds=1.1
+  fit=28 epoch=7/40 loss=0.23012 inner_val_loss=0.26915 best_epoch=7 seconds=1.1
+  fit=28 epoch=8/40 loss=0.22123 inner_val_loss=0.26731 best_epoch=8 seconds=1.1
+  fit=28 epoch=9/40 loss=0.20945 inner_val_loss=0.26604 best_epoch=9 seconds=1.1
+  fit=28 epoch=10/40 loss=0.19994 inner_val_loss=0.26959 best_epoch=9 seconds=1.1
+  fit=28 epoch=11/40 loss=0.18995 inner_val_loss=0.26422 best_epoch=11 seconds=1.2
+  fit=28 epoch=12/40 loss=0.17880 inner_val_loss=0.26585 best_epoch=11 seconds=1.2
+  fit=28 epoch=13/40 loss=0.16775 inner_val_loss=0.26942 best_epoch=11 seconds=1.2
+  fit=28 epoch=14/40 loss=0.15718 inner_val_loss=0.27107 best_epoch=11 seconds=1.1
+  fit=28 epoch=15/40 loss=0.14900 inner_val_loss=0.26516 best_epoch=11 seconds=1.2
+  fit=28 epoch=16/40 loss=0.13834 inner_val_loss=0.27344 best_epoch=11 seconds=1.2
+  fit=28 full_refit_epoch=1/11 loss=0.56165
+  fit=28 full_refit_epoch=2/11 loss=0.37292
+  fit=28 full_refit_epoch=3/11 loss=0.29922
+  fit=28 full_refit_epoch=4/11 loss=0.27113
+  fit=28 full_refit_epoch=5/11 loss=0.25251
+  fit=28 full_refit_epoch=6/11 loss=0.23909
+  fit=28 full_refit_epoch=7/11 loss=0.22746
+  fit=28 full_refit_epoch=8/11 loss=0.21626
+  fit=28 full_refit_epoch=9/11 loss=0.20592
+  fit=28 full_refit_epoch=10/11 loss=0.19461
+  fit=28 full_refit_epoch=11/11 loss=0.18334
+  fit=29 epoch=1/40 loss=0.58192 inner_val_loss=0.49342 best_epoch=1 seconds=1.4
+  fit=29 epoch=2/40 loss=0.39798 inner_val_loss=0.36081 best_epoch=2 seconds=1.1
+  fit=29 epoch=3/40 loss=0.31313 inner_val_loss=0.29638 best_epoch=3 seconds=1.2
+  fit=29 epoch=4/40 loss=0.27931 inner_val_loss=0.28103 best_epoch=4 seconds=1.2
+  fit=29 epoch=5/40 loss=0.25800 inner_val_loss=0.27499 best_epoch=5 seconds=1.2
+  fit=29 epoch=6/40 loss=0.24278 inner_val_loss=0.27125 best_epoch=6 seconds=1.2
+  fit=29 epoch=7/40 loss=0.23258 inner_val_loss=0.26552 best_epoch=7 seconds=1.2
+  fit=29 epoch=8/40 loss=0.22195 inner_val_loss=0.26351 best_epoch=8 seconds=1.1
+  fit=29 epoch=9/40 loss=0.21476 inner_val_loss=0.26254 best_epoch=9 seconds=1.2
+  fit=29 epoch=10/40 loss=0.20208 inner_val_loss=0.26687 best_epoch=9 seconds=1.1
+  fit=29 epoch=11/40 loss=0.18991 inner_val_loss=0.26460 best_epoch=9 seconds=1.2
+  fit=29 epoch=12/40 loss=0.18063 inner_val_loss=0.26629 best_epoch=9 seconds=1.2
+  fit=29 epoch=13/40 loss=0.17466 inner_val_loss=0.26704 best_epoch=9 seconds=1.2
+  fit=29 epoch=14/40 loss=0.16087 inner_val_loss=0.26496 best_epoch=9 seconds=1.1
+  fit=29 full_refit_epoch=1/9 loss=0.57019
+  fit=29 full_refit_epoch=2/9 loss=0.38422
+  fit=29 full_refit_epoch=3/9 loss=0.30593
+  fit=29 full_refit_epoch=4/9 loss=0.27295
+  fit=29 full_refit_epoch=5/9 loss=0.25472
+  fit=29 full_refit_epoch=6/9 loss=0.24098
+  fit=29 full_refit_epoch=7/9 loss=0.22995
+  fit=29 full_refit_epoch=8/9 loss=0.21857
+  fit=29 full_refit_epoch=9/9 loss=0.20786
+  fit=30 epoch=1/40 loss=0.58387 inner_val_loss=0.49619 best_epoch=1 seconds=1.5
+  fit=30 epoch=2/40 loss=0.39778 inner_val_loss=0.35999 best_epoch=2 seconds=1.1
+  fit=30 epoch=3/40 loss=0.31364 inner_val_loss=0.32502 best_epoch=3 seconds=1.1
+  fit=30 epoch=4/40 loss=0.27996 inner_val_loss=0.30325 best_epoch=4 seconds=1.2
+  fit=30 epoch=5/40 loss=0.25923 inner_val_loss=0.29806 best_epoch=5 seconds=1.2
+  fit=30 epoch=6/40 loss=0.24623 inner_val_loss=0.29306 best_epoch=6 seconds=1.2
+  fit=30 epoch=7/40 loss=0.23481 inner_val_loss=0.28980 best_epoch=7 seconds=1.2
+  fit=30 epoch=8/40 loss=0.22262 inner_val_loss=0.29022 best_epoch=7 seconds=1.2
+  fit=30 epoch=9/40 loss=0.21360 inner_val_loss=0.28873 best_epoch=9 seconds=1.2
+  fit=30 epoch=10/40 loss=0.20523 inner_val_loss=0.29041 best_epoch=9 seconds=1.1
+  fit=30 epoch=11/40 loss=0.19348 inner_val_loss=0.29017 best_epoch=9 seconds=1.1
+  fit=30 epoch=12/40 loss=0.18322 inner_val_loss=0.29730 best_epoch=9 seconds=1.1
+  fit=30 epoch=13/40 loss=0.17470 inner_val_loss=0.29838 best_epoch=9 seconds=1.1
+  fit=30 epoch=14/40 loss=0.16107 inner_val_loss=0.30267 best_epoch=9 seconds=1.1
+  fit=30 full_refit_epoch=1/9 loss=0.57203
+  fit=30 full_refit_epoch=2/9 loss=0.38402
+  fit=30 full_refit_epoch=3/9 loss=0.30864
+  fit=30 full_refit_epoch=4/9 loss=0.27880
+  fit=30 full_refit_epoch=5/9 loss=0.26028
+  fit=30 full_refit_epoch=6/9 loss=0.24693
+  fit=30 full_refit_epoch=7/9 loss=0.23545
+  fit=30 full_refit_epoch=8/9 loss=0.22524
+  fit=30 full_refit_epoch=9/9 loss=0.21462
+END   seed=29 phase=refined_selected model=resnet18 metric=0.7152889070088977 error=None minutes=2.92
+START seed=47 phase=baseline model=resnet18
+  fit=1 epoch=1/40 loss=0.56054 inner_val_loss=0.44964 best_epoch=1 seconds=1.4
+  fit=1 epoch=2/40 loss=0.37717 inner_val_loss=0.33641 best_epoch=2 seconds=1.2
+  fit=1 epoch=3/40 loss=0.30104 inner_val_loss=0.29698 best_epoch=3 seconds=1.1
+  fit=1 epoch=4/40 loss=0.26878 inner_val_loss=0.28083 best_epoch=4 seconds=1.1
+  fit=1 epoch=5/40 loss=0.25177 inner_val_loss=0.26976 best_epoch=5 seconds=1.1
+  fit=1 epoch=6/40 loss=0.23813 inner_val_loss=0.26639 best_epoch=6 seconds=1.1
+  fit=1 epoch=7/40 loss=0.22785 inner_val_loss=0.26547 best_epoch=7 seconds=1.1
+  fit=1 epoch=8/40 loss=0.21707 inner_val_loss=0.26339 best_epoch=8 seconds=1.1
+  fit=1 epoch=9/40 loss=0.20779 inner_val_loss=0.26765 best_epoch=8 seconds=1.2
+  fit=1 epoch=10/40 loss=0.19702 inner_val_loss=0.26339 best_epoch=10 seconds=1.2
+  fit=1 epoch=11/40 loss=0.18831 inner_val_loss=0.26429 best_epoch=10 seconds=1.2
+  fit=1 epoch=12/40 loss=0.17675 inner_val_loss=0.26327 best_epoch=12 seconds=1.1
+  fit=1 epoch=13/40 loss=0.16763 inner_val_loss=0.27001 best_epoch=12 seconds=1.1
+  fit=1 epoch=14/40 loss=0.15609 inner_val_loss=0.27296 best_epoch=12 seconds=1.1
+  fit=1 epoch=15/40 loss=0.14911 inner_val_loss=0.27722 best_epoch=12 seconds=1.2
+  fit=1 epoch=16/40 loss=0.13618 inner_val_loss=0.27299 best_epoch=12 seconds=1.2
+  fit=1 epoch=17/40 loss=0.12812 inner_val_loss=0.28420 best_epoch=12 seconds=1.1
+  fit=1 full_refit_epoch=1/12 loss=0.54923
+  fit=1 full_refit_epoch=2/12 loss=0.35917
+  fit=1 full_refit_epoch=3/12 loss=0.28766
+  fit=1 full_refit_epoch=4/12 loss=0.26223
+  fit=1 full_refit_epoch=5/12 loss=0.24583
+  fit=1 full_refit_epoch=6/12 loss=0.23331
+  fit=1 full_refit_epoch=7/12 loss=0.22379
+  fit=1 full_refit_epoch=8/12 loss=0.21245
+  fit=1 full_refit_epoch=9/12 loss=0.20203
+  fit=1 full_refit_epoch=10/12 loss=0.19115
+  fit=1 full_refit_epoch=11/12 loss=0.18078
+  fit=1 full_refit_epoch=12/12 loss=0.17155
+  fit=2 epoch=1/40 loss=0.57871 inner_val_loss=0.46532 best_epoch=1 seconds=1.5
+  fit=2 epoch=2/40 loss=0.40006 inner_val_loss=0.36290 best_epoch=2 seconds=1.2
+  fit=2 epoch=3/40 loss=0.32016 inner_val_loss=0.31035 best_epoch=3 seconds=1.2
+  fit=2 epoch=4/40 loss=0.28551 inner_val_loss=0.29779 best_epoch=4 seconds=1.1
+  fit=2 epoch=5/40 loss=0.26512 inner_val_loss=0.28889 best_epoch=5 seconds=1.1
+  fit=2 epoch=6/40 loss=0.25081 inner_val_loss=0.28044 best_epoch=6 seconds=1.2
+  fit=2 epoch=7/40 loss=0.24060 inner_val_loss=0.27500 best_epoch=7 seconds=1.1
+  fit=2 epoch=8/40 loss=0.23274 inner_val_loss=0.27284 best_epoch=8 seconds=1.1
+  fit=2 epoch=9/40 loss=0.22107 inner_val_loss=0.27390 best_epoch=8 seconds=1.2
+  fit=2 epoch=10/40 loss=0.21225 inner_val_loss=0.27282 best_epoch=10 seconds=1.1
+  fit=2 epoch=11/40 loss=0.20130 inner_val_loss=0.26750 best_epoch=11 seconds=1.2
+  fit=2 epoch=12/40 loss=0.19235 inner_val_loss=0.27290 best_epoch=11 seconds=1.2
+  fit=2 epoch=13/40 loss=0.18319 inner_val_loss=0.26916 best_epoch=11 seconds=1.2
+  fit=2 epoch=14/40 loss=0.17371 inner_val_loss=0.27581 best_epoch=11 seconds=1.2
+  fit=2 epoch=15/40 loss=0.16558 inner_val_loss=0.28240 best_epoch=11 seconds=1.1
+  fit=2 epoch=16/40 loss=0.15627 inner_val_loss=0.27577 best_epoch=11 seconds=1.1
+  fit=2 full_refit_epoch=1/11 loss=0.56859
+  fit=2 full_refit_epoch=2/11 loss=0.38421
+  fit=2 full_refit_epoch=3/11 loss=0.30949
+  fit=2 full_refit_epoch=4/11 loss=0.27764
+  fit=2 full_refit_epoch=5/11 loss=0.26004
+  fit=2 full_refit_epoch=6/11 loss=0.24692
+  fit=2 full_refit_epoch=7/11 loss=0.23589
+  fit=2 full_refit_epoch=8/11 loss=0.22534
+  fit=2 full_refit_epoch=9/11 loss=0.21593
+  fit=2 full_refit_epoch=10/11 loss=0.20544
+  fit=2 full_refit_epoch=11/11 loss=0.19478
+  fit=3 epoch=1/40 loss=0.55909 inner_val_loss=0.47991 best_epoch=1 seconds=1.4
+  fit=3 epoch=2/40 loss=0.38332 inner_val_loss=0.35060 best_epoch=2 seconds=1.1
+  fit=3 epoch=3/40 loss=0.31095 inner_val_loss=0.31655 best_epoch=3 seconds=1.1
+  fit=3 epoch=4/40 loss=0.28005 inner_val_loss=0.30512 best_epoch=4 seconds=1.2
+  fit=3 epoch=5/40 loss=0.26250 inner_val_loss=0.29519 best_epoch=5 seconds=1.2
+  fit=3 epoch=6/40 loss=0.24996 inner_val_loss=0.29013 best_epoch=6 seconds=1.1
+  fit=3 epoch=7/40 loss=0.23653 inner_val_loss=0.28561 best_epoch=7 seconds=1.1
+  fit=3 epoch=8/40 loss=0.22899 inner_val_loss=0.28685 best_epoch=7 seconds=1.1
+  fit=3 epoch=9/40 loss=0.21719 inner_val_loss=0.28539 best_epoch=9 seconds=1.2
+  fit=3 epoch=10/40 loss=0.20824 inner_val_loss=0.28547 best_epoch=9 seconds=1.1
+  fit=3 epoch=11/40 loss=0.19853 inner_val_loss=0.28640 best_epoch=9 seconds=1.1
+  fit=3 epoch=12/40 loss=0.18726 inner_val_loss=0.28391 best_epoch=12 seconds=1.2
+  fit=3 epoch=13/40 loss=0.17792 inner_val_loss=0.28984 best_epoch=12 seconds=1.2
+  fit=3 epoch=14/40 loss=0.16710 inner_val_loss=0.28659 best_epoch=12 seconds=1.2
+  fit=3 epoch=15/40 loss=0.15750 inner_val_loss=0.29601 best_epoch=12 seconds=1.2
+  fit=3 epoch=16/40 loss=0.14831 inner_val_loss=0.29462 best_epoch=12 seconds=1.2
+  fit=3 epoch=17/40 loss=0.13705 inner_val_loss=0.29944 best_epoch=12 seconds=1.2
+  fit=3 full_refit_epoch=1/12 loss=0.54832
+  fit=3 full_refit_epoch=2/12 loss=0.37038
+  fit=3 full_refit_epoch=3/12 loss=0.30426
+  fit=3 full_refit_epoch=4/12 loss=0.27641
+  fit=3 full_refit_epoch=5/12 loss=0.25983
+  fit=3 full_refit_epoch=6/12 loss=0.24762
+  fit=3 full_refit_epoch=7/12 loss=0.23579
+  fit=3 full_refit_epoch=8/12 loss=0.22485
+  fit=3 full_refit_epoch=9/12 loss=0.21495
+  fit=3 full_refit_epoch=10/12 loss=0.20537
+  fit=3 full_refit_epoch=11/12 loss=0.19364
+  fit=3 full_refit_epoch=12/12 loss=0.18352
+  fit=4 epoch=1/40 loss=0.55422 inner_val_loss=0.46796 best_epoch=1 seconds=1.5
+  fit=4 epoch=2/40 loss=0.38526 inner_val_loss=0.34713 best_epoch=2 seconds=1.2
+  fit=4 epoch=3/40 loss=0.31202 inner_val_loss=0.29661 best_epoch=3 seconds=1.1
+  fit=4 epoch=4/40 loss=0.28039 inner_val_loss=0.28477 best_epoch=4 seconds=1.2
+  fit=4 epoch=5/40 loss=0.26092 inner_val_loss=0.26848 best_epoch=5 seconds=1.2
+  fit=4 epoch=6/40 loss=0.24777 inner_val_loss=0.26543 best_epoch=6 seconds=1.2
+  fit=4 epoch=7/40 loss=0.23545 inner_val_loss=0.26089 best_epoch=7 seconds=1.1
+  fit=4 epoch=8/40 loss=0.22353 inner_val_loss=0.25366 best_epoch=8 seconds=1.1
+  fit=4 epoch=9/40 loss=0.21512 inner_val_loss=0.25191 best_epoch=9 seconds=1.1
+  fit=4 epoch=10/40 loss=0.20540 inner_val_loss=0.25299 best_epoch=9 seconds=1.1
+  fit=4 epoch=11/40 loss=0.19596 inner_val_loss=0.25172 best_epoch=11 seconds=1.1
+  fit=4 epoch=12/40 loss=0.18584 inner_val_loss=0.25070 best_epoch=12 seconds=1.2
+  fit=4 epoch=13/40 loss=0.17463 inner_val_loss=0.25438 best_epoch=12 seconds=1.1
+  fit=4 epoch=14/40 loss=0.16639 inner_val_loss=0.25272 best_epoch=12 seconds=1.2
+  fit=4 epoch=15/40 loss=0.15512 inner_val_loss=0.25506 best_epoch=12 seconds=1.1
+  fit=4 epoch=16/40 loss=0.14506 inner_val_loss=0.25490 best_epoch=12 seconds=1.2
+  fit=4 epoch=17/40 loss=0.13814 inner_val_loss=0.26632 best_epoch=12 seconds=1.2
+  fit=4 full_refit_epoch=1/12 loss=0.54357
+  fit=4 full_refit_epoch=2/12 loss=0.36865
+  fit=4 full_refit_epoch=3/12 loss=0.30021
+  fit=4 full_refit_epoch=4/12 loss=0.27130
+  fit=4 full_refit_epoch=5/12 loss=0.25350
+  fit=4 full_refit_epoch=6/12 loss=0.23988
+  fit=4 full_refit_epoch=7/12 loss=0.22864
+  fit=4 full_refit_epoch=8/12 loss=0.21863
+  fit=4 full_refit_epoch=9/12 loss=0.20662
+  fit=4 full_refit_epoch=10/12 loss=0.19718
+  fit=4 full_refit_epoch=11/12 loss=0.18749
+  fit=4 full_refit_epoch=12/12 loss=0.17500
+  fit=5 epoch=1/40 loss=0.57216 inner_val_loss=0.48353 best_epoch=1 seconds=1.4
+  fit=5 epoch=2/40 loss=0.37712 inner_val_loss=0.32824 best_epoch=2 seconds=1.2
+  fit=5 epoch=3/40 loss=0.30084 inner_val_loss=0.29154 best_epoch=3 seconds=1.2
+  fit=5 epoch=4/40 loss=0.26742 inner_val_loss=0.27519 best_epoch=4 seconds=1.2
+  fit=5 epoch=5/40 loss=0.25012 inner_val_loss=0.26274 best_epoch=5 seconds=1.1
+  fit=5 epoch=6/40 loss=0.23789 inner_val_loss=0.25765 best_epoch=6 seconds=1.2
+  fit=5 epoch=7/40 loss=0.22454 inner_val_loss=0.26537 best_epoch=6 seconds=1.2
+  fit=5 epoch=8/40 loss=0.21411 inner_val_loss=0.25480 best_epoch=8 seconds=1.1
+  fit=5 epoch=9/40 loss=0.20330 inner_val_loss=0.25421 best_epoch=9 seconds=1.2
+  fit=5 epoch=10/40 loss=0.19392 inner_val_loss=0.25024 best_epoch=10 seconds=1.1
+  fit=5 epoch=11/40 loss=0.18635 inner_val_loss=0.25237 best_epoch=10 seconds=1.1
+  fit=5 epoch=12/40 loss=0.17586 inner_val_loss=0.25347 best_epoch=10 seconds=1.1
+  fit=5 epoch=13/40 loss=0.16367 inner_val_loss=0.25285 best_epoch=10 seconds=1.1
+  fit=5 epoch=14/40 loss=0.15375 inner_val_loss=0.24965 best_epoch=14 seconds=1.2
+  fit=5 epoch=15/40 loss=0.14463 inner_val_loss=0.24939 best_epoch=15 seconds=1.1
+  fit=5 epoch=16/40 loss=0.13259 inner_val_loss=0.25409 best_epoch=15 seconds=1.1
+  fit=5 epoch=17/40 loss=0.12421 inner_val_loss=0.25853 best_epoch=15 seconds=1.1
+  fit=5 epoch=18/40 loss=0.11740 inner_val_loss=0.27391 best_epoch=15 seconds=1.1
+  fit=5 epoch=19/40 loss=0.10726 inner_val_loss=0.26167 best_epoch=15 seconds=1.2
+  fit=5 epoch=20/40 loss=0.10017 inner_val_loss=0.26913 best_epoch=15 seconds=1.2
+  fit=5 full_refit_epoch=1/15 loss=0.56024
+  fit=5 full_refit_epoch=2/15 loss=0.36066
+  fit=5 full_refit_epoch=3/15 loss=0.29139
+  fit=5 full_refit_epoch=4/15 loss=0.26380
+  fit=5 full_refit_epoch=5/15 loss=0.24635
+  fit=5 full_refit_epoch=6/15 loss=0.23357
+  fit=5 full_refit_epoch=7/15 loss=0.22261
+  fit=5 full_refit_epoch=8/15 loss=0.21171
+  fit=5 full_refit_epoch=9/15 loss=0.20035
+  fit=5 full_refit_epoch=10/15 loss=0.18913
+  fit=5 full_refit_epoch=11/15 loss=0.17796
+  fit=5 full_refit_epoch=12/15 loss=0.16591
+  fit=5 full_refit_epoch=13/15 loss=0.15642
+  fit=5 full_refit_epoch=14/15 loss=0.14521
+  fit=5 full_refit_epoch=15/15 loss=0.13429
+END   seed=47 phase=baseline model=resnet18 metric=0.7105015050742618 error=None minutes=3.15
+START seed=47 phase=initial model=resnet18
+  fit=6 epoch=1/40 loss=0.56054 inner_val_loss=0.44964 best_epoch=1 seconds=1.4
+  fit=6 epoch=2/40 loss=0.37717 inner_val_loss=0.33641 best_epoch=2 seconds=1.2
+  fit=6 epoch=3/40 loss=0.30104 inner_val_loss=0.29698 best_epoch=3 seconds=1.2
+  fit=6 epoch=4/40 loss=0.26878 inner_val_loss=0.28083 best_epoch=4 seconds=1.2
+  fit=6 epoch=5/40 loss=0.25177 inner_val_loss=0.26976 best_epoch=5 seconds=1.1
+  fit=6 epoch=6/40 loss=0.23813 inner_val_loss=0.26639 best_epoch=6 seconds=1.1
+  fit=6 epoch=7/40 loss=0.22785 inner_val_loss=0.26547 best_epoch=7 seconds=1.1
+  fit=6 epoch=8/40 loss=0.21707 inner_val_loss=0.26339 best_epoch=8 seconds=1.2
+  fit=6 epoch=9/40 loss=0.20779 inner_val_loss=0.26765 best_epoch=8 seconds=1.1
+  fit=6 epoch=10/40 loss=0.19702 inner_val_loss=0.26339 best_epoch=10 seconds=1.1
+  fit=6 epoch=11/40 loss=0.18831 inner_val_loss=0.26429 best_epoch=10 seconds=1.1
+  fit=6 epoch=12/40 loss=0.17675 inner_val_loss=0.26327 best_epoch=12 seconds=1.2
+  fit=6 epoch=13/40 loss=0.16763 inner_val_loss=0.27001 best_epoch=12 seconds=1.1
+  fit=6 epoch=14/40 loss=0.15609 inner_val_loss=0.27296 best_epoch=12 seconds=1.2
+  fit=6 epoch=15/40 loss=0.14911 inner_val_loss=0.27722 best_epoch=12 seconds=1.2
+  fit=6 epoch=16/40 loss=0.13618 inner_val_loss=0.27299 best_epoch=12 seconds=1.2
+  fit=6 epoch=17/40 loss=0.12812 inner_val_loss=0.28420 best_epoch=12 seconds=1.2
+  fit=6 full_refit_epoch=1/12 loss=0.54923
+  fit=6 full_refit_epoch=2/12 loss=0.35917
+  fit=6 full_refit_epoch=3/12 loss=0.28766
+  fit=6 full_refit_epoch=4/12 loss=0.26223
+  fit=6 full_refit_epoch=5/12 loss=0.24583
+  fit=6 full_refit_epoch=6/12 loss=0.23331
+  fit=6 full_refit_epoch=7/12 loss=0.22379
+  fit=6 full_refit_epoch=8/12 loss=0.21245
+  fit=6 full_refit_epoch=9/12 loss=0.20203
+  fit=6 full_refit_epoch=10/12 loss=0.19115
+  fit=6 full_refit_epoch=11/12 loss=0.18078
+  fit=6 full_refit_epoch=12/12 loss=0.17155
+  fit=7 epoch=1/40 loss=0.57871 inner_val_loss=0.46532 best_epoch=1 seconds=1.5
+  fit=7 epoch=2/40 loss=0.40006 inner_val_loss=0.36290 best_epoch=2 seconds=1.2
+  fit=7 epoch=3/40 loss=0.32016 inner_val_loss=0.31035 best_epoch=3 seconds=1.1
+  fit=7 epoch=4/40 loss=0.28551 inner_val_loss=0.29779 best_epoch=4 seconds=1.2
+  fit=7 epoch=5/40 loss=0.26512 inner_val_loss=0.28889 best_epoch=5 seconds=1.2
+  fit=7 epoch=6/40 loss=0.25081 inner_val_loss=0.28044 best_epoch=6 seconds=1.2
+  fit=7 epoch=7/40 loss=0.24060 inner_val_loss=0.27500 best_epoch=7 seconds=1.2
+  fit=7 epoch=8/40 loss=0.23274 inner_val_loss=0.27284 best_epoch=8 seconds=1.2
+  fit=7 epoch=9/40 loss=0.22107 inner_val_loss=0.27390 best_epoch=8 seconds=1.1
+  fit=7 epoch=10/40 loss=0.21225 inner_val_loss=0.27282 best_epoch=10 seconds=1.1
+  fit=7 epoch=11/40 loss=0.20130 inner_val_loss=0.26750 best_epoch=11 seconds=1.2
+  fit=7 epoch=12/40 loss=0.19235 inner_val_loss=0.27290 best_epoch=11 seconds=1.2
+  fit=7 epoch=13/40 loss=0.18319 inner_val_loss=0.26916 best_epoch=11 seconds=1.2
+  fit=7 epoch=14/40 loss=0.17371 inner_val_loss=0.27581 best_epoch=11 seconds=1.1
+  fit=7 epoch=15/40 loss=0.16558 inner_val_loss=0.28240 best_epoch=11 seconds=1.2
+  fit=7 epoch=16/40 loss=0.15627 inner_val_loss=0.27577 best_epoch=11 seconds=1.2
+  fit=7 full_refit_epoch=1/11 loss=0.56859
+  fit=7 full_refit_epoch=2/11 loss=0.38421
+  fit=7 full_refit_epoch=3/11 loss=0.30949
+  fit=7 full_refit_epoch=4/11 loss=0.27764
+  fit=7 full_refit_epoch=5/11 loss=0.26004
+  fit=7 full_refit_epoch=6/11 loss=0.24692
+  fit=7 full_refit_epoch=7/11 loss=0.23589
+  fit=7 full_refit_epoch=8/11 loss=0.22534
+  fit=7 full_refit_epoch=9/11 loss=0.21593
+  fit=7 full_refit_epoch=10/11 loss=0.20544
+  fit=7 full_refit_epoch=11/11 loss=0.19478
+  fit=8 epoch=1/40 loss=0.55909 inner_val_loss=0.47991 best_epoch=1 seconds=1.5
+  fit=8 epoch=2/40 loss=0.38332 inner_val_loss=0.35060 best_epoch=2 seconds=1.2
+  fit=8 epoch=3/40 loss=0.31095 inner_val_loss=0.31655 best_epoch=3 seconds=1.1
+  fit=8 epoch=4/40 loss=0.28005 inner_val_loss=0.30512 best_epoch=4 seconds=1.1
+  fit=8 epoch=5/40 loss=0.26250 inner_val_loss=0.29519 best_epoch=5 seconds=1.1
+  fit=8 epoch=6/40 loss=0.24996 inner_val_loss=0.29013 best_epoch=6 seconds=1.2
+  fit=8 epoch=7/40 loss=0.23653 inner_val_loss=0.28561 best_epoch=7 seconds=1.2
+  fit=8 epoch=8/40 loss=0.22899 inner_val_loss=0.28685 best_epoch=7 seconds=1.2
+  fit=8 epoch=9/40 loss=0.21719 inner_val_loss=0.28539 best_epoch=9 seconds=1.2
+  fit=8 epoch=10/40 loss=0.20824 inner_val_loss=0.28547 best_epoch=9 seconds=1.2
+  fit=8 epoch=11/40 loss=0.19853 inner_val_loss=0.28640 best_epoch=9 seconds=1.1
+  fit=8 epoch=12/40 loss=0.18726 inner_val_loss=0.28391 best_epoch=12 seconds=1.1
+  fit=8 epoch=13/40 loss=0.17792 inner_val_loss=0.28984 best_epoch=12 seconds=1.2
+  fit=8 epoch=14/40 loss=0.16710 inner_val_loss=0.28659 best_epoch=12 seconds=1.1
+  fit=8 epoch=15/40 loss=0.15750 inner_val_loss=0.29601 best_epoch=12 seconds=1.2
+  fit=8 epoch=16/40 loss=0.14831 inner_val_loss=0.29462 best_epoch=12 seconds=1.2
+  fit=8 epoch=17/40 loss=0.13705 inner_val_loss=0.29944 best_epoch=12 seconds=1.1
+  fit=8 full_refit_epoch=1/12 loss=0.54832
+  fit=8 full_refit_epoch=2/12 loss=0.37038
+  fit=8 full_refit_epoch=3/12 loss=0.30426
+  fit=8 full_refit_epoch=4/12 loss=0.27641
+  fit=8 full_refit_epoch=5/12 loss=0.25983
+  fit=8 full_refit_epoch=6/12 loss=0.24762
+  fit=8 full_refit_epoch=7/12 loss=0.23579
+  fit=8 full_refit_epoch=8/12 loss=0.22485
+  fit=8 full_refit_epoch=9/12 loss=0.21495
+  fit=8 full_refit_epoch=10/12 loss=0.20537
+  fit=8 full_refit_epoch=11/12 loss=0.19364
+  fit=8 full_refit_epoch=12/12 loss=0.18352
+  fit=9 epoch=1/40 loss=0.55422 inner_val_loss=0.46796 best_epoch=1 seconds=1.5
+  fit=9 epoch=2/40 loss=0.38526 inner_val_loss=0.34713 best_epoch=2 seconds=1.2
+  fit=9 epoch=3/40 loss=0.31202 inner_val_loss=0.29661 best_epoch=3 seconds=1.2
+  fit=9 epoch=4/40 loss=0.28039 inner_val_loss=0.28477 best_epoch=4 seconds=1.2
+  fit=9 epoch=5/40 loss=0.26092 inner_val_loss=0.26848 best_epoch=5 seconds=1.1
+  fit=9 epoch=6/40 loss=0.24777 inner_val_loss=0.26543 best_epoch=6 seconds=1.1
+  fit=9 epoch=7/40 loss=0.23545 inner_val_loss=0.26089 best_epoch=7 seconds=1.1
+  fit=9 epoch=8/40 loss=0.22353 inner_val_loss=0.25366 best_epoch=8 seconds=1.2
+  fit=9 epoch=9/40 loss=0.21512 inner_val_loss=0.25191 best_epoch=9 seconds=1.2
+  fit=9 epoch=10/40 loss=0.20540 inner_val_loss=0.25299 best_epoch=9 seconds=1.2
+  fit=9 epoch=11/40 loss=0.19596 inner_val_loss=0.25172 best_epoch=11 seconds=1.2
+  fit=9 epoch=12/40 loss=0.18584 inner_val_loss=0.25070 best_epoch=12 seconds=1.2
+  fit=9 epoch=13/40 loss=0.17463 inner_val_loss=0.25438 best_epoch=12 seconds=1.2
+  fit=9 epoch=14/40 loss=0.16639 inner_val_loss=0.25272 best_epoch=12 seconds=1.1
+  fit=9 epoch=15/40 loss=0.15512 inner_val_loss=0.25506 best_epoch=12 seconds=1.2
+  fit=9 epoch=16/40 loss=0.14506 inner_val_loss=0.25490 best_epoch=12 seconds=1.2
+  fit=9 epoch=17/40 loss=0.13814 inner_val_loss=0.26632 best_epoch=12 seconds=1.2
+  fit=9 full_refit_epoch=1/12 loss=0.54357
+  fit=9 full_refit_epoch=2/12 loss=0.36865
+  fit=9 full_refit_epoch=3/12 loss=0.30021
+  fit=9 full_refit_epoch=4/12 loss=0.27130
+  fit=9 full_refit_epoch=5/12 loss=0.25350
+  fit=9 full_refit_epoch=6/12 loss=0.23988
+  fit=9 full_refit_epoch=7/12 loss=0.22864
+  fit=9 full_refit_epoch=8/12 loss=0.21863
+  fit=9 full_refit_epoch=9/12 loss=0.20662
+  fit=9 full_refit_epoch=10/12 loss=0.19718
+  fit=9 full_refit_epoch=11/12 loss=0.18749
+  fit=9 full_refit_epoch=12/12 loss=0.17500
+  fit=10 epoch=1/40 loss=0.57216 inner_val_loss=0.48353 best_epoch=1 seconds=1.5
+  fit=10 epoch=2/40 loss=0.37712 inner_val_loss=0.32824 best_epoch=2 seconds=1.2
+  fit=10 epoch=3/40 loss=0.30084 inner_val_loss=0.29154 best_epoch=3 seconds=1.2
+  fit=10 epoch=4/40 loss=0.26742 inner_val_loss=0.27519 best_epoch=4 seconds=1.2
+  fit=10 epoch=5/40 loss=0.25012 inner_val_loss=0.26274 best_epoch=5 seconds=1.2
+  fit=10 epoch=6/40 loss=0.23789 inner_val_loss=0.25765 best_epoch=6 seconds=1.2
+  fit=10 epoch=7/40 loss=0.22454 inner_val_loss=0.26537 best_epoch=6 seconds=1.2
+  fit=10 epoch=8/40 loss=0.21411 inner_val_loss=0.25480 best_epoch=8 seconds=1.2
+  fit=10 epoch=9/40 loss=0.20330 inner_val_loss=0.25421 best_epoch=9 seconds=1.2
+  fit=10 epoch=10/40 loss=0.19392 inner_val_loss=0.25024 best_epoch=10 seconds=1.2
+  fit=10 epoch=11/40 loss=0.18635 inner_val_loss=0.25237 best_epoch=10 seconds=1.2
+  fit=10 epoch=12/40 loss=0.17586 inner_val_loss=0.25347 best_epoch=10 seconds=1.2
+  fit=10 epoch=13/40 loss=0.16367 inner_val_loss=0.25285 best_epoch=10 seconds=1.2
+  fit=10 epoch=14/40 loss=0.15375 inner_val_loss=0.24965 best_epoch=14 seconds=1.1
+  fit=10 epoch=15/40 loss=0.14463 inner_val_loss=0.24939 best_epoch=15 seconds=1.1
+  fit=10 epoch=16/40 loss=0.13259 inner_val_loss=0.25409 best_epoch=15 seconds=1.1
+  fit=10 epoch=17/40 loss=0.12421 inner_val_loss=0.25853 best_epoch=15 seconds=1.2
+  fit=10 epoch=18/40 loss=0.11740 inner_val_loss=0.27391 best_epoch=15 seconds=1.1
+  fit=10 epoch=19/40 loss=0.10726 inner_val_loss=0.26167 best_epoch=15 seconds=1.2
+  fit=10 epoch=20/40 loss=0.10017 inner_val_loss=0.26913 best_epoch=15 seconds=1.2
+  fit=10 full_refit_epoch=1/15 loss=0.56024
+  fit=10 full_refit_epoch=2/15 loss=0.36066
+  fit=10 full_refit_epoch=3/15 loss=0.29139
+  fit=10 full_refit_epoch=4/15 loss=0.26380
+  fit=10 full_refit_epoch=5/15 loss=0.24635
+  fit=10 full_refit_epoch=6/15 loss=0.23357
+  fit=10 full_refit_epoch=7/15 loss=0.22261
+  fit=10 full_refit_epoch=8/15 loss=0.21171
+  fit=10 full_refit_epoch=9/15 loss=0.20035
+  fit=10 full_refit_epoch=10/15 loss=0.18913
+  fit=10 full_refit_epoch=11/15 loss=0.17796
+  fit=10 full_refit_epoch=12/15 loss=0.16591
+  fit=10 full_refit_epoch=13/15 loss=0.15642
+  fit=10 full_refit_epoch=14/15 loss=0.14521
+  fit=10 full_refit_epoch=15/15 loss=0.13429
+END   seed=47 phase=initial model=resnet18 metric=0.7105015050742618 error=None minutes=3.19
+START seed=47 phase=initial model=efficientnet_b0
+  fit=11 epoch=1/40 loss=0.92044 inner_val_loss=0.55962 best_epoch=1 seconds=3.0
+  fit=11 epoch=2/40 loss=0.28140 inner_val_loss=0.33288 best_epoch=2 seconds=2.8
+  fit=11 epoch=3/40 loss=0.19060 inner_val_loss=0.32387 best_epoch=3 seconds=2.7
+  fit=11 epoch=4/40 loss=0.13659 inner_val_loss=0.32694 best_epoch=3 seconds=2.5
+  fit=11 epoch=5/40 loss=0.09834 inner_val_loss=0.32738 best_epoch=3 seconds=2.6
+  fit=11 epoch=6/40 loss=0.07177 inner_val_loss=0.33914 best_epoch=3 seconds=2.6
+  fit=11 epoch=7/40 loss=0.05646 inner_val_loss=0.34442 best_epoch=3 seconds=2.6
+  fit=11 epoch=8/40 loss=0.04330 inner_val_loss=0.34679 best_epoch=3 seconds=2.7
+  fit=11 full_refit_epoch=1/3 loss=0.87979
+  fit=11 full_refit_epoch=2/3 loss=0.27516
+  fit=11 full_refit_epoch=3/3 loss=0.18999
+  fit=12 epoch=1/40 loss=0.75653 inner_val_loss=0.61367 best_epoch=1 seconds=3.0
+  fit=12 epoch=2/40 loss=0.29570 inner_val_loss=0.43963 best_epoch=2 seconds=2.6
+  fit=12 epoch=3/40 loss=0.18153 inner_val_loss=0.39376 best_epoch=3 seconds=2.6
+  fit=12 epoch=4/40 loss=0.12440 inner_val_loss=0.39942 best_epoch=3 seconds=2.7
+  fit=12 epoch=5/40 loss=0.08824 inner_val_loss=0.40425 best_epoch=3 seconds=2.7
+  fit=12 epoch=6/40 loss=0.06431 inner_val_loss=0.39644 best_epoch=3 seconds=2.6
+  fit=12 epoch=7/40 loss=0.04991 inner_val_loss=0.40629 best_epoch=3 seconds=2.5
+  fit=12 epoch=8/40 loss=0.04441 inner_val_loss=0.40929 best_epoch=3 seconds=2.5
+  fit=12 full_refit_epoch=1/3 loss=0.73289
+  fit=12 full_refit_epoch=2/3 loss=0.28492
+  fit=12 full_refit_epoch=3/3 loss=0.17914
+  fit=13 epoch=1/40 loss=0.74023 inner_val_loss=0.63375 best_epoch=1 seconds=2.9
+  fit=13 epoch=2/40 loss=0.30251 inner_val_loss=0.43837 best_epoch=2 seconds=2.7
+  fit=13 epoch=3/40 loss=0.18546 inner_val_loss=0.41877 best_epoch=3 seconds=2.6
+  fit=13 epoch=4/40 loss=0.12480 inner_val_loss=0.41055 best_epoch=4 seconds=2.5
+  fit=13 epoch=5/40 loss=0.08766 inner_val_loss=0.41081 best_epoch=4 seconds=2.6
+  fit=13 epoch=6/40 loss=0.06920 inner_val_loss=0.42180 best_epoch=4 seconds=2.6
+  fit=13 epoch=7/40 loss=0.05184 inner_val_loss=0.41886 best_epoch=4 seconds=2.6
+  fit=13 epoch=8/40 loss=0.04213 inner_val_loss=0.43012 best_epoch=4 seconds=2.6
+  fit=13 epoch=9/40 loss=0.03394 inner_val_loss=0.42879 best_epoch=4 seconds=2.7
+  fit=13 full_refit_epoch=1/4 loss=0.70197
+  fit=13 full_refit_epoch=2/4 loss=0.28150
+  fit=13 full_refit_epoch=3/4 loss=0.17970
+  fit=13 full_refit_epoch=4/4 loss=0.12155
+  fit=14 epoch=1/40 loss=0.80042 inner_val_loss=0.62413 best_epoch=1 seconds=3.0
+  fit=14 epoch=2/40 loss=0.30552 inner_val_loss=0.38185 best_epoch=2 seconds=2.6
+  fit=14 epoch=3/40 loss=0.19443 inner_val_loss=0.35316 best_epoch=3 seconds=2.6
+  fit=14 epoch=4/40 loss=0.13279 inner_val_loss=0.35449 best_epoch=3 seconds=2.6
+  fit=14 epoch=5/40 loss=0.09915 inner_val_loss=0.34571 best_epoch=5 seconds=2.6
+  fit=14 epoch=6/40 loss=0.07484 inner_val_loss=0.35632 best_epoch=5 seconds=2.6
+  fit=14 epoch=7/40 loss=0.05516 inner_val_loss=0.36397 best_epoch=5 seconds=2.6
+  fit=14 epoch=8/40 loss=0.04260 inner_val_loss=0.36809 best_epoch=5 seconds=2.6
+  fit=14 epoch=9/40 loss=0.03428 inner_val_loss=0.36865 best_epoch=5 seconds=2.6
+  fit=14 epoch=10/40 loss=0.03094 inner_val_loss=0.37806 best_epoch=5 seconds=2.6
+  fit=14 full_refit_epoch=1/5 loss=0.76659
+  fit=14 full_refit_epoch=2/5 loss=0.28611
+  fit=14 full_refit_epoch=3/5 loss=0.18074
+  fit=14 full_refit_epoch=4/5 loss=0.13098
+  fit=14 full_refit_epoch=5/5 loss=0.09307
+  fit=15 epoch=1/40 loss=0.73852 inner_val_loss=0.60262 best_epoch=1 seconds=3.1
+  fit=15 epoch=2/40 loss=0.27550 inner_val_loss=0.36854 best_epoch=2 seconds=2.7
+  fit=15 epoch=3/40 loss=0.16649 inner_val_loss=0.35216 best_epoch=3 seconds=2.7
+  fit=15 epoch=4/40 loss=0.11504 inner_val_loss=0.34937 best_epoch=4 seconds=2.6
+  fit=15 epoch=5/40 loss=0.08173 inner_val_loss=0.34506 best_epoch=5 seconds=2.7
+  fit=15 epoch=6/40 loss=0.06290 inner_val_loss=0.34741 best_epoch=5 seconds=2.6
+  fit=15 epoch=7/40 loss=0.04641 inner_val_loss=0.35264 best_epoch=5 seconds=2.7
+  fit=15 epoch=8/40 loss=0.03694 inner_val_loss=0.35992 best_epoch=5 seconds=2.6
+  fit=15 epoch=9/40 loss=0.02999 inner_val_loss=0.36211 best_epoch=5 seconds=2.6
+  fit=15 epoch=10/40 loss=0.02652 inner_val_loss=0.37849 best_epoch=5 seconds=2.8
+  fit=15 full_refit_epoch=1/5 loss=0.72685
+  fit=15 full_refit_epoch=2/5 loss=0.27099
+  fit=15 full_refit_epoch=3/5 loss=0.16754
+  fit=15 full_refit_epoch=4/5 loss=0.11795
+  fit=15 full_refit_epoch=5/5 loss=0.08149
+END   seed=47 phase=initial model=efficientnet_b0 metric=0.6324309964666447 error=None minutes=3.24
+START seed=47 phase=initial_merge model=ensemble:resnet18+efficientnet_b0
+END   seed=47 phase=initial_merge model=ensemble:resnet18+efficientnet_b0 metric=None error=AssertionError:  minutes=0.00
+START seed=47 phase=initial_selected model=resnet18
+  fit=16 epoch=1/40 loss=0.56054 inner_val_loss=0.44964 best_epoch=1 seconds=1.5
+  fit=16 epoch=2/40 loss=0.37717 inner_val_loss=0.33641 best_epoch=2 seconds=1.2
+  fit=16 epoch=3/40 loss=0.30104 inner_val_loss=0.29698 best_epoch=3 seconds=1.2
+  fit=16 epoch=4/40 loss=0.26878 inner_val_loss=0.28083 best_epoch=4 seconds=1.2
+  fit=16 epoch=5/40 loss=0.25177 inner_val_loss=0.26976 best_epoch=5 seconds=1.2
+  fit=16 epoch=6/40 loss=0.23813 inner_val_loss=0.26639 best_epoch=6 seconds=1.2
+  fit=16 epoch=7/40 loss=0.22785 inner_val_loss=0.26547 best_epoch=7 seconds=1.2
+  fit=16 epoch=8/40 loss=0.21707 inner_val_loss=0.26339 best_epoch=8 seconds=1.1
+  fit=16 epoch=9/40 loss=0.20779 inner_val_loss=0.26765 best_epoch=8 seconds=1.2
+  fit=16 epoch=10/40 loss=0.19702 inner_val_loss=0.26339 best_epoch=10 seconds=1.2
+  fit=16 epoch=11/40 loss=0.18831 inner_val_loss=0.26429 best_epoch=10 seconds=1.2
+  fit=16 epoch=12/40 loss=0.17675 inner_val_loss=0.26327 best_epoch=12 seconds=1.2
+  fit=16 epoch=13/40 loss=0.16763 inner_val_loss=0.27001 best_epoch=12 seconds=1.2
+  fit=16 epoch=14/40 loss=0.15609 inner_val_loss=0.27296 best_epoch=12 seconds=1.2
+  fit=16 epoch=15/40 loss=0.14911 inner_val_loss=0.27722 best_epoch=12 seconds=1.2
+  fit=16 epoch=16/40 loss=0.13618 inner_val_loss=0.27299 best_epoch=12 seconds=1.2
+  fit=16 epoch=17/40 loss=0.12812 inner_val_loss=0.28420 best_epoch=12 seconds=1.1
+  fit=16 full_refit_epoch=1/12 loss=0.54923
+  fit=16 full_refit_epoch=2/12 loss=0.35917
+  fit=16 full_refit_epoch=3/12 loss=0.28766
+  fit=16 full_refit_epoch=4/12 loss=0.26223
+  fit=16 full_refit_epoch=5/12 loss=0.24583
+  fit=16 full_refit_epoch=6/12 loss=0.23331
+  fit=16 full_refit_epoch=7/12 loss=0.22379
+  fit=16 full_refit_epoch=8/12 loss=0.21245
+  fit=16 full_refit_epoch=9/12 loss=0.20203
+  fit=16 full_refit_epoch=10/12 loss=0.19115
+  fit=16 full_refit_epoch=11/12 loss=0.18078
+  fit=16 full_refit_epoch=12/12 loss=0.17155
+  fit=17 epoch=1/40 loss=0.57871 inner_val_loss=0.46532 best_epoch=1 seconds=1.4
+  fit=17 epoch=2/40 loss=0.40006 inner_val_loss=0.36290 best_epoch=2 seconds=1.1
+  fit=17 epoch=3/40 loss=0.32016 inner_val_loss=0.31035 best_epoch=3 seconds=1.1
+  fit=17 epoch=4/40 loss=0.28551 inner_val_loss=0.29779 best_epoch=4 seconds=1.1
+  fit=17 epoch=5/40 loss=0.26512 inner_val_loss=0.28889 best_epoch=5 seconds=1.2
+  fit=17 epoch=6/40 loss=0.25081 inner_val_loss=0.28044 best_epoch=6 seconds=1.2
+  fit=17 epoch=7/40 loss=0.24060 inner_val_loss=0.27500 best_epoch=7 seconds=1.2
+  fit=17 epoch=8/40 loss=0.23274 inner_val_loss=0.27284 best_epoch=8 seconds=1.2
+  fit=17 epoch=9/40 loss=0.22107 inner_val_loss=0.27390 best_epoch=8 seconds=1.2
+  fit=17 epoch=10/40 loss=0.21225 inner_val_loss=0.27282 best_epoch=10 seconds=1.1
+  fit=17 epoch=11/40 loss=0.20130 inner_val_loss=0.26750 best_epoch=11 seconds=1.1
+  fit=17 epoch=12/40 loss=0.19235 inner_val_loss=0.27290 best_epoch=11 seconds=1.2
+  fit=17 epoch=13/40 loss=0.18319 inner_val_loss=0.26916 best_epoch=11 seconds=1.2
+  fit=17 epoch=14/40 loss=0.17371 inner_val_loss=0.27581 best_epoch=11 seconds=1.1
+  fit=17 epoch=15/40 loss=0.16558 inner_val_loss=0.28240 best_epoch=11 seconds=1.2
+  fit=17 epoch=16/40 loss=0.15627 inner_val_loss=0.27577 best_epoch=11 seconds=1.2
+  fit=17 full_refit_epoch=1/11 loss=0.56859
+  fit=17 full_refit_epoch=2/11 loss=0.38421
+  fit=17 full_refit_epoch=3/11 loss=0.30949
+  fit=17 full_refit_epoch=4/11 loss=0.27764
+  fit=17 full_refit_epoch=5/11 loss=0.26004
+  fit=17 full_refit_epoch=6/11 loss=0.24692
+  fit=17 full_refit_epoch=7/11 loss=0.23589
+  fit=17 full_refit_epoch=8/11 loss=0.22534
+  fit=17 full_refit_epoch=9/11 loss=0.21593
+  fit=17 full_refit_epoch=10/11 loss=0.20544
+  fit=17 full_refit_epoch=11/11 loss=0.19478
+  fit=18 epoch=1/40 loss=0.55909 inner_val_loss=0.47991 best_epoch=1 seconds=1.5
+  fit=18 epoch=2/40 loss=0.38332 inner_val_loss=0.35060 best_epoch=2 seconds=1.2
+  fit=18 epoch=3/40 loss=0.31095 inner_val_loss=0.31655 best_epoch=3 seconds=1.1
+  fit=18 epoch=4/40 loss=0.28005 inner_val_loss=0.30512 best_epoch=4 seconds=1.1
+  fit=18 epoch=5/40 loss=0.26250 inner_val_loss=0.29519 best_epoch=5 seconds=1.1
+  fit=18 epoch=6/40 loss=0.24996 inner_val_loss=0.29013 best_epoch=6 seconds=1.1
+  fit=18 epoch=7/40 loss=0.23653 inner_val_loss=0.28561 best_epoch=7 seconds=1.2
+  fit=18 epoch=8/40 loss=0.22899 inner_val_loss=0.28685 best_epoch=7 seconds=1.2
+  fit=18 epoch=9/40 loss=0.21719 inner_val_loss=0.28539 best_epoch=9 seconds=1.2
+  fit=18 epoch=10/40 loss=0.20824 inner_val_loss=0.28547 best_epoch=9 seconds=1.2
+  fit=18 epoch=11/40 loss=0.19853 inner_val_loss=0.28640 best_epoch=9 seconds=1.1
+  fit=18 epoch=12/40 loss=0.18726 inner_val_loss=0.28391 best_epoch=12 seconds=1.1
+  fit=18 epoch=13/40 loss=0.17792 inner_val_loss=0.28984 best_epoch=12 seconds=1.1
+  fit=18 epoch=14/40 loss=0.16710 inner_val_loss=0.28659 best_epoch=12 seconds=1.1
+  fit=18 epoch=15/40 loss=0.15750 inner_val_loss=0.29601 best_epoch=12 seconds=1.2
+  fit=18 epoch=16/40 loss=0.14831 inner_val_loss=0.29462 best_epoch=12 seconds=1.1
+  fit=18 epoch=17/40 loss=0.13705 inner_val_loss=0.29944 best_epoch=12 seconds=1.2
+  fit=18 full_refit_epoch=1/12 loss=0.54832
+  fit=18 full_refit_epoch=2/12 loss=0.37038
+  fit=18 full_refit_epoch=3/12 loss=0.30426
+  fit=18 full_refit_epoch=4/12 loss=0.27641
+  fit=18 full_refit_epoch=5/12 loss=0.25983
+  fit=18 full_refit_epoch=6/12 loss=0.24762
+  fit=18 full_refit_epoch=7/12 loss=0.23579
+  fit=18 full_refit_epoch=8/12 loss=0.22485
+  fit=18 full_refit_epoch=9/12 loss=0.21495
+  fit=18 full_refit_epoch=10/12 loss=0.20537
+  fit=18 full_refit_epoch=11/12 loss=0.19364
+  fit=18 full_refit_epoch=12/12 loss=0.18352
+  fit=19 epoch=1/40 loss=0.55422 inner_val_loss=0.46796 best_epoch=1 seconds=1.5
+  fit=19 epoch=2/40 loss=0.38526 inner_val_loss=0.34713 best_epoch=2 seconds=1.2
+  fit=19 epoch=3/40 loss=0.31202 inner_val_loss=0.29661 best_epoch=3 seconds=1.2
+  fit=19 epoch=4/40 loss=0.28039 inner_val_loss=0.28477 best_epoch=4 seconds=1.1
+  fit=19 epoch=5/40 loss=0.26092 inner_val_loss=0.26848 best_epoch=5 seconds=1.1
+  fit=19 epoch=6/40 loss=0.24777 inner_val_loss=0.26543 best_epoch=6 seconds=1.1
+  fit=19 epoch=7/40 loss=0.23545 inner_val_loss=0.26089 best_epoch=7 seconds=1.1
+  fit=19 epoch=8/40 loss=0.22353 inner_val_loss=0.25366 best_epoch=8 seconds=1.1
+  fit=19 epoch=9/40 loss=0.21512 inner_val_loss=0.25191 best_epoch=9 seconds=1.2
+  fit=19 epoch=10/40 loss=0.20540 inner_val_loss=0.25299 best_epoch=9 seconds=1.2
+  fit=19 epoch=11/40 loss=0.19596 inner_val_loss=0.25172 best_epoch=11 seconds=1.2
+  fit=19 epoch=12/40 loss=0.18584 inner_val_loss=0.25070 best_epoch=12 seconds=1.2
+  fit=19 epoch=13/40 loss=0.17463 inner_val_loss=0.25438 best_epoch=12 seconds=1.2
+  fit=19 epoch=14/40 loss=0.16639 inner_val_loss=0.25272 best_epoch=12 seconds=1.2
+  fit=19 epoch=15/40 loss=0.15512 inner_val_loss=0.25506 best_epoch=12 seconds=1.2
+  fit=19 epoch=16/40 loss=0.14506 inner_val_loss=0.25490 best_epoch=12 seconds=1.1
+  fit=19 epoch=17/40 loss=0.13814 inner_val_loss=0.26632 best_epoch=12 seconds=1.1
+  fit=19 full_refit_epoch=1/12 loss=0.54357
+  fit=19 full_refit_epoch=2/12 loss=0.36865
+  fit=19 full_refit_epoch=3/12 loss=0.30021
+  fit=19 full_refit_epoch=4/12 loss=0.27130
+  fit=19 full_refit_epoch=5/12 loss=0.25350
+  fit=19 full_refit_epoch=6/12 loss=0.23988
+  fit=19 full_refit_epoch=7/12 loss=0.22864
+  fit=19 full_refit_epoch=8/12 loss=0.21863
+  fit=19 full_refit_epoch=9/12 loss=0.20662
+  fit=19 full_refit_epoch=10/12 loss=0.19718
+  fit=19 full_refit_epoch=11/12 loss=0.18749
+  fit=19 full_refit_epoch=12/12 loss=0.17500
+  fit=20 epoch=1/40 loss=0.57216 inner_val_loss=0.48353 best_epoch=1 seconds=1.5
+  fit=20 epoch=2/40 loss=0.37712 inner_val_loss=0.32824 best_epoch=2 seconds=1.2
+  fit=20 epoch=3/40 loss=0.30084 inner_val_loss=0.29154 best_epoch=3 seconds=1.2
+  fit=20 epoch=4/40 loss=0.26742 inner_val_loss=0.27519 best_epoch=4 seconds=1.1
+  fit=20 epoch=5/40 loss=0.25012 inner_val_loss=0.26274 best_epoch=5 seconds=1.2
+  fit=20 epoch=6/40 loss=0.23789 inner_val_loss=0.25765 best_epoch=6 seconds=1.1
+  fit=20 epoch=7/40 loss=0.22454 inner_val_loss=0.26537 best_epoch=6 seconds=1.1
+  fit=20 epoch=8/40 loss=0.21411 inner_val_loss=0.25480 best_epoch=8 seconds=1.1
+  fit=20 epoch=9/40 loss=0.20330 inner_val_loss=0.25421 best_epoch=9 seconds=1.2
+  fit=20 epoch=10/40 loss=0.19392 inner_val_loss=0.25024 best_epoch=10 seconds=1.1
+  fit=20 epoch=11/40 loss=0.18635 inner_val_loss=0.25237 best_epoch=10 seconds=1.2
+  fit=20 epoch=12/40 loss=0.17586 inner_val_loss=0.25347 best_epoch=10 seconds=1.1
+  fit=20 epoch=13/40 loss=0.16367 inner_val_loss=0.25285 best_epoch=10 seconds=1.2
+  fit=20 epoch=14/40 loss=0.15375 inner_val_loss=0.24965 best_epoch=14 seconds=1.1
+  fit=20 epoch=15/40 loss=0.14463 inner_val_loss=0.24939 best_epoch=15 seconds=1.1
+  fit=20 epoch=16/40 loss=0.13259 inner_val_loss=0.25409 best_epoch=15 seconds=1.2
+  fit=20 epoch=17/40 loss=0.12421 inner_val_loss=0.25853 best_epoch=15 seconds=1.2
+  fit=20 epoch=18/40 loss=0.11740 inner_val_loss=0.27391 best_epoch=15 seconds=1.2
+  fit=20 epoch=19/40 loss=0.10726 inner_val_loss=0.26167 best_epoch=15 seconds=1.2
+  fit=20 epoch=20/40 loss=0.10017 inner_val_loss=0.26913 best_epoch=15 seconds=1.2
+  fit=20 full_refit_epoch=1/15 loss=0.56024
+  fit=20 full_refit_epoch=2/15 loss=0.36066
+  fit=20 full_refit_epoch=3/15 loss=0.29139
+  fit=20 full_refit_epoch=4/15 loss=0.26380
+  fit=20 full_refit_epoch=5/15 loss=0.24635
+  fit=20 full_refit_epoch=6/15 loss=0.23357
+  fit=20 full_refit_epoch=7/15 loss=0.22261
+  fit=20 full_refit_epoch=8/15 loss=0.21171
+  fit=20 full_refit_epoch=9/15 loss=0.20035
+  fit=20 full_refit_epoch=10/15 loss=0.18913
+  fit=20 full_refit_epoch=11/15 loss=0.17796
+  fit=20 full_refit_epoch=12/15 loss=0.16591
+  fit=20 full_refit_epoch=13/15 loss=0.15642
+  fit=20 full_refit_epoch=14/15 loss=0.14521
+  fit=20 full_refit_epoch=15/15 loss=0.13429
+END   seed=47 phase=initial_selected model=resnet18 metric=0.7105015050742618 error=None minutes=3.18
+START seed=47 phase=ablation model=pass
+END   seed=47 phase=ablation model=pass metric=0.5 error=None minutes=0.18
+START seed=47 phase=refinement model=efficientnet_b0
+  fit=21 epoch=1/40 loss=0.92044 inner_val_loss=0.55962 best_epoch=1 seconds=2.9
+  fit=21 epoch=2/40 loss=0.28140 inner_val_loss=0.33288 best_epoch=2 seconds=2.6
+  fit=21 epoch=3/40 loss=0.19060 inner_val_loss=0.32387 best_epoch=3 seconds=2.5
+  fit=21 epoch=4/40 loss=0.13659 inner_val_loss=0.32694 best_epoch=3 seconds=2.6
+  fit=21 epoch=5/40 loss=0.09834 inner_val_loss=0.32738 best_epoch=3 seconds=2.7
+  fit=21 epoch=6/40 loss=0.07177 inner_val_loss=0.33914 best_epoch=3 seconds=2.6
+  fit=21 epoch=7/40 loss=0.05646 inner_val_loss=0.34442 best_epoch=3 seconds=2.5
+  fit=21 epoch=8/40 loss=0.04330 inner_val_loss=0.34679 best_epoch=3 seconds=2.5
+  fit=21 full_refit_epoch=1/3 loss=0.87979
+  fit=21 full_refit_epoch=2/3 loss=0.27516
+  fit=21 full_refit_epoch=3/3 loss=0.18999
+  fit=22 epoch=1/40 loss=0.75653 inner_val_loss=0.61367 best_epoch=1 seconds=2.9
+  fit=22 epoch=2/40 loss=0.29570 inner_val_loss=0.43963 best_epoch=2 seconds=2.7
+  fit=22 epoch=3/40 loss=0.18153 inner_val_loss=0.39376 best_epoch=3 seconds=2.5
+  fit=22 epoch=4/40 loss=0.12440 inner_val_loss=0.39942 best_epoch=3 seconds=2.6
+  fit=22 epoch=5/40 loss=0.08824 inner_val_loss=0.40425 best_epoch=3 seconds=2.5
+  fit=22 epoch=6/40 loss=0.06431 inner_val_loss=0.39644 best_epoch=3 seconds=2.6
+  fit=22 epoch=7/40 loss=0.04991 inner_val_loss=0.40629 best_epoch=3 seconds=2.6
+  fit=22 epoch=8/40 loss=0.04441 inner_val_loss=0.40929 best_epoch=3 seconds=2.6
+  fit=22 full_refit_epoch=1/3 loss=0.73289
+  fit=22 full_refit_epoch=2/3 loss=0.28492
+  fit=22 full_refit_epoch=3/3 loss=0.17914
+  fit=23 epoch=1/40 loss=0.74023 inner_val_loss=0.63375 best_epoch=1 seconds=2.8
+  fit=23 epoch=2/40 loss=0.30251 inner_val_loss=0.43837 best_epoch=2 seconds=2.5
+  fit=23 epoch=3/40 loss=0.18546 inner_val_loss=0.41877 best_epoch=3 seconds=2.6
+  fit=23 epoch=4/40 loss=0.12480 inner_val_loss=0.41055 best_epoch=4 seconds=2.6
+  fit=23 epoch=5/40 loss=0.08766 inner_val_loss=0.41081 best_epoch=4 seconds=2.6
+  fit=23 epoch=6/40 loss=0.06920 inner_val_loss=0.42180 best_epoch=4 seconds=2.6
+  fit=23 epoch=7/40 loss=0.05184 inner_val_loss=0.41886 best_epoch=4 seconds=2.6
+  fit=23 epoch=8/40 loss=0.04213 inner_val_loss=0.43012 best_epoch=4 seconds=2.6
+  fit=23 epoch=9/40 loss=0.03394 inner_val_loss=0.42879 best_epoch=4 seconds=2.7
+  fit=23 full_refit_epoch=1/4 loss=0.70197
+  fit=23 full_refit_epoch=2/4 loss=0.28150
+  fit=23 full_refit_epoch=3/4 loss=0.17970
+  fit=23 full_refit_epoch=4/4 loss=0.12155
+  fit=24 epoch=1/40 loss=0.80042 inner_val_loss=0.62413 best_epoch=1 seconds=2.9
+  fit=24 epoch=2/40 loss=0.30552 inner_val_loss=0.38185 best_epoch=2 seconds=2.6
+  fit=24 epoch=3/40 loss=0.19443 inner_val_loss=0.35316 best_epoch=3 seconds=2.6
+  fit=24 epoch=4/40 loss=0.13279 inner_val_loss=0.35449 best_epoch=3 seconds=2.7
+  fit=24 epoch=5/40 loss=0.09915 inner_val_loss=0.34571 best_epoch=5 seconds=2.6
+  fit=24 epoch=6/40 loss=0.07484 inner_val_loss=0.35632 best_epoch=5 seconds=2.6
+  fit=24 epoch=7/40 loss=0.05516 inner_val_loss=0.36397 best_epoch=5 seconds=2.6
+  fit=24 epoch=8/40 loss=0.04260 inner_val_loss=0.36809 best_epoch=5 seconds=2.7
+  fit=24 epoch=9/40 loss=0.03428 inner_val_loss=0.36865 best_epoch=5 seconds=2.7
+  fit=24 epoch=10/40 loss=0.03094 inner_val_loss=0.37806 best_epoch=5 seconds=2.5
+  fit=24 full_refit_epoch=1/5 loss=0.76659
+  fit=24 full_refit_epoch=2/5 loss=0.28611
+  fit=24 full_refit_epoch=3/5 loss=0.18074
+  fit=24 full_refit_epoch=4/5 loss=0.13098
+  fit=24 full_refit_epoch=5/5 loss=0.09307
+  fit=25 epoch=1/40 loss=0.73852 inner_val_loss=0.60262 best_epoch=1 seconds=3.1
+  fit=25 epoch=2/40 loss=0.27550 inner_val_loss=0.36854 best_epoch=2 seconds=2.6
+  fit=25 epoch=3/40 loss=0.16649 inner_val_loss=0.35216 best_epoch=3 seconds=2.5
+  fit=25 epoch=4/40 loss=0.11504 inner_val_loss=0.34937 best_epoch=4 seconds=2.6
+  fit=25 epoch=5/40 loss=0.08173 inner_val_loss=0.34506 best_epoch=5 seconds=2.6
+  fit=25 epoch=6/40 loss=0.06290 inner_val_loss=0.34741 best_epoch=5 seconds=2.7
+  fit=25 epoch=7/40 loss=0.04641 inner_val_loss=0.35264 best_epoch=5 seconds=2.9
+  fit=25 epoch=8/40 loss=0.03694 inner_val_loss=0.35992 best_epoch=5 seconds=2.6
+  fit=25 epoch=9/40 loss=0.02999 inner_val_loss=0.36211 best_epoch=5 seconds=2.6
+  fit=25 epoch=10/40 loss=0.02652 inner_val_loss=0.37849 best_epoch=5 seconds=2.6
+  fit=25 full_refit_epoch=1/5 loss=0.72685
+  fit=25 full_refit_epoch=2/5 loss=0.27099
+  fit=25 full_refit_epoch=3/5 loss=0.16754
+  fit=25 full_refit_epoch=4/5 loss=0.11795
+  fit=25 full_refit_epoch=5/5 loss=0.08149
+END   seed=47 phase=refinement model=efficientnet_b0 metric=0.6324309964666447 error=None minutes=3.22
+START seed=47 phase=refined_selected model=resnet18
+  fit=26 epoch=1/40 loss=0.56054 inner_val_loss=0.44964 best_epoch=1 seconds=1.4
+  fit=26 epoch=2/40 loss=0.37717 inner_val_loss=0.33641 best_epoch=2 seconds=1.1
+  fit=26 epoch=3/40 loss=0.30104 inner_val_loss=0.29698 best_epoch=3 seconds=1.2
+  fit=26 epoch=4/40 loss=0.26878 inner_val_loss=0.28083 best_epoch=4 seconds=1.1
+  fit=26 epoch=5/40 loss=0.25177 inner_val_loss=0.26976 best_epoch=5 seconds=1.2
+  fit=26 epoch=6/40 loss=0.23813 inner_val_loss=0.26639 best_epoch=6 seconds=1.2
+  fit=26 epoch=7/40 loss=0.22785 inner_val_loss=0.26547 best_epoch=7 seconds=1.2
+  fit=26 epoch=8/40 loss=0.21707 inner_val_loss=0.26339 best_epoch=8 seconds=1.2
+  fit=26 epoch=9/40 loss=0.20779 inner_val_loss=0.26765 best_epoch=8 seconds=1.2
+  fit=26 epoch=10/40 loss=0.19702 inner_val_loss=0.26339 best_epoch=10 seconds=1.2
+  fit=26 epoch=11/40 loss=0.18831 inner_val_loss=0.26429 best_epoch=10 seconds=1.2
+  fit=26 epoch=12/40 loss=0.17675 inner_val_loss=0.26327 best_epoch=12 seconds=1.1
+  fit=26 epoch=13/40 loss=0.16763 inner_val_loss=0.27001 best_epoch=12 seconds=1.1
+  fit=26 epoch=14/40 loss=0.15609 inner_val_loss=0.27296 best_epoch=12 seconds=1.1
+  fit=26 epoch=15/40 loss=0.14911 inner_val_loss=0.27722 best_epoch=12 seconds=1.1
+  fit=26 epoch=16/40 loss=0.13618 inner_val_loss=0.27299 best_epoch=12 seconds=1.1
+  fit=26 epoch=17/40 loss=0.12812 inner_val_loss=0.28420 best_epoch=12 seconds=1.1
+  fit=26 full_refit_epoch=1/12 loss=0.54923
+  fit=26 full_refit_epoch=2/12 loss=0.35917
+  fit=26 full_refit_epoch=3/12 loss=0.28766
+  fit=26 full_refit_epoch=4/12 loss=0.26223
+  fit=26 full_refit_epoch=5/12 loss=0.24583
+  fit=26 full_refit_epoch=6/12 loss=0.23331
+  fit=26 full_refit_epoch=7/12 loss=0.22379
+  fit=26 full_refit_epoch=8/12 loss=0.21245
+  fit=26 full_refit_epoch=9/12 loss=0.20203
+  fit=26 full_refit_epoch=10/12 loss=0.19115
+  fit=26 full_refit_epoch=11/12 loss=0.18078
+  fit=26 full_refit_epoch=12/12 loss=0.17155
+  fit=27 epoch=1/40 loss=0.57871 inner_val_loss=0.46532 best_epoch=1 seconds=1.5
+  fit=27 epoch=2/40 loss=0.40006 inner_val_loss=0.36290 best_epoch=2 seconds=1.2
+  fit=27 epoch=3/40 loss=0.32016 inner_val_loss=0.31035 best_epoch=3 seconds=1.1
+  fit=27 epoch=4/40 loss=0.28551 inner_val_loss=0.29779 best_epoch=4 seconds=1.1
+  fit=27 epoch=5/40 loss=0.26512 inner_val_loss=0.28889 best_epoch=5 seconds=1.1
+  fit=27 epoch=6/40 loss=0.25081 inner_val_loss=0.28044 best_epoch=6 seconds=1.2
+  fit=27 epoch=7/40 loss=0.24060 inner_val_loss=0.27500 best_epoch=7 seconds=1.2
+  fit=27 epoch=8/40 loss=0.23274 inner_val_loss=0.27284 best_epoch=8 seconds=1.1
+  fit=27 epoch=9/40 loss=0.22107 inner_val_loss=0.27390 best_epoch=8 seconds=1.1
+  fit=27 epoch=10/40 loss=0.21225 inner_val_loss=0.27282 best_epoch=10 seconds=1.2
+  fit=27 epoch=11/40 loss=0.20130 inner_val_loss=0.26750 best_epoch=11 seconds=1.2
+  fit=27 epoch=12/40 loss=0.19235 inner_val_loss=0.27290 best_epoch=11 seconds=1.2
+  fit=27 epoch=13/40 loss=0.18319 inner_val_loss=0.26916 best_epoch=11 seconds=1.1
+  fit=27 epoch=14/40 loss=0.17371 inner_val_loss=0.27581 best_epoch=11 seconds=1.1
+  fit=27 epoch=15/40 loss=0.16558 inner_val_loss=0.28240 best_epoch=11 seconds=1.1
+  fit=27 epoch=16/40 loss=0.15627 inner_val_loss=0.27577 best_epoch=11 seconds=1.2
+  fit=27 full_refit_epoch=1/11 loss=0.56859
+  fit=27 full_refit_epoch=2/11 loss=0.38421
+  fit=27 full_refit_epoch=3/11 loss=0.30949
+  fit=27 full_refit_epoch=4/11 loss=0.27764
+  fit=27 full_refit_epoch=5/11 loss=0.26004
+  fit=27 full_refit_epoch=6/11 loss=0.24692
+  fit=27 full_refit_epoch=7/11 loss=0.23589
+  fit=27 full_refit_epoch=8/11 loss=0.22534
+  fit=27 full_refit_epoch=9/11 loss=0.21593
+  fit=27 full_refit_epoch=10/11 loss=0.20544
+  fit=27 full_refit_epoch=11/11 loss=0.19478
+  fit=28 epoch=1/40 loss=0.55909 inner_val_loss=0.47991 best_epoch=1 seconds=1.4
+  fit=28 epoch=2/40 loss=0.38332 inner_val_loss=0.35060 best_epoch=2 seconds=1.2
+  fit=28 epoch=3/40 loss=0.31095 inner_val_loss=0.31655 best_epoch=3 seconds=1.2
+  fit=28 epoch=4/40 loss=0.28005 inner_val_loss=0.30512 best_epoch=4 seconds=1.2
+  fit=28 epoch=5/40 loss=0.26250 inner_val_loss=0.29519 best_epoch=5 seconds=1.1
+  fit=28 epoch=6/40 loss=0.24996 inner_val_loss=0.29013 best_epoch=6 seconds=1.1
+  fit=28 epoch=7/40 loss=0.23653 inner_val_loss=0.28561 best_epoch=7 seconds=1.1
+  fit=28 epoch=8/40 loss=0.22899 inner_val_loss=0.28685 best_epoch=7 seconds=1.1
+  fit=28 epoch=9/40 loss=0.21719 inner_val_loss=0.28539 best_epoch=9 seconds=1.1
+  fit=28 epoch=10/40 loss=0.20824 inner_val_loss=0.28547 best_epoch=9 seconds=1.1
+  fit=28 epoch=11/40 loss=0.19853 inner_val_loss=0.28640 best_epoch=9 seconds=1.1
+  fit=28 epoch=12/40 loss=0.18726 inner_val_loss=0.28391 best_epoch=12 seconds=1.1
+  fit=28 epoch=13/40 loss=0.17792 inner_val_loss=0.28984 best_epoch=12 seconds=1.2
+  fit=28 epoch=14/40 loss=0.16710 inner_val_loss=0.28659 best_epoch=12 seconds=1.2
+  fit=28 epoch=15/40 loss=0.15750 inner_val_loss=0.29601 best_epoch=12 seconds=1.2
+  fit=28 epoch=16/40 loss=0.14831 inner_val_loss=0.29462 best_epoch=12 seconds=1.2
+  fit=28 epoch=17/40 loss=0.13705 inner_val_loss=0.29944 best_epoch=12 seconds=1.2
+  fit=28 full_refit_epoch=1/12 loss=0.54832
+  fit=28 full_refit_epoch=2/12 loss=0.37038
+  fit=28 full_refit_epoch=3/12 loss=0.30426
+  fit=28 full_refit_epoch=4/12 loss=0.27641
+  fit=28 full_refit_epoch=5/12 loss=0.25983
+  fit=28 full_refit_epoch=6/12 loss=0.24762
+  fit=28 full_refit_epoch=7/12 loss=0.23579
+  fit=28 full_refit_epoch=8/12 loss=0.22485
+  fit=28 full_refit_epoch=9/12 loss=0.21495
+  fit=28 full_refit_epoch=10/12 loss=0.20537
+  fit=28 full_refit_epoch=11/12 loss=0.19364
+  fit=28 full_refit_epoch=12/12 loss=0.18352
+  fit=29 epoch=1/40 loss=0.55422 inner_val_loss=0.46796 best_epoch=1 seconds=1.5
+  fit=29 epoch=2/40 loss=0.38526 inner_val_loss=0.34713 best_epoch=2 seconds=1.2
+  fit=29 epoch=3/40 loss=0.31202 inner_val_loss=0.29661 best_epoch=3 seconds=1.2
+  fit=29 epoch=4/40 loss=0.28039 inner_val_loss=0.28477 best_epoch=4 seconds=1.2
+  fit=29 epoch=5/40 loss=0.26092 inner_val_loss=0.26848 best_epoch=5 seconds=1.2
+  fit=29 epoch=6/40 loss=0.24777 inner_val_loss=0.26543 best_epoch=6 seconds=1.2
+  fit=29 epoch=7/40 loss=0.23545 inner_val_loss=0.26089 best_epoch=7 seconds=1.1
+  fit=29 epoch=8/40 loss=0.22353 inner_val_loss=0.25366 best_epoch=8 seconds=1.1
+  fit=29 epoch=9/40 loss=0.21512 inner_val_loss=0.25191 best_epoch=9 seconds=1.2
+  fit=29 epoch=10/40 loss=0.20540 inner_val_loss=0.25299 best_epoch=9 seconds=1.2
+  fit=29 epoch=11/40 loss=0.19596 inner_val_loss=0.25172 best_epoch=11 seconds=1.2
+  fit=29 epoch=12/40 loss=0.18584 inner_val_loss=0.25070 best_epoch=12 seconds=1.2
+  fit=29 epoch=13/40 loss=0.17463 inner_val_loss=0.25438 best_epoch=12 seconds=1.2
+  fit=29 epoch=14/40 loss=0.16639 inner_val_loss=0.25272 best_epoch=12 seconds=1.2
+  fit=29 epoch=15/40 loss=0.15512 inner_val_loss=0.25506 best_epoch=12 seconds=1.2
+  fit=29 epoch=16/40 loss=0.14506 inner_val_loss=0.25490 best_epoch=12 seconds=1.2
+  fit=29 epoch=17/40 loss=0.13814 inner_val_loss=0.26632 best_epoch=12 seconds=1.2
+  fit=29 full_refit_epoch=1/12 loss=0.54357
+  fit=29 full_refit_epoch=2/12 loss=0.36865
+  fit=29 full_refit_epoch=3/12 loss=0.30021
+  fit=29 full_refit_epoch=4/12 loss=0.27130
+  fit=29 full_refit_epoch=5/12 loss=0.25350
+  fit=29 full_refit_epoch=6/12 loss=0.23988
+  fit=29 full_refit_epoch=7/12 loss=0.22864
+  fit=29 full_refit_epoch=8/12 loss=0.21863
+  fit=29 full_refit_epoch=9/12 loss=0.20662
+  fit=29 full_refit_epoch=10/12 loss=0.19718
+  fit=29 full_refit_epoch=11/12 loss=0.18749
+  fit=29 full_refit_epoch=12/12 loss=0.17500
+  fit=30 epoch=1/40 loss=0.57216 inner_val_loss=0.48353 best_epoch=1 seconds=1.5
+  fit=30 epoch=2/40 loss=0.37712 inner_val_loss=0.32824 best_epoch=2 seconds=1.1
+  fit=30 epoch=3/40 loss=0.30084 inner_val_loss=0.29154 best_epoch=3 seconds=1.1
+  fit=30 epoch=4/40 loss=0.26742 inner_val_loss=0.27519 best_epoch=4 seconds=1.2
+  fit=30 epoch=5/40 loss=0.25012 inner_val_loss=0.26274 best_epoch=5 seconds=1.2
+  fit=30 epoch=6/40 loss=0.23789 inner_val_loss=0.25765 best_epoch=6 seconds=1.2
+  fit=30 epoch=7/40 loss=0.22454 inner_val_loss=0.26537 best_epoch=6 seconds=1.2
+  fit=30 epoch=8/40 loss=0.21411 inner_val_loss=0.25480 best_epoch=8 seconds=1.1
+  fit=30 epoch=9/40 loss=0.20330 inner_val_loss=0.25421 best_epoch=9 seconds=1.1
+  fit=30 epoch=10/40 loss=0.19392 inner_val_loss=0.25024 best_epoch=10 seconds=1.1
+  fit=30 epoch=11/40 loss=0.18635 inner_val_loss=0.25237 best_epoch=10 seconds=1.2
+  fit=30 epoch=12/40 loss=0.17586 inner_val_loss=0.25347 best_epoch=10 seconds=1.2
+  fit=30 epoch=13/40 loss=0.16367 inner_val_loss=0.25285 best_epoch=10 seconds=1.2
+  fit=30 epoch=14/40 loss=0.15375 inner_val_loss=0.24965 best_epoch=14 seconds=1.2
+  fit=30 epoch=15/40 loss=0.14463 inner_val_loss=0.24939 best_epoch=15 seconds=1.2
+  fit=30 epoch=16/40 loss=0.13259 inner_val_loss=0.25409 best_epoch=15 seconds=1.2
+  fit=30 epoch=17/40 loss=0.12421 inner_val_loss=0.25853 best_epoch=15 seconds=1.2
+  fit=30 epoch=18/40 loss=0.11740 inner_val_loss=0.27391 best_epoch=15 seconds=1.2
+  fit=30 epoch=19/40 loss=0.10726 inner_val_loss=0.26167 best_epoch=15 seconds=1.2
+  fit=30 epoch=20/40 loss=0.10017 inner_val_loss=0.26913 best_epoch=15 seconds=1.1
+  fit=30 full_refit_epoch=1/15 loss=0.56024
+  fit=30 full_refit_epoch=2/15 loss=0.36066
+  fit=30 full_refit_epoch=3/15 loss=0.29139
+  fit=30 full_refit_epoch=4/15 loss=0.26380
+  fit=30 full_refit_epoch=5/15 loss=0.24635
+  fit=30 full_refit_epoch=6/15 loss=0.23357
+  fit=30 full_refit_epoch=7/15 loss=0.22261
+  fit=30 full_refit_epoch=8/15 loss=0.21171
+  fit=30 full_refit_epoch=9/15 loss=0.20035
+  fit=30 full_refit_epoch=10/15 loss=0.18913
+  fit=30 full_refit_epoch=11/15 loss=0.17796
+  fit=30 full_refit_epoch=12/15 loss=0.16591
+  fit=30 full_refit_epoch=13/15 loss=0.15642
+  fit=30 full_refit_epoch=14/15 loss=0.14521
+  fit=30 full_refit_epoch=15/15 loss=0.13429
+END   seed=47 phase=refined_selected model=resnet18 metric=0.7105015050742618 error=None minutes=3.18
+--- output 7 ---
+[display_data:text/plain]
+    seed               arm  metric_value
+0     13          baseline      0.716431
+1     13   mlestar_initial      0.716431
+2     13   mlestar_refined      0.716431
+3     13  mlestar_ensemble      0.716431
+4     29          baseline      0.715289
+5     29   mlestar_initial      0.715289
+6     29   mlestar_refined      0.715289
+7     29  mlestar_ensemble      0.715289
+8     47          baseline      0.710502
+9     47   mlestar_initial      0.710502
+10    47   mlestar_refined      0.710502
+11    47  mlestar_ensemble      0.710502
+[display_data:rich output omitted from text log: text/html]
+--- output 8 ---
+[display_data:text/plain]
+                      mean       std  count
+arm
+baseline          0.714074  0.003146      3
+mlestar_ensemble  0.714074  0.003146      3
+mlestar_initial   0.714074  0.003146      3
+mlestar_refined   0.714074  0.003146      3
+[display_data:rich output omitted from text log: text/html]
+--- output 9 ---
+[display_data:text/plain]
+   seed  baseline_weight  refined_weight refined_model  \
+0    13              0.0             1.0      resnet18
+1    29              0.0             1.0      resnet18
+2    47              0.0             1.0      resnet18
+
+   reconstructed_oof_score
+0                 0.716431
+1                 0.715289
+2                 0.710502
+[display_data:rich output omitted from text log: text/html]
+--- output 10 ---
+[stream:stdout]
+Final fit: benchmark=ranzcr_clip seed=13 model=resnet18
+  fit=1 epoch=1/40 loss=0.29127 inner_val_loss=0.23483 best_epoch=1 seconds=16.8
+  fit=1 epoch=2/40 loss=0.23439 inner_val_loss=0.24735 best_epoch=1 seconds=16.5
+  fit=1 epoch=3/40 loss=0.22117 inner_val_loss=0.21894 best_epoch=3 seconds=16.6
+  fit=1 epoch=4/40 loss=0.20996 inner_val_loss=0.22730 best_epoch=3 seconds=16.6
+  fit=1 epoch=5/40 loss=0.19687 inner_val_loss=0.22200 best_epoch=3 seconds=16.9
+  fit=1 epoch=6/40 loss=0.18239 inner_val_loss=0.23051 best_epoch=3 seconds=16.5
+  fit=1 epoch=7/40 loss=0.16503 inner_val_loss=0.24424 best_epoch=3 seconds=16.4
+  fit=1 epoch=8/40 loss=0.14562 inner_val_loss=0.25229 best_epoch=3 seconds=16.1
+  fit=1 full_refit_epoch=1/3 loss=0.29028
+  fit=1 full_refit_epoch=2/3 loss=0.23406
+  fit=1 full_refit_epoch=3/3 loss=0.22008
+Final fit: benchmark=ranzcr_clip seed=29 model=resnet18
+  fit=1 epoch=1/40 loss=0.29312 inner_val_loss=0.24414 best_epoch=1 seconds=17.6
+  fit=1 epoch=2/40 loss=0.23439 inner_val_loss=0.25330 best_epoch=1 seconds=16.8
+  fit=1 epoch=3/40 loss=0.22127 inner_val_loss=0.22711 best_epoch=3 seconds=16.9
+  fit=1 epoch=4/40 loss=0.21048 inner_val_loss=0.22304 best_epoch=4 seconds=16.9
+  fit=1 epoch=5/40 loss=0.19778 inner_val_loss=0.22463 best_epoch=4 seconds=16.7
+  fit=1 epoch=6/40 loss=0.18256 inner_val_loss=0.22264 best_epoch=6 seconds=16.5
+  fit=1 epoch=7/40 loss=0.16460 inner_val_loss=0.23784 best_epoch=6 seconds=17.0
+  fit=1 epoch=8/40 loss=0.14639 inner_val_loss=0.25205 best_epoch=6 seconds=16.6
+  fit=1 epoch=9/40 loss=0.12865 inner_val_loss=0.25705 best_epoch=6 seconds=16.5
+  fit=1 epoch=10/40 loss=0.11202 inner_val_loss=0.27955 best_epoch=6 seconds=16.7
+  fit=1 epoch=11/40 loss=0.09800 inner_val_loss=0.30742 best_epoch=6 seconds=16.5
+  fit=1 full_refit_epoch=1/6 loss=0.29141
+  fit=1 full_refit_epoch=2/6 loss=0.23371
+  fit=1 full_refit_epoch=3/6 loss=0.22104
+  fit=1 full_refit_epoch=4/6 loss=0.21045
+  fit=1 full_refit_epoch=5/6 loss=0.19794
+  fit=1 full_refit_epoch=6/6 loss=0.18303
+Final fit: benchmark=ranzcr_clip seed=47 model=resnet18
+  fit=1 epoch=1/40 loss=0.28981 inner_val_loss=0.23598 best_epoch=1 seconds=16.7
+  fit=1 epoch=2/40 loss=0.23446 inner_val_loss=0.22279 best_epoch=2 seconds=16.6
+  fit=1 epoch=3/40 loss=0.22112 inner_val_loss=0.22615 best_epoch=2 seconds=16.7
+  fit=1 epoch=4/40 loss=0.20975 inner_val_loss=0.21864 best_epoch=4 seconds=16.4
+  fit=1 epoch=5/40 loss=0.19647 inner_val_loss=0.21844 best_epoch=5 seconds=16.3
+  fit=1 epoch=6/40 loss=0.18072 inner_val_loss=0.22116 best_epoch=5 seconds=16.3
+  fit=1 epoch=7/40 loss=0.16328 inner_val_loss=0.23215 best_epoch=5 seconds=16.4
+  fit=1 epoch=8/40 loss=0.14407 inner_val_loss=0.25268 best_epoch=5 seconds=16.7
+  fit=1 epoch=9/40 loss=0.12598 inner_val_loss=0.25660 best_epoch=5 seconds=17.1
+  fit=1 epoch=10/40 loss=0.10924 inner_val_loss=0.27263 best_epoch=5 seconds=16.9
+  fit=1 full_refit_epoch=1/5 loss=0.28839
+  fit=1 full_refit_epoch=2/5 loss=0.23385
+  fit=1 full_refit_epoch=3/5 loss=0.21998
+  fit=1 full_refit_epoch=4/5 loss=0.20854
+  fit=1 full_refit_epoch=5/5 loss=0.19531
+--- output 11 ---
+[display_data:text/plain]
+                              artifact  best_inner_validation_loss  \
+0   final_seed_13/epoch_selection.json                    0.218938
+1   final_seed_29/epoch_selection.json                    0.222644
+2   final_seed_47/epoch_selection.json                    0.218441
+3         seed_13/epoch_selection.json                    0.283783
+4         seed_13/epoch_selection.json                    0.268876
+..                                 ...                         ...
+88        seed_47/epoch_selection.json                    0.263266
+89        seed_47/epoch_selection.json                    0.267495
+90        seed_47/epoch_selection.json                    0.283906
+91        seed_47/epoch_selection.json                    0.250704
+92        seed_47/epoch_selection.json                    0.249393
+
+   candidate_id                      criterion  dataset_rows  fit_number  \
+0      resnet18  minimum inner-validation loss         30083           1
+1      resnet18  minimum inner-validation loss         30083           1
+2      resnet18  minimum inner-validation loss         30083           1
+3      resnet18  minimum inner-validation loss          2000           1
+4      resnet18  minimum inner-validation loss          2000           2
+..          ...                            ...           ...         ...
+88     resnet18  minimum inner-validation loss          2000          26
+89     resnet18  minimum inner-validation loss          2000          27
+90     resnet18  minimum inner-validation loss          2000          28
+91     resnet18  minimum inner-validation loss          2000          29
+92     resnet18  minimum inner-validation loss          2000          30
+
+    inner_fit_rows  inner_validation_rows  max_epochs     model  \
+0            29583                    500          40  resnet18
+1            29583                    500          40  resnet18
+2            29583                    500          40  resnet18
+3             1800                    200          40  resnet18
+4             1800                    200          40  resnet18
+..             ...                    ...         ...       ...
+88            1800                    200          40  resnet18
+89            1800                    200          40  resnet18
+90            1800                    200          40  resnet18
+91            1800                    200          40  resnet18
+92            1800                    200          40  resnet18
+
+               phase  refit_on_all_training_rows  seed  selected_epoch  \
+0    final_full_data                        True    13               3
+1    final_full_data                        True    29               6
+2    final_full_data                        True    47               5
+3           baseline                        True    13              10
+4           baseline                        True    14              10
+..               ...                         ...   ...             ...
+88  refined_selected                        True    47              12
+89  refined_selected                        True    48              11
+90  refined_selected                        True    49              12
+91  refined_selected                        True    50              12
+92  refined_selected                        True    51              15
+
+    stopped_early
+0            True
+1            True
+2            True
+3            True
+4            True
+..            ...
+88           True
+89           True
+90           True
+91           True
+92           True
+
+[93 rows x 15 columns]
+[display_data:rich output omitted from text log: text/html]
+--- output 12 ---
+[display_data:text/plain]
+                                  median       mean  min  max  count
+phase            model
+baseline         resnet18           11.0  11.533333    9   16     15
+final_full_data  resnet18            5.0   4.666667    3    6      3
+initial          efficientnet_b0     4.0   4.133333    3    5     15
+                 resnet18           11.0  11.533333    9   16     15
+initial_selected resnet18           11.0  11.533333    9   16     15
+refined_selected resnet18           11.0  11.533333    9   16     15
+refinement       efficientnet_b0     4.0   4.133333    3    5     15
+[display_data:rich output omitted from text log: text/html]
+--- output 13 ---
+[stream:stdout]
+Epoch-selection evidence: /content/drive/MyDrive/mlestar-runs/ranzcr_clip/selected_epochs.csv
+Validated ranzcr_clip submission: rows=3582, columns=12
+--- output 14 ---
+[display_data:text/plain]
+                                    StudyInstanceUID  ETT - Abnormal  \
+0  1.2.826.0.1.3680043.8.498.46923145579096002617...        0.025312
+1  1.2.826.0.1.3680043.8.498.84006870182611080091...        0.000045
+2  1.2.826.0.1.3680043.8.498.12219033294413119947...        0.000289
+3  1.2.826.0.1.3680043.8.498.84994474380235968109...        0.018017
+4  1.2.826.0.1.3680043.8.498.35798987793805669662...        0.000168
+
+   ETT - Borderline  ETT - Normal  NGT - Abnormal  NGT - Borderline  \
+0          0.353841      0.695150        0.034737          0.069845
+1          0.000075      0.000257        0.000273          0.000545
+2          0.000476      0.000823        0.001105          0.002610
+3          0.174764      0.820801        0.064283          0.040147
+4          0.000264      0.000288        0.000671          0.001419
+
+   NGT - Incompletely Imaged  NGT - Normal  CVC - Abnormal  CVC - Borderline  \
+0                   0.080650      0.789225        0.163778          0.371338
+1                   0.000601      0.000276        0.030497          0.061867
+2                   0.001173      0.004148        0.043645          0.184296
+3                   0.745117      0.093079        0.142232          0.392537
+4                   0.000264      0.002295        0.037421          0.128830
+
+   CVC - Normal  Swan Ganz Catheter Present
+0      0.708984                    0.420756
+1      0.912923                    0.000066
+2      0.823893                    0.000485
+3      0.659342                    0.112111
+4      0.863281                    0.000200
+[display_data:rich output omitted from text log: text/html]
+--- output 15 ---
+[stream:stdout]
+{
+  "requested": true,
+  "accepted": true,
+  "status": "assets_ready",
+  "asset_dir": "/content/drive/MyDrive/mlestar-runs/ranzcr_clip/kaggle_assets",
+  "asset_zip": "/content/drive/MyDrive/mlestar-runs/MLE_STAR_RANZCR_Kaggle_Assets.zip",
+  "asset_zip_mb": 129.19363117218018,
+  "manifest": "/content/drive/MyDrive/mlestar-runs/ranzcr_clip/kaggle_assets/mle_star_ranzcr_manifest.json",
+  "model_files": [
+    "resnet18_seed_13.pt",
+    "resnet18_seed_29.pt",
+    "resnet18_seed_47.pt"
+  ],
+  "next_step": "Upload this ZIP as a private Kaggle Dataset, attach it and the RANZCR competition data to MLE_STAR_RANZCR_CLiP_Kaggle_Inference.ipynb, then Save Version -> Save & Run All -> Submit."
+}
+{
+  "benchmark": "ranzcr_clip",
+  "success": true,
+  "submission_path": "/content/drive/MyDrive/mlestar-runs/ranzcr_clip/submission.csv",
+  "latest_submission": null,
+  "error": null
+}
+--- output 16 ---
+[execute_result:text/plain]
+    seed               arm  metric_value
+0     13          baseline      0.716431
+1     13   mlestar_initial      0.716431
+2     13   mlestar_refined      0.716431
+3     13  mlestar_ensemble      0.716431
+4     29          baseline      0.715289
+5     29   mlestar_initial      0.715289
+6     29   mlestar_refined      0.715289
+7     29  mlestar_ensemble      0.715289
+8     47          baseline      0.710502
+9     47   mlestar_initial      0.710502
+10    47   mlestar_refined      0.710502
+11    47  mlestar_ensemble      0.710502
+[execute_result:rich output omitted from text log: text/html]
+
+=== Cell 10 | execution_count=9 | outputs=1 ===
+--- output 0 ---
+[display_data:text/plain]
+     benchmark         oof_epoch_protocol kaggle_asset_status  \
+0  ranzcr_clip  mle_inner_selected_epochs        assets_ready
+
+                                           asset_zip  asset_zip_mb  success  \
+0  /content/drive/MyDrive/mlestar-runs/MLE_STAR_R...    129.193631     True
+
+  error
+0  None
+[display_data:rich output omitted from text log: text/html]

@@ -1,0 +1,634 @@
+Notebook: jiaozi/dog_breed.ipynb
+Competition: Dog Breed Identification
+Workflow: jiaozi
+Source archive: agent_final_submission.zip
+Source archive SHA-256: 17e393c460781267c89f2df86636676e1f421d55536aa4d9413166de690235ae
+Source notebook SHA-256: 6d3a828994b8dea341006cb3d04680538b57c04b9bb055116892edc3a6ac08ae
+Stored output status: validation_complete_after_interrupted_cell
+
+=== Cell 3 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+REPO_URL = https://github.com/muzhi-hac/Jiaozi-rag-wang.git
+REPO_REF = rag_wang
+=== git stdout ===
+
+=== git stderr ===
+Cloning into '/content/Jiaozi'...
+
+
+=== requirements.txt ===
+# Runtime dependencies for the Jiaozi CV Auto-DL pipeline.
+# Install with the same Python interpreter used to run tests, for example:
+#   /usr/bin/python3 -m pip install -r requirements.txt
+
+chromadb
+datasets
+networkx
+numpy
+openai>=2.0.0
+pandas
+pillow
+scikit-learn
+sentence-transformers
+torch
+torchvision
+transformers
+
+# Test runner for the module4_agent pytest suite.
+pytest
+
+
+=== installing requirements ===
+=== pip stdout ===
+Requirement already satisfied: chromadb in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 5)) (1.5.9)
+Requirement already satisfied: datasets in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 6)) (4.0.0)
+Requirement already satisfied: networkx in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 7)) (3.6.1)
+Requirement already satisfied: numpy in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 8)) (2.0.2)
+Requirement already satisfied: openai>=2.0.0 in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 9)) (2.43.0)
+Requirement already satisfied: pandas in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 10)) (2.2.2)
+Requirement already satisfied: pillow in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 11)) (11.3.0)
+Requirement already satisfied: scikit-learn in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 12)) (1.6.1)
+Requirement already satisfied: sentence-transformers in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 13)) (5.6.0)
+Requirement already satisfied: torch in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 14)) (2.11.0+cu128)
+Requirement already satisfied: torchvision in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 15)) (0.26.0+cu128)
+Requirement already satisfied: transformers in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 16)) (5.12.1)
+Requirement already satisfied: pytest in /usr/local/lib/python3.12/dist-packages (from -r /content/Jiaozi/requirements.txt (line 19)) (8.4.2)
+Requirement already satisfied: build>=1.0.3 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.5.1)
+Requirement already satisfied: pydantic>=2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2.13.4)
+Requirement already satisfied: pydantic-settings>=2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2.14.2)
+Requirement already satisfied: pybase64>=1.4.1 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.4.3)
+Requirement already satisfied: uvicorn>=0.18.3 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.49.0)
+Requirement already satisfied: typing-extensions>=4.5.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (4.15.0)
+Requirement already satisfied: onnxruntime>=1.14.1 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.27.0)
+Requirement already satisfied: opentelemetry-api>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.43.0)
+Requirement already satisfied: opentelemetry-exporter-otlp-proto-grpc>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.43.0)
+Requirement already satisfied: opentelemetry-sdk>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.43.0)
+Requirement already satisfied: tokenizers>=0.13.2 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.22.2)
+Requirement already satisfied: pypika>=0.48.9 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.51.1)
+Requirement already satisfied: tqdm>=4.65.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (4.67.3)
+Requirement already satisfied: overrides>=7.3.1 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (7.7.0)
+Requirement already satisfied: importlib-resources in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (7.1.0)
+Requirement already satisfied: grpcio>=1.58.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.81.1)
+Requirement already satisfied: bcrypt>=4.0.1 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (5.0.0)
+Requirement already satisfied: typer>=0.9.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.25.1)
+Requirement already satisfied: kubernetes>=28.1.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (36.0.2)
+Requirement already satisfied: tenacity>=8.2.3 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (9.1.4)
+Requirement already satisfied: pyyaml>=6.0.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (6.0.3)
+Requirement already satisfied: mmh3>=4.0.1 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (5.2.1)
+Requirement already satisfied: orjson>=3.9.12 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (3.11.9)
+Requirement already satisfied: httpx>=0.27.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.28.1)
+Requirement already satisfied: rich>=10.11.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (13.9.4)
+Requirement already satisfied: jsonschema>=4.19.0 in /usr/local/lib/python3.12/dist-packages (from chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (4.26.0)
+Requirement already satisfied: filelock in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (3.29.4)
+Requirement already satisfied: pyarrow>=15.0.0 in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (18.1.0)
+Requirement already satisfied: dill<0.3.9,>=0.3.0 in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (0.3.8)
+Requirement already satisfied: requests>=2.32.2 in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (2.32.4)
+Requirement already satisfied: xxhash in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (3.7.1)
+Requirement already satisfied: multiprocess<0.70.17 in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (0.70.16)
+Requirement already satisfied: fsspec<=2025.3.0,>=2023.1.0 in /usr/local/lib/python3.12/dist-packages (from fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (2025.3.0)
+Requirement already satisfied: huggingface-hub>=0.24.0 in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (1.20.1)
+Requirement already satisfied: packaging in /usr/local/lib/python3.12/dist-packages (from datasets->-r /content/Jiaozi/requirements.txt (line 6)) (26.2)
+Requirement already satisfied: aiohttp!=4.0.0a0,!=4.0.0a1 in /usr/local/lib/python3.12/dist-packages (from fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (3.14.1)
+Requirement already satisfied: anyio<5,>=3.5.0 in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r /content/Jiaozi/requirements.txt (line 9)) (4.14.0)
+Requirement already satisfied: distro<2,>=1.7.0 in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r /content/Jiaozi/requirements.txt (line 9)) (1.9.0)
+Requirement already satisfied: jiter<1,>=0.10.0 in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r /content/Jiaozi/requirements.txt (line 9)) (0.15.0)
+Requirement already satisfied: sniffio in /usr/local/lib/python3.12/dist-packages (from openai>=2.0.0->-r /content/Jiaozi/requirements.txt (line 9)) (1.3.1)
+Requirement already satisfied: idna>=2.8 in /usr/local/lib/python3.12/dist-packages (from anyio<5,>=3.5.0->openai>=2.0.0->-r /content/Jiaozi/requirements.txt (line 9)) (3.18)
+Requirement already satisfied: certifi in /usr/local/lib/python3.12/dist-packages (from httpx>=0.27.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2026.6.17)
+Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.12/dist-packages (from httpx>=0.27.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.0.9)
+Requirement already satisfied: h11>=0.16 in /usr/local/lib/python3.12/dist-packages (from httpcore==1.*->httpx>=0.27.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.16.0)
+Requirement already satisfied: annotated-types>=0.6.0 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.46.4 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2.46.4)
+Requirement already satisfied: typing-inspection>=0.4.2 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.4.2)
+Requirement already satisfied: python-dateutil>=2.8.2 in /usr/local/lib/python3.12/dist-packages (from pandas->-r /content/Jiaozi/requirements.txt (line 10)) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /usr/local/lib/python3.12/dist-packages (from pandas->-r /content/Jiaozi/requirements.txt (line 10)) (2025.2)
+Requirement already satisfied: tzdata>=2022.7 in /usr/local/lib/python3.12/dist-packages (from pandas->-r /content/Jiaozi/requirements.txt (line 10)) (2026.2)
+Requirement already satisfied: scipy>=1.6.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn->-r /content/Jiaozi/requirements.txt (line 12)) (1.16.3)
+Requirement already satisfied: joblib>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn->-r /content/Jiaozi/requirements.txt (line 12)) (1.5.3)
+Requirement already satisfied: threadpoolctl>=3.1.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn->-r /content/Jiaozi/requirements.txt (line 12)) (3.6.0)
+Requirement already satisfied: regex>=2025.10.22 in /usr/local/lib/python3.12/dist-packages (from transformers->-r /content/Jiaozi/requirements.txt (line 16)) (2025.11.3)
+Requirement already satisfied: safetensors>=0.4.3 in /usr/local/lib/python3.12/dist-packages (from transformers->-r /content/Jiaozi/requirements.txt (line 16)) (0.8.0)
+Requirement already satisfied: click>=8.4.0 in /usr/local/lib/python3.12/dist-packages (from huggingface-hub>=0.24.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (8.4.2)
+Requirement already satisfied: hf-xet<2.0.0,>=1.5.1 in /usr/local/lib/python3.12/dist-packages (from huggingface-hub>=0.24.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (1.5.1)
+Requirement already satisfied: shellingham>=1.3.0 in /usr/local/lib/python3.12/dist-packages (from typer>=0.9.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.5.4)
+Requirement already satisfied: annotated-doc>=0.0.2 in /usr/local/lib/python3.12/dist-packages (from typer>=0.9.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.0.4)
+Collecting setuptools<82 (from torch->-r /content/Jiaozi/requirements.txt (line 14))
+  Downloading setuptools-81.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: sympy>=1.13.3 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (1.14.0)
+Requirement already satisfied: jinja2 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (3.1.6)
+Requirement already satisfied: cuda-toolkit==12.8.1 in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.8.1)
+Requirement already satisfied: cuda-bindings<13,>=12.9.4 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.9.7)
+Requirement already satisfied: nvidia-cudnn-cu12==9.19.0.56 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (9.19.0.56)
+Requirement already satisfied: nvidia-cusparselt-cu12==0.7.1 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (0.7.1)
+Requirement already satisfied: nvidia-nccl-cu12==2.28.9 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (2.28.9)
+Requirement already satisfied: nvidia-nvshmem-cu12==3.4.5 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (3.4.5)
+Requirement already satisfied: triton==3.6.0 in /usr/local/lib/python3.12/dist-packages (from torch->-r /content/Jiaozi/requirements.txt (line 14)) (3.6.0)
+Requirement already satisfied: nvidia-cublas-cu12==12.8.4.1.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.8.4.1)
+Requirement already satisfied: nvidia-cuda-runtime-cu12==12.8.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.8.90)
+Requirement already satisfied: nvidia-cufft-cu12==11.3.3.83.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (11.3.3.83)
+Requirement already satisfied: nvidia-cufile-cu12==1.13.1.3.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (1.13.1.3)
+Requirement already satisfied: nvidia-cuda-cupti-cu12==12.8.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.8.90)
+Requirement already satisfied: nvidia-curand-cu12==10.3.9.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (10.3.9.90)
+Requirement already satisfied: nvidia-cusolver-cu12==11.7.3.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (11.7.3.90)
+Requirement already satisfied: nvidia-cusparse-cu12==12.5.8.93.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.5.8.93)
+Requirement already satisfied: nvidia-nvjitlink-cu12==12.8.93.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.8.93)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu12==12.8.93.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.8.93)
+Requirement already satisfied: nvidia-nvtx-cu12==12.8.90.* in /usr/local/lib/python3.12/dist-packages (from cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==12.8.1; platform_system == "Linux"->torch->-r /content/Jiaozi/requirements.txt (line 14)) (12.8.90)
+Requirement already satisfied: cuda-pathfinder~=1.1 in /usr/local/lib/python3.12/dist-packages (from cuda-bindings<13,>=12.9.4->torch->-r /content/Jiaozi/requirements.txt (line 14)) (1.5.5)
+Requirement already satisfied: iniconfig>=1 in /usr/local/lib/python3.12/dist-packages (from pytest->-r /content/Jiaozi/requirements.txt (line 19)) (2.3.0)
+Requirement already satisfied: pluggy<2,>=1.5 in /usr/local/lib/python3.12/dist-packages (from pytest->-r /content/Jiaozi/requirements.txt (line 19)) (1.6.0)
+Requirement already satisfied: pygments>=2.7.2 in /usr/local/lib/python3.12/dist-packages (from pytest->-r /content/Jiaozi/requirements.txt (line 19)) (2.20.0)
+Requirement already satisfied: aiohappyeyeballs>=2.5.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (2.6.2)
+Requirement already satisfied: aiosignal>=1.4.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (1.4.0)
+Requirement already satisfied: attrs>=17.3.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (26.1.0)
+Requirement already satisfied: frozenlist>=1.1.1 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (1.8.0)
+Requirement already satisfied: multidict<7.0,>=4.5 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (6.7.1)
+Requirement already satisfied: propcache>=0.2.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (0.5.2)
+Requirement already satisfied: yarl<2.0,>=1.17.0 in /usr/local/lib/python3.12/dist-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (1.24.2)
+Requirement already satisfied: pyproject_hooks in /usr/local/lib/python3.12/dist-packages (from build>=1.0.3->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.2.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=4.19.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=4.19.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.37.0)
+Requirement already satisfied: rpds-py>=0.25.0 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=4.19.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2026.5.1)
+Requirement already satisfied: six>=1.9.0 in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.17.0)
+Requirement already satisfied: websocket-client!=0.40.0,!=0.41.*,!=0.42.*,>=0.32.0 in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.9.0)
+Requirement already satisfied: requests-oauthlib in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2.0.0)
+Requirement already satisfied: urllib3!=2.6.0,>=1.24.2 in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (2.5.0)
+Requirement already satisfied: durationpy>=0.7 in /usr/local/lib/python3.12/dist-packages (from kubernetes>=28.1.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.10)
+Requirement already satisfied: flatbuffers in /usr/local/lib/python3.12/dist-packages (from onnxruntime>=1.14.1->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (25.12.19)
+Requirement already satisfied: protobuf>=4.25.8 in /usr/local/lib/python3.12/dist-packages (from onnxruntime>=1.14.1->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (5.29.6)
+Requirement already satisfied: googleapis-common-protos~=1.57 in /usr/local/lib/python3.12/dist-packages (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.75.0)
+Requirement already satisfied: opentelemetry-exporter-otlp-proto-common==1.43.0 in /usr/local/lib/python3.12/dist-packages (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.43.0)
+Requirement already satisfied: opentelemetry-proto==1.43.0 in /usr/local/lib/python3.12/dist-packages (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.43.0)
+Requirement already satisfied: opentelemetry-semantic-conventions==0.64b0 in /usr/local/lib/python3.12/dist-packages (from opentelemetry-sdk>=1.2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.64b0)
+Requirement already satisfied: python-dotenv>=0.21.0 in /usr/local/lib/python3.12/dist-packages (from pydantic-settings>=2.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.2.2)
+Requirement already satisfied: charset_normalizer<4,>=2 in /usr/local/lib/python3.12/dist-packages (from requests>=2.32.2->datasets->-r /content/Jiaozi/requirements.txt (line 6)) (3.4.7)
+Requirement already satisfied: markdown-it-py>=2.2.0 in /usr/local/lib/python3.12/dist-packages (from rich>=10.11.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (4.2.0)
+Requirement already satisfied: mdurl~=0.1 in /usr/local/lib/python3.12/dist-packages (from markdown-it-py>=2.2.0->rich>=10.11.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.1.2)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /usr/local/lib/python3.12/dist-packages (from sympy>=1.13.3->torch->-r /content/Jiaozi/requirements.txt (line 14)) (1.3.0)
+Requirement already satisfied: httptools>=0.8.0 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.8.0)
+Requirement already satisfied: uvloop>=0.15.1 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (0.22.1)
+Requirement already satisfied: watchfiles>=0.20 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (1.2.0)
+Requirement already satisfied: websockets>=10.4 in /usr/local/lib/python3.12/dist-packages (from uvicorn[standard]>=0.18.3->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (15.0.1)
+Requirement already satisfied: MarkupSafe>=2.0 in /usr/local/lib/python3.12/dist-packages (from jinja2->torch->-r /content/Jiaozi/requirements.txt (line 14)) (3.0.3)
+Requirement already satisfied: oauthlib>=3.0.0 in /usr/local/lib/python3.12/dist-packages (from requests-oauthlib->kubernetes>=28.1.0->chromadb->-r /content/Jiaozi/requirements.txt (line 5)) (3.3.1)
+Downloading setuptools-81.0.0-py3-none-any.whl (1.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 8.2 MB/s  0:00:00
+Installing collected packages: setuptools
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 83.0.0
+    Uninstalling setuptools-83.0.0:
+      Successfully uninstalled setuptools-83.0.0
+Successfully installed setuptools-81.0.0
+
+=== pip stderr ===
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+ipython 7.34.0 requires jedi>=0.16, which is not installed.
+
+pip return code = 0
+Jiaozi repository: /content/Jiaozi
+Jiaozi repo URL: https://github.com/muzhi-hac/Jiaozi-rag-wang.git
+Jiaozi ref: rag_wang
+pipeline.py candidates:
+ - /content/Jiaozi/pipeline.py
+
+=== Cell 4 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Stored optional KAGGLE_API_TOKEN at ~/.kaggle/access_token
+
+=== Cell 6 | execution_count=None | outputs=2 ===
+--- output 0 ---
+[stream:stdout]
+Running: /usr/bin/python3 -m pip install --upgrade pip setuptools wheel
+=== pip stdout ===
+Requirement already satisfied: pip in /usr/local/lib/python3.12/dist-packages (26.1.2)
+Requirement already satisfied: setuptools in /usr/local/lib/python3.12/dist-packages (81.0.0)
+Collecting setuptools
+  Using cached setuptools-83.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: wheel in /usr/local/lib/python3.12/dist-packages (0.47.0)
+Requirement already satisfied: packaging>=24.0 in /usr/local/lib/python3.12/dist-packages (from wheel) (26.2)
+Using cached setuptools-83.0.0-py3-none-any.whl (1.0 MB)
+Installing collected packages: setuptools
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 81.0.0
+    Uninstalling setuptools-81.0.0:
+      Successfully uninstalled setuptools-81.0.0
+Successfully installed setuptools-83.0.0
+
+=== pip stderr ===
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+ipython 7.34.0 requires jedi>=0.16, which is not installed.
+torch 2.11.0+cu128 requires setuptools<82, but you have setuptools 83.0.0 which is incompatible.
+
+return code = 0
+Running: /usr/bin/python3 -m pip install --upgrade kaggle
+=== pip stdout ===
+Requirement already satisfied: kaggle in /usr/local/lib/python3.12/dist-packages (2.2.3)
+Requirement already satisfied: bleach in /usr/local/lib/python3.12/dist-packages (from kaggle) (6.4.0)
+Requirement already satisfied: jupytext in /usr/local/lib/python3.12/dist-packages (from kaggle) (1.19.4)
+Requirement already satisfied: kagglesdk<1.0,>=0.1.30 in /usr/local/lib/python3.12/dist-packages (from kaggle) (0.1.34)
+Requirement already satisfied: packaging in /usr/local/lib/python3.12/dist-packages (from kaggle) (26.2)
+Requirement already satisfied: protobuf in /usr/local/lib/python3.12/dist-packages (from kaggle) (5.29.6)
+Requirement already satisfied: python-dateutil in /usr/local/lib/python3.12/dist-packages (from kaggle) (2.9.0.post0)
+Requirement already satisfied: python-dotenv in /usr/local/lib/python3.12/dist-packages (from kaggle) (1.2.2)
+Requirement already satisfied: python-slugify in /usr/local/lib/python3.12/dist-packages (from kaggle) (8.0.4)
+Requirement already satisfied: requests in /usr/local/lib/python3.12/dist-packages (from kaggle) (2.32.4)
+Requirement already satisfied: tqdm in /usr/local/lib/python3.12/dist-packages (from kaggle) (4.67.3)
+Requirement already satisfied: urllib3>=1.15.1 in /usr/local/lib/python3.12/dist-packages (from kaggle) (2.5.0)
+Requirement already satisfied: webencodings in /usr/local/lib/python3.12/dist-packages (from bleach->kaggle) (0.5.1)
+Requirement already satisfied: markdown-it-py>=1.0 in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (4.2.0)
+Requirement already satisfied: mdit-py-plugins in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (0.6.1)
+Requirement already satisfied: nbformat in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (5.10.4)
+Requirement already satisfied: pyyaml in /usr/local/lib/python3.12/dist-packages (from jupytext->kaggle) (6.0.3)
+Requirement already satisfied: mdurl~=0.1 in /usr/local/lib/python3.12/dist-packages (from markdown-it-py>=1.0->jupytext->kaggle) (0.1.2)
+Requirement already satisfied: fastjsonschema>=2.15 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (2.21.2)
+Requirement already satisfied: jsonschema>=2.6 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (4.26.0)
+Requirement already satisfied: jupyter-core!=5.0.*,>=4.12 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (5.9.1)
+Requirement already satisfied: traitlets>=5.1 in /usr/local/lib/python3.12/dist-packages (from nbformat->jupytext->kaggle) (5.7.1)
+Requirement already satisfied: attrs>=22.2.0 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (26.1.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (0.37.0)
+Requirement already satisfied: rpds-py>=0.25.0 in /usr/local/lib/python3.12/dist-packages (from jsonschema>=2.6->nbformat->jupytext->kaggle) (2026.5.1)
+Requirement already satisfied: platformdirs>=2.5 in /usr/local/lib/python3.12/dist-packages (from jupyter-core!=5.0.*,>=4.12->nbformat->jupytext->kaggle) (4.10.0)
+Requirement already satisfied: typing-extensions>=4.4.0 in /usr/local/lib/python3.12/dist-packages (from referencing>=0.28.4->jsonschema>=2.6->nbformat->jupytext->kaggle) (4.15.0)
+Requirement already satisfied: six>=1.5 in /usr/local/lib/python3.12/dist-packages (from python-dateutil->kaggle) (1.17.0)
+Requirement already satisfied: text-unidecode>=1.3 in /usr/local/lib/python3.12/dist-packages (from python-slugify->kaggle) (1.3)
+Requirement already satisfied: charset_normalizer<4,>=2 in /usr/local/lib/python3.12/dist-packages (from requests->kaggle) (3.4.7)
+Requirement already satisfied: idna<4,>=2.5 in /usr/local/lib/python3.12/dist-packages (from requests->kaggle) (3.18)
+Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.12/dist-packages (from requests->kaggle) (2026.6.17)
+
+=== pip stderr ===
+
+return code = 0
+Kaggle access token configured.
+--- output 1 ---
+[execute_result:text/plain]
+CompletedProcess(args=['kaggle', '--version'], returncode=0)
+
+=== Cell 7 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+dog-breed-identification.zip: Skipping, found more recently modified local copy (use --force to force download)
+
+=== Cell 8 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Zip files: [PosixPath('/content/data/dog-breed/dog-breed-identification.zip')]
+Extracting: /content/data/dog-breed/dog-breed-identification.zip
+To: /content/data/dog-breed/dog-breed-identification
+Done.
+KAGGLE_DATA_DIR = /content/data/dog-breed/dog-breed-identification
+Top-level files:
+ - jiaozi_train.csv
+ - labels.csv
+ - sample_submission.csv
+ - test
+ - train
+
+=== Cell 10 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Drive already mounted at /content/drive; to attempt to forcibly remount, call drive.mount("/content/drive", force_remount=True).
+HF_HOME = /content/drive/MyDrive/Jiaozi/hf_cache
+First run downloads the dataset to Drive; later runs reuse it (no 12-min re-download).
+Note: reading from Drive (FUSE) is a bit slower than local disk, but far faster than re-downloading.
+
+=== Cell 12 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Current working directory: /content/Jiaozi
+Using pipeline: /content/Jiaozi/pipeline.py
+Raw train csv: /content/data/dog-breed/dog-breed-identification/labels.csv
+Raw columns: ['id', 'breed']
+Raw shape: (10222, 2)
+
+Processed train csv: /content/data/dog-breed/dog-breed-identification/jiaozi_train.csv
+                                  image             label
+0  000bec180eb18c7604dcecc8fe0dba07.jpg       boston_bull
+1  001513dfcb2ffafc82cccf4d8bbaba97.jpg             dingo
+2  001cdf01b096e06d78e9e5112d419397.jpg          pekinese
+3  00214f311d5d2247d5dfe4fe24b2303d.jpg          bluetick
+4  0021f9ceb3235effd7fcde7f7538ed62.jpg  golden_retriever
+Number of classes: 120
+Image directory: /content/data/dog-breed/dog-breed-identification/train
+Sample image exists: /content/data/dog-breed/dog-breed-identification/train/000bec180eb18c7604dcecc8fe0dba07.jpg
+
+Prepared local Kaggle Dog Breed data:
+{
+  "benchmark": "dog_breed_identification",
+  "competition": "dog-breed-identification",
+  "train_csv": "/content/data/dog-breed/dog-breed-identification/jiaozi_train.csv",
+  "image_dir": "/content/data/dog-breed/dog-breed-identification/train",
+  "image_column": "image",
+  "label_column": "label",
+  "target_column": "label",
+  "image_path_template": "{image}",
+  "image_extension": "",
+  "num_classes": 120,
+  "metric": "log_loss"
+}
+ChromaDB directory: /content/jiaozi_chroma_db
+
+[Notebook] Module 1: Parsing user requirements...
+
+[Notebook] Module 2: Analyzing sampled real Kaggle images...
+
+[Notebook] Merged: task=classification size=small classes=120 metric=log_loss
+
+[Notebook] Module 3: Retrieving model configurations...
+[Index] Added 18 backbone entries and refreshed 18 total entries.
+
+──────────────────────────────────────────────────────────────────────
+Task   : classification
+Input  : size=small  priority=accuracy
+Flags  : few_shot
+Desc   : Classify dog images into 120 fine-grained dog breeds using a small image dataset. The task requires distinguishing visually similar breeds. The official evaluation metric is multiclass log loss, and prediction probabilities must be well calibrated.
+──────────────────────────────────────────────────────────────────────
+
+Top 1  [score=0.82  struct=1.0  vec=0.55]
+  backbone  : DINOv3
+  head      : Classification Head
+  loss      : CrossEntropyLoss
+  optimizer : AdamW
+  pretrained: DINOv3-B/16 / LVD-1689M
+               facebook/dinov3-vitb16-pretrain-lvd1689m  (LVD-1689M (self-supervised), 86M)
+               strategy: partial finetune last 2 blocks
+  training  : pretrained weights required (insufficient data to train from scratch)
+
+Top 2  [score=0.762  struct=0.824  vec=0.669]
+  backbone  : DINOv2
+  head      : Classification Head
+  loss      : CrossEntropyLoss
+  optimizer : AdamW
+  pretrained: DINOv2-Base
+               facebook/dinov2-base  (LVD-142M (self-supervised), 86M)
+               strategy: freeze backbone, train head only
+  training  : pretrained weights required (insufficient data to train from scratch)
+  alt       : DINOv3
+
+Top 3  [score=0.588  struct=0.314  vec=1.0]
+  backbone  : EfficientNet
+  head      : Classification Head
+  loss      : CrossEntropyLoss
+  optimizer : Adam
+  pretrained: EfficientNet-B0 / ImageNet-1k
+               google/efficientnet-b0  (ImageNet-1k, 5M)
+               strategy: freeze backbone, train head only
+  training  : pretrained weights required (insufficient data to train from scratch)
+  alt       : ResNet, MobileNetV3
+
+[Notebook] Recommender re-ranked candidates.
+
+Top model config preview:
+{
+  "backbone": "dinov3",
+  "pretrained_hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+  "pretrained_name": "DINOv3-B/16 / LVD-1689M",
+  "pretrain_dataset": "LVD-1689M (self-supervised)",
+  "params_M": 86,
+  "head": "classification_head",
+  "loss": "cross_entropy_loss",
+  "optimizer": "adamw",
+  "finetune_strategy": "partial",
+  "freeze_backbone": false,
+  "unfreeze_last_n_blocks": 2,
+  "train_norm_layers": true,
+  "scratch_viable": false,
+  "num_classes": 120,
+  "train_csv": "/content/data/dog-breed/dog-breed-identification/jiaozi_train.csv",
+  "image_dir": "/content/data/dog-breed/dog-breed-identification/train",
+  "image_column": "image",
+  "label_column": "label",
+  "target_column": "label",
+  "image_path_template": "{image}",
+  "image_extension": "",
+  "evaluation_metric": "log_loss",
+  "metric": "log_loss",
+  "metric_name": "log_loss",
+  "offline_smoke": false,
+  "benchmark_key": "dog_breed_identification",
+  "competition": "dog-breed-identification",
+  "recommended_epochs": 40
+}
+
+[Notebook] Module 4: Generating real-training project...
+
+Module 4 summary: /content/jiaozi_generated_pipeline/module4_summary.json
+Generated project output dir: /content/jiaozi_generated_pipeline
+DATASET: /content/data/dog-breed/dog-breed-identification/jiaozi_train.csv
+
+=== Cell 13 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+{
+  "candidates": [
+    {
+      "backbone": "dinov3",
+      "finetune_strategy": "partial",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "rank": 1,
+      "score": 0.82,
+      "task_type": "classification"
+    },
+    {
+      "backbone": "dinov3",
+      "finetune_strategy": "partial",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "rank": 2,
+      "score": 0.82,
+      "task_type": "classification"
+    },
+    {
+      "backbone": "dinov2",
+      "finetune_strategy": "head_only",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adamw",
+      "rank": 3,
+      "score": 0.762,
+      "task_type": "classification"
+    },
+    {
+      "backbone": "efficientnet",
+      "finetune_strategy": "head_only",
+      "loss": "cross_entropy_loss",
+      "optimizer": "adam",
+      "rank": 4,
+      "score": 0.588,
+      "task_type": "classification"
+    }
+  ],
+  "errors": [],
+  "generated_files": [
+    "README_generated.md",
+    "configs.json",
+    "evaluate.py",
+    "generation_info.json",
+    "infer.py",
+    "model.py",
+    "model_utils.py",
+    "module4_summary.json",
+    "requirements.txt",
+    "run.py",
+    "run_experiments.py",
+    "smoke_data.py",
+    "train.py",
+    "utils.py"
+  ],
+  "iteration_history": [
+    {
+      "errors": [],
+      "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+      "is_approved": true,
+      "iteration": 1,
+      "smoke_skipped": true,
+      "smoke_success": true,
+      "warnings": [
+        "Smoke tests were skipped by request; approval is static-only."
+      ]
+    }
+  ],
+  "iterations": 1,
+  "num_candidates": 4,
+  "output_dir": "/content/jiaozi_generated_pipeline",
+  "refinement_summary": null,
+  "review": {
+    "errors": [],
+    "feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+    "is_approved": true,
+    "warnings": [
+      "Smoke tests were skipped by request; approval is static-only."
+    ]
+  },
+  "review_feedback": "Approved: generated code is complete, smoke-tested, and consistent.",
+  "smoke": {
+    "commands": [],
+    "runtime_sec": 0.0,
+    "skipped": true,
+    "success": true
+  },
+  "smoke_success": true,
+  "status": "approved",
+  "warnings": [
+    "Smoke tests were skipped by request; approval is static-only."
+  ]
+}
+
+Generated files:
+README_generated.md
+configs.json
+evaluate.py
+generation_info.json
+infer.py
+model.py
+model_utils.py
+module3_candidates.json
+module4_summary.json
+requirements.txt
+run.py
+run_experiments.py
+smoke_data.py
+train.py
+utils.py
+
+=== Cell 15 | execution_count=None | outputs=2 ===
+--- output 0 ---
+[stream:stdout]
+Checkpoints -> /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed
+Resume checkpoint -> disabled
+evaluation_metric: log_loss
+model_config evaluation_metric: log_loss
+checkpoint_dir: /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed
+resume_checkpoint: None
+Training dinov3 for 40 epochs on /content/data/dog-breed/dog-breed-identification/jiaozi_train.csv ...
+Command: /usr/bin/python3 -u run.py --epochs 40 (cwd: /content/jiaozi_generated_pipeline )
+
+Loading weights:   0%|          | 0/211 [00:00<?, ?it/s]
+Loading weights:  69%|██████▊   | 145/211 [00:00<00:00, 1433.23it/s]
+Loading weights: 100%|██████████| 211/211 [00:00<00:00, 1258.15it/s]
+[train] requested_backbone=dinov3 hf_id=facebook/dinov3-vitb16-pretrain-lvd1689m source=huggingface actual_model=facebook/dinov3-vitb16-pretrain-lvd1689m backbone_class=_HFBackbone feature_pooling=pooler_output_or_cls_token
+[train] params total=85752696 trainable=130680 backbone_trainable=38400 head_trainable=92280 other_trainable=0
+[train] finetune strategy=partial unfreeze_last_n_blocks=2 frozen_backbone_param_tensors=211 partial_unfrozen_param_tensors=50
+[train] epoch 1/40  loss=1.5615  val_log_loss=0.6040  val_acc=0.8522  lr=9.99e-06  steps=256  time=120.2s
+[train] Saved new best checkpoint at epoch 1: /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed/best_model.pt
+[train] epoch 2/40  loss=0.4126  val_log_loss=0.4911  val_acc=0.8601  lr=9.94e-06  steps=256  time=236.2s
+[train] Saved new best checkpoint at epoch 2: /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed/best_model.pt
+[train] epoch 3/40  loss=0.2542  val_log_loss=0.4475  val_acc=0.8714  lr=9.88e-06  steps=256  time=352.4s
+[train] Saved new best checkpoint at epoch 3: /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed/best_model.pt
+[train] epoch 4/40  loss=0.1750  val_log_loss=0.4397  val_acc=0.8694  lr=9.78e-06  steps=256  time=464.4s
+[train] Saved new best checkpoint at epoch 4: /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed/best_model.pt
+[train] epoch 5/40  loss=0.1209  val_log_loss=0.4440  val_acc=0.8660  lr=9.66e-06  steps=256  time=581.6s
+[train] epoch 6/40  loss=0.0895  val_log_loss=0.4438  val_acc=0.8630  lr=9.51e-06  steps=256  time=691.5s
+[train] epoch 7/40  loss=0.0677  val_log_loss=0.4372  val_acc=0.8640  lr=9.34e-06  steps=256  time=802.0s
+[train] Saved new best checkpoint at epoch 7: /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed/best_model.pt
+[train] epoch 8/40  loss=0.0552  val_log_loss=0.4494  val_acc=0.8591  lr=9.14e-06  steps=256  time=917.4s
+[train] epoch 9/40  loss=0.0435  val_log_loss=0.4504  val_acc=0.8625  lr=8.92e-06  steps=256  time=1027.4s
+[train] epoch 10/40  loss=0.0364  val_log_loss=0.4534  val_acc=0.8621  lr=8.68e-06  steps=256  time=1142.5s
+[train] epoch 11/40  loss=0.0302  val_log_loss=0.4561  val_acc=0.8655  lr=8.42e-06  steps=256  time=1252.3s
+[train] epoch 12/40  loss=0.0260  val_log_loss=0.4609  val_acc=0.8645  lr=8.15e-06  steps=256  time=1362.3s
+[train] epoch 13/40  loss=0.0226  val_log_loss=0.4685  val_acc=0.8625  lr=7.85e-06  steps=256  time=1472.9s
+[train] epoch 14/40  loss=0.0201  val_log_loss=0.4703  val_acc=0.8645  lr=7.54e-06  steps=256  time=1583.9s
+[train] epoch 15/40  loss=0.0182  val_log_loss=0.4728  val_acc=0.8660  lr=7.22e-06  steps=256  time=1693.7s
+[train] epoch 16/40  loss=0.0166  val_log_loss=0.4783  val_acc=0.8630  lr=6.89e-06  steps=256  time=1803.7s
+[train] epoch 17/40  loss=0.0143  val_log_loss=0.4853  val_acc=0.8621  lr=6.55e-06  steps=256  time=1918.3s
+[train] epoch 18/40  loss=0.0136  val_log_loss=0.4850  val_acc=0.8625  lr=6.20e-06  steps=256  time=2028.4s
+[train] epoch 19/40  loss=0.0117  val_log_loss=0.4891  val_acc=0.8650  lr=5.85e-06  steps=256  time=2137.9s
+[train] epoch 20/40  loss=0.0112  val_log_loss=0.4953  val_acc=0.8630  lr=5.50e-06  steps=256  time=2252.5s
+[train] epoch 21/40  loss=0.0096  val_log_loss=0.4964  val_acc=0.8640  lr=5.15e-06  steps=256  time=2362.5s
+[train] epoch 22/40  loss=0.0100  val_log_loss=0.5005  val_acc=0.8630  lr=4.80e-06  steps=256  time=2472.3s
+--- output 1 ---
+[error:KeyboardInterrupt]
+---------------------------------------------------------------------------
+KeyboardInterrupt                         Traceback (most recent call last)
+/tmp/ipykernel_385/824537581.py in <cell line: 0>()
+    146     raise RuntimeError("Could not capture training output.")
+    147
+--> 148 for line in iter(process.stdout.readline, ""):
+    149     print(line, end="", flush=True)
+    150
+
+KeyboardInterrupt:
+
+=== Cell 16 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+Sat Jul 11 18:36:26 2026
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |
+| N/A   73C    P0             33W /   70W |       3MiB /  15360MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+=== Cell 18 | execution_count=None | outputs=1 ===
+--- output 0 ---
+[stream:stdout]
+=== RESULT (best checkpoint) ===
+checkpoint : /content/drive/MyDrive/Jiaozi/checkpoints/dog_breed_log_loss_fixed/best_model.pt
+best_epoch : 7
+best_metric: 0.437158644093814 (validation metric at best epoch — no re-eval)
+validation : {"metric_name": "log_loss", "metric_value": 0.437158644093814, "accuracy": 0.8640156984329224, "epoch": 7}
+
+=== Cell 19 | execution_count=None | outputs=0 ===
+[no stored output]
+
+=== Cell 20 | execution_count=None | outputs=0 ===
+[no stored output]
+
+=== Cell 21 | execution_count=None | outputs=0 ===
+[no stored output]
