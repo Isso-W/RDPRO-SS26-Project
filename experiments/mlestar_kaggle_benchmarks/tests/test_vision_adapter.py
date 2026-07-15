@@ -1,0 +1,225 @@
+from pathlib import Path
+
+import numpy as np
+
+from benchmarks.catalog import get_task
+from mlestar.adapters.vision import PlantPathologyAdapter
+from mlestar.initialization import CandidateSpec
+
+FIXTURE = Path("examples/synthetic_plant_pathology")
+
+
+def test_plant_pathology_load_dataset_reads_multilabel_csv():
+    task = get_task("plant_pathology_2020")
+    adapter = PlantPathologyAdapter(FIXTURE, "/tmp/mlestar-vision-test-load", task, pretrained=False)
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert labels.shape == (6, 4)
+    assert ids == ["Train_0", "Train_1", "Train_2", "Train_3", "Train_4", "Train_5"]
+    assert paths[0].name == "Train_0.jpg"
+    assert paths[0].exists()
+
+
+def test_plant_pathology_run_produces_a_metric(tmp_path):
+    task = get_task("plant_pathology_2020")
+    adapter = PlantPathologyAdapter(
+        FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert 0.0 <= result.receipt.metric_value <= 1.0
+    assert result.receipt.oof_path is not None
+    assert result.receipt.test_path is None
+    assert result.oof.shape == (6, 4)
+    oof_csv = tmp_path / result.receipt.oof_path
+    assert oof_csv.exists()
+
+
+def test_evaluate_wraps_a_failure_instead_of_raising(tmp_path):
+    task = get_task("plant_pathology_2020")
+    adapter = PlantPathologyAdapter(tmp_path / "does-not-exist", tmp_path, task, pretrained=False)
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    receipt = adapter.evaluate(candidate, phase="test", seed=13)
+    assert receipt.metric_value is None
+    assert receipt.error is not None
+    assert "FileNotFoundError" in receipt.error or "train.csv" in receipt.error
+
+
+def test_merge_names_an_ensemble_candidate():
+    task = get_task("plant_pathology_2020")
+    adapter = PlantPathologyAdapter(FIXTURE, "/tmp/mlestar-vision-test-merge", task, pretrained=False)
+    incumbent = CandidateSpec("resnet18", (("model", "resnet18"),))
+    addition = CandidateSpec("efficientnet_b0", (("model", "efficientnet_b0"),))
+    merged = adapter.merge(incumbent, addition)
+    assert merged.candidate_id == "resnet18+efficientnet_b0"
+    assert merged.block("model") == "ensemble:resnet18+efficientnet_b0"
+
+
+def test_score_inputs_ordinal_clips_to_label_range_not_num_classes():
+    from mlestar.adapters.vision import ImageClassificationAdapter
+    from mlestar.contracts import FoldSpec, MetricSpec, SubmissionSpec, TaskSpec
+
+    task = TaskSpec(
+        key="fake_ordinal",
+        competition="fake-ordinal",
+        modality="image_ordinal",
+        metric=MetricSpec("qwk"),
+        fold=FoldSpec(n_splits=2),
+        submission=SubmissionSpec(id_columns=("id",), prediction_columns=("diagnosis",)),
+        target_columns=("diagnosis",),
+    )
+    adapter = ImageClassificationAdapter("/tmp/does-not-matter", "/tmp/does-not-matter-run", task, pretrained=False)
+    labels = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+    oof = np.array([0.2, 1.6, 2.4, 3.9, 3.4])  # raw regression outputs, unrounded
+    _, rounded = adapter._score_inputs(labels, oof)
+    assert rounded.tolist() == [0.0, 2.0, 2.0, 4.0, 3.0]
+
+
+from mlestar.adapters.vision import AptosAdapter
+
+APTOS_FIXTURE = Path("examples/synthetic_aptos")
+
+
+def test_aptos_load_dataset_reads_ordinal_csv():
+    task = get_task("aptos_2019")
+    adapter = AptosAdapter(APTOS_FIXTURE, "/tmp/mlestar-vision-test-aptos-load", task, pretrained=False)
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert labels.tolist() == [0, 1, 2, 3, 4, 2]
+    assert ids == ["id_0", "id_1", "id_2", "id_3", "id_4", "id_5"]
+    assert paths[0].name == "id_0.png"
+
+
+def test_aptos_run_produces_a_qwk_metric(tmp_path):
+    task = get_task("aptos_2019")
+    adapter = AptosAdapter(
+        APTOS_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert -1.0 <= result.receipt.metric_value <= 1.0
+    assert result.oof.shape == (6,)
+
+
+from mlestar.adapters.vision import DogBreedAdapter
+
+DOG_BREED_FIXTURE = Path("examples/synthetic_dog_breed")
+
+
+def test_dog_breed_load_dataset_encodes_breed_names_from_labels_csv():
+    task = get_task("dog_breed")
+    adapter = DogBreedAdapter(DOG_BREED_FIXTURE, "/tmp/mlestar-vision-test-breed-load", task, pretrained=False)
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert ids == ["d0", "d1", "d2", "d3", "d4", "d5"]
+    assert paths[0].name == "d0.jpg"
+    # class names come from sample_submission.csv's header, alphabetically:
+    # beagle, poodle, pug -- so d0/d2 (beagle) -> 0, d3/d5 (poodle) -> 1, d1/d4 (pug) -> 2
+    assert labels.tolist() == [0, 2, 0, 1, 2, 1]
+
+
+def test_dog_breed_run_produces_a_log_loss_metric(tmp_path):
+    task = get_task("dog_breed")
+    adapter = DogBreedAdapter(
+        DOG_BREED_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert result.receipt.metric_value >= 0.0
+    assert result.oof.shape == (6, 3)
+
+
+from mlestar.adapters.vision import AerialCactusAdapter
+
+AERIAL_CACTUS_FIXTURE = Path("examples/synthetic_aerial_cactus")
+
+
+def test_aerial_cactus_load_dataset_reads_binary_csv():
+    task = get_task("aerial_cactus")
+    adapter = AerialCactusAdapter(
+        AERIAL_CACTUS_FIXTURE, "/tmp/mlestar-vision-test-cactus-load", task, pretrained=False
+    )
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert labels.tolist() == [1, 0, 1, 0, 1, 0]
+    assert ids == ["c0.jpg", "c1.jpg", "c2.jpg", "c3.jpg", "c4.jpg", "c5.jpg"]
+    assert paths[0].name == "c0.jpg"
+
+
+def test_aerial_cactus_run_produces_a_roc_auc_metric(tmp_path):
+    task = get_task("aerial_cactus")
+    adapter = AerialCactusAdapter(
+        AERIAL_CACTUS_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert 0.0 <= result.receipt.metric_value <= 1.0
+    assert result.oof.shape == (6,)
+
+
+from mlestar.adapters.vision import DogsVsCatsAdapter
+
+DOGS_VS_CATS_FIXTURE = Path("examples/synthetic_dogs_vs_cats")
+
+
+def test_dogs_vs_cats_load_dataset_parses_label_from_filename():
+    task = get_task("dogs_vs_cats")
+    adapter = DogsVsCatsAdapter(
+        DOGS_VS_CATS_FIXTURE, "/tmp/mlestar-vision-test-dvc-load", task, pretrained=False
+    )
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    # dog=1, cat=0, sorted by filename: cat.0,cat.1,cat.2,dog.0,dog.1,dog.2
+    assert labels.tolist() == [0, 0, 0, 1, 1, 1]
+    assert ids == ["cat.0", "cat.1", "cat.2", "dog.0", "dog.1", "dog.2"]
+
+
+def test_dogs_vs_cats_run_produces_a_log_loss_metric(tmp_path):
+    task = get_task("dogs_vs_cats")
+    adapter = DogsVsCatsAdapter(
+        DOGS_VS_CATS_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert result.receipt.metric_value >= 0.0
+    assert result.oof.shape == (6,)
+
+
+from mlestar.adapters.vision import HistopathologicCancerAdapter
+
+HISTOPATHOLOGIC_FIXTURE = Path("examples/synthetic_histopathologic_cancer")
+
+
+def test_histopathologic_cancer_load_dataset_reads_separate_labels_csv():
+    task = get_task("histopathologic_cancer")
+    adapter = HistopathologicCancerAdapter(
+        HISTOPATHOLOGIC_FIXTURE, "/tmp/mlestar-vision-test-hcancer-load", task, pretrained=False
+    )
+    paths, labels, ids = adapter._load_dataset(adapter.data_root)
+    assert len(paths) == 6
+    assert labels.tolist() == [1, 0, 1, 0, 1, 0]
+    assert ids == ["h0", "h1", "h2", "h3", "h4", "h5"]
+    assert paths[0].name == "h0.tif"
+
+
+def test_histopathologic_cancer_run_produces_a_roc_auc_metric(tmp_path):
+    task = get_task("histopathologic_cancer")
+    adapter = HistopathologicCancerAdapter(
+        HISTOPATHOLOGIC_FIXTURE, tmp_path, task, pretrained=False, epochs=1, max_train_samples=None
+    )
+    candidate = CandidateSpec("resnet18", (("model", "resnet18"),))
+    result = adapter.run(candidate, phase="test", seed=13)
+    assert result.receipt.error is None, result.receipt.error
+    assert result.receipt.metric_value is not None
+    assert 0.0 <= result.receipt.metric_value <= 1.0
+    assert result.oof.shape == (6,)

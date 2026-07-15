@@ -1,0 +1,1 @@
+"""Image feature-extraction components."""

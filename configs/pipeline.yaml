@@ -1,0 +1,13 @@
+dataset:
+  name: uoft-cs/cifar10
+
+workspace:
+  root: workspace
+
+standardization:
+  target_size: [224, 224]
+  resize_mode: letterbox_resize
+
+feature_extraction:
+  model: resnet50
+  batch_size: 64

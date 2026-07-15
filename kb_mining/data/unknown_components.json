@@ -1,0 +1,410 @@
+{
+  "models": {
+    "eca_nfnet_l0": 21,
+    "CatBoost": 4,
+    "XGBoost": 4,
+    "caformer_s18": 3,
+    "coatnet_rmlp_2_rw_384": 3,
+    "DOLG B5/B6/B7": 2,
+    "coat_lite_medium": 2,
+    "MV": 2,
+    "CTransPath": 2,
+    "LGBM": 2,
+    "LightGBM": 2,
+    "B5": 2,
+    "B6": 2,
+    "HTC-Res2Net101": 2,
+    "eca_nfnet_l1": 2,
+    "dm_nfnet_f0": 2,
+    "Cascade RCNN": 2,
+    "mnasnet_100": 2,
+    "spnasnet_100": 2,
+    "ir-CSN-r50": 2,
+    "ir-CSN-r152": 2,
+    "coat-small": 2,
+    "regnety_008": 2,
+    "cassava_disease_V1": 1,
+    "B3": 1,
+    "B4": 1,
+    "V2L": 1,
+    "NFNet L2": 1,
+    "DOLG B6/B7": 1,
+    "dm_nfnet_f6": 1,
+    "osnet_ain_attn_x1_0": 1,
+    "RegNetY-16.0GF": 1,
+    "Xception": 1,
+    "CNN": 1,
+    "lightGBM": 1,
+    "CNN+LSTM": 1,
+    "MVF": 1,
+    "Chowder": 1,
+    "CLAM": 1,
+    "Hornet": 1,
+    "EVA": 1,
+    "LunitDINO": 1,
+    "Lunit-DINO": 1,
+    "Clustering-constrained attention MIL": 1,
+    "Dual-stream MIL": 1,
+    "weighted sum of the embeddings": 1,
+    "x3d-l": 1,
+    "hgnetb5": 1,
+    "mixnet_l": 1,
+    "mixnet_xl": 1,
+    "1D CNN + Squeezeformer blocks": 1,
+    "v5_eeg_24ep_cutmix": 1,
+    "EegNet-1D": 1,
+    "eva02_small_patch14_336.mim_in22k_ft_in1k": 1,
+    "edgenext_base.in21k_ft_in1k": 1,
+    "eva02_small": 1,
+    "coatnet_rmlp_1": 1,
+    "mit-b0 FPN": 1,
+    "mit-b5 FPN": 1,
+    "eva02_small_patch14_336.min_in22k_ft_in1k": 1,
+    "neural network model on tabular data": 1,
+    "MaxVit-T": 1,
+    "MNasNet-S": 1,
+    "MaxViT-N": 1,
+    "rdnet_tiny": 1,
+    "maxxvitv2_nano": 1,
+    "regnety_002": 1,
+    "pvt_v2_b3": 1,
+    "coatnet_1_rw_224": 1,
+    "coatnet_2_rw_224": 1,
+    "eva02 small": 1,
+    "eca nfnet l1": 1,
+    "CoaT-Lite-Medium": 1,
+    "MaxViT": 1,
+    "eva large 384": 1,
+    "mit-b4 FPN": 1,
+    "EffDet": 1,
+    "CenterNet (HourGlass)": 1,
+    "Detectron2": 1,
+    "Cascade_RFP_R50": 1,
+    "GFL_R101": 1,
+    "GFL_X101": 1,
+    "RetinaNet_X101": 1,
+    "VFNet_X101": 1,
+    "effdets": 1,
+    "efficientdet-d5": 1,
+    "unknown": 1,
+    "DenseNet": 1,
+    "densenet121": 1,
+    "cait": 1,
+    "EfficientDet-D7X": 1,
+    "EfficientDet-D6": 1,
+    "efficientdetD3": 1,
+    "efficientdetD5": 1,
+    "retinanet_x101_64x4d_fpn": 1,
+    "RetinaNet": 1,
+    "v2l": 1,
+    "eca_nfnet_l2": 1,
+    "DOLG-Efficentnet b5": 1,
+    "DOLG-Efficentnet b6": 1,
+    "DOLG-Efficentnet b7": 1,
+    "CvT": 1,
+    "ECA NFNet L2": 1,
+    "ReXNet 2.0": 1,
+    "efficientv2-m": 1,
+    "b4": 1,
+    "b6": 1,
+    "xcit": 1,
+    "v2m": 1,
+    "b5": 1,
+    "CB DBS-FPN": 1,
+    "EffDetD7": 1,
+    "Mask R-CNN with CB-DBS": 1,
+    "effdetD3": 1,
+    "Maskrcnn": 1,
+    "cellpose": 1,
+    "Cellpose": 1,
+    "CBNet DBS Cascade-RCNN": 1,
+    "PointRend": 1,
+    "hrnet_w18": 1,
+    "hrnet_w32": 1,
+    "efficientdetv2_dt": 1,
+    "HRNetV2P-W18": 1,
+    "Cascade-RCNN": 1,
+    "tf_efficnetnet_b0_ns": 1,
+    "tf_efficinetnetv2_s_in21k": 1,
+    "MiT-B2": 1,
+    "Coat-lite-medium": 1,
+    "mpvit": 1,
+    "HorNet": 1,
+    "pvtv2-b4 backbone with conv3x3 decoder": 1,
+    "pvtv2-b4 backbone with DAformer decode": 1,
+    "Coat-small + Coat-small-pl": 1,
+    "PVT + Coat": 1,
+    "MViTv2-s": 1,
+    "RTMDet-x": 1,
+    "Mask R-CNN": 1,
+    "CBNetV2 Base": 1,
+    "HybridTaskCascade (Re2Net)": 1,
+    "htc-db-b": 1,
+    "dpn68": 1,
+    "2.5D": 1,
+    "3D": 1,
+    "efficientvit-l2": 1,
+    "pvtv2-b2": 1,
+    "inception-next-nano": 1,
+    "rexnet_150": 1,
+    "rexnet_100": 1,
+    "ECA NFNet L0": 1,
+    "ECA NFNet L1": 1,
+    "VoxHRNet": 1,
+    "DenseVNet": 1,
+    "DeepFinder-inspired 3D CNN": 1,
+    "3D Densenet121": 1,
+    "3D X3D-M": 1,
+    "2D MaxViT": 1,
+    "2D CoaT": 1,
+    "regnety_016.tv2_in1k": 1,
+    "eca_nfnet_l0.ra2_in1k": 1,
+    "regnety_008.pycls_in1k": 1,
+    "hgnetv2_b5.ssld_stage2_ft_in1k": 1,
+    "hgnetv2_b3.ssld_stage2_ft_in1k": 1,
+    "mixnet_s": 1,
+    "tinynet_a.in1k": 1
+  },
+  "losses": {
+    "BCEWithLogitsLoss": {
+      "count": 9,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "sub-center ArcFace with dynamic margins": {
+      "count": 2,
+      "metric_learning": true,
+      "hybrid": false
+    },
+    "BCELoss": {
+      "count": 2,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "nn.BCEWithLogitsLoss": {
+      "count": 2,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "bi-tempered logistic loss (t1=0.8, t2=1.4)": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "OUSM loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "bi-tempered loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "Arcface with adaptive margin": {
+      "count": 1,
+      "metric_learning": true,
+      "hybrid": false
+    },
+    "CurricularFace loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "AMSoftmax aka CosFace": {
+      "count": 1,
+      "metric_learning": true,
+      "hybrid": false
+    },
+    "AMSoftmax": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "AM-Softmax": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "ArcFace": {
+      "count": 1,
+      "metric_learning": true,
+      "hybrid": false
+    },
+    "differentiable version of MacroF1": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "subcenter-arcface": {
+      "count": 1,
+      "metric_learning": true,
+      "hybrid": false
+    },
+    "Arcface(s=30,m=0.3)": {
+      "count": 1,
+      "metric_learning": true,
+      "hybrid": false
+    },
+    "competition metric": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "EQL loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "AUCPRLoss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "0.6 * cls_loss (cross_entropy) + 0.4 * seg_loss (dice) + 0.1 * aux_loss (cross-entropy)": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "instance_loss_fn": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "KL divergence loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "pauc loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "weighted loss and any loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "BCEloss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "classical RPN and RoI loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "dice-ce, ce, dice loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "CE and Dice Loss (1:1)": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "Focal + Dice": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "arc face product and dynamic margin": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "IoU Based Loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "Focal BCE Loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "BCEWithLogitsLoss(reduction='sum')": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "0.1 * BCEWithLogitsLoss (primary_label) + 0.9 * KLDivLoss (from Kaggle model)": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "SoftBCEWithLogitsLoss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "Mask Head loss multiplied by 2x in decoder": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "1.0 focal loss, 1.0 dice loss, 0.01 boundary loss and 1.0 custom loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "BoundaryDOULoss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "CE_boundaries + Dice + Focal": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "DiceLoss(smooth_factor=0.1)": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "Average of BCE and FocalLoss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "Tversky Loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "MSE-based loss function": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "DiceCELoss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "SmoothBCE loss with 3 contributions": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "Normalized Wasserstein Distance (NWD) Loss and IoU-Shape Loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": false
+    },
+    "Focal + BCE loss": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    },
+    "Focal Binary Cross Entropy (Focal BCE)": {
+      "count": 1,
+      "metric_learning": false,
+      "hybrid": true
+    }
+  }
+}

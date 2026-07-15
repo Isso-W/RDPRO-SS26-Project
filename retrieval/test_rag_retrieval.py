@@ -5,15 +5,28 @@ RAG Retrieval 测试套件
 
 import unittest
 
-from rag_retrieval import (
-    build_graph,
-    build_vector_index,
-    retrieve_top3_hybrid,
-    build_task_list,
-    build_all_task_lists,
-    MODULE1_EXAMPLES,
-    _SIZE_TIER_ORDER,
-)
+if __package__:
+    from .rag_retrieval import (
+        build_graph,
+        build_vector_index,
+        retrieve_top3_hybrid,
+        build_task_list,
+        build_all_task_lists,
+        MODULE1_EXAMPLES,
+        _SIZE_TIER_ORDER,
+        estimate_cost,
+    )
+else:
+    from rag_retrieval import (
+        build_graph,
+        build_vector_index,
+        retrieve_top3_hybrid,
+        build_task_list,
+        build_all_task_lists,
+        MODULE1_EXAMPLES,
+        _SIZE_TIER_ORDER,
+        estimate_cost,
+    )
 
 _REQUIRED_FIELDS = {
     "backbone", "head", "loss", "optimizer",
@@ -85,6 +98,15 @@ class TestSmoke(unittest.TestCase):
                 with self.subTest(example=name, backbone=r["backbone"]):
                     self.assertGreaterEqual(r["score"], 0.0)
                     self.assertLessEqual(r["score"], 1.0)
+
+    def test_new_models_added_without_removing_existing_models(self):
+        expected = {
+            "dinov2", "dinov3",
+            "yolov8", "yolo26",
+            "clip_vit", "siglip2",
+            "sam3",
+        }
+        self.assertTrue(expected <= set(self.G.nodes))
 
 
 class TestBehavior(unittest.TestCase):
@@ -173,9 +195,9 @@ class TestBehavior(unittest.TestCase):
         self.assertIn("unet", self._backbones(results),
                       "UNet should appear when medical=True")
 
-    # ── Test 6: cross_modal → CLIP ranks first ────────────────────────────────
+    # ── Test 6: cross_modal → SigLIP2 ranks first ─────────────────────────────
 
-    def test_cross_modal_clip_top1(self):
+    def test_cross_modal_siglip2_top1(self):
         inp = _make_input(
             task_type="feature_extraction",
             data_size="medium",
@@ -184,8 +206,8 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0)
-        self.assertEqual(results[0]["backbone"], "clip_vit",
-                         f"Expected CLIP ViT at top, got {results[0]['backbone']}")
+        self.assertEqual(results[0]["backbone"], "siglip2",
+                         f"Expected SigLIP2 at top, got {results[0]['backbone']}")
 
     # ── Test 7: no cross_modal → CLIP excluded ────────────────────────────────
 
@@ -219,6 +241,7 @@ class TestBehavior(unittest.TestCase):
     # ── Test 9: DINOv2 checkpoint → finetune_strategy = head_only ─────────────
 
     def test_dinov2_finetune_strategy(self):
+        # feature_extraction → frozen (head_only): frozen features are the point
         inp = _make_input(
             task_type="feature_extraction",
             data_size="medium",
@@ -229,8 +252,40 @@ class TestBehavior(unittest.TestCase):
             if r["backbone"] == "dinov2" and r["pretrained"] is not None:
                 self.assertEqual(
                     r["finetune_strategy"], "head_only",
-                    f"DINOv2 finetune_strategy should be head_only, got {r['finetune_strategy']}"
+                    f"DINOv2 (feature_extraction) should be head_only, got {r['finetune_strategy']}"
                 )
+
+    def test_dinov2_full_finetune_on_medium_classification(self):
+        # classification + enough data → full finetune (resolved from "either"),
+        # so it competes fairly instead of being a frozen linear probe
+        inp = _make_input(task_type="classification", data_size="medium", priority="accuracy",
+                          description="fine-grained classification")
+        for r in self._run(inp):
+            if r["backbone"] == "dinov2" and r["pretrained"] is not None:
+                self.assertEqual(r["finetune_strategy"], "full")
+
+    def test_dinov2_frozen_when_few_shot(self):
+        # few-shot → frozen, avoid overfitting a big ViT on tiny data
+        inp = _make_input(task_type="classification", data_size="medium", priority="accuracy",
+                          few_shot=True, description="few shot")
+        for r in self._run(inp):
+            if r["backbone"] == "dinov2" and r["pretrained"] is not None:
+                self.assertEqual(r["finetune_strategy"], "head_only")
+
+    def test_dinov3_classification_uses_partial_finetune(self):
+        inp = _make_input(
+            task_type="classification",
+            data_size="medium",
+            priority="accuracy",
+            description="fine-grained visual classification where feature quality matters",
+        )
+        for r in self._run(inp):
+            if r["backbone"] == "dinov3" and r["pretrained"] is not None:
+                self.assertEqual(r["finetune_strategy"], "partial")
+                self.assertIn(r["unfreeze_last_n_blocks"], {2, 4})
+                self.assertTrue(r["train_norm_layers"])
+                return
+        self.fail("DINOv3 recommendation not found")
 
     # ── Test 10: class_imbalance → focal_loss selected ────────────────────────
 
@@ -265,7 +320,7 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0, "zero_shot should return at least one result")
-        capable = {"dinov2", "clip_vit"}
+        capable = {"dinov2", "dinov3", "clip_vit", "siglip2", "sam3"}
         for r in results:
             self.assertIn(r["backbone"], capable,
                           f"{r['backbone']} lacks zero_shot capability but appeared in results")
@@ -281,10 +336,116 @@ class TestBehavior(unittest.TestCase):
         )
         results = self._run(inp)
         self.assertGreater(len(results), 0)
-        capable = {"dinov2", "clip_vit"}
+        capable = {"dinov2", "dinov3", "clip_vit", "siglip2", "sam3"}
         # 至少有一个 capable backbone 出现在结果里
         found = capable & {r["backbone"] for r in results}
         self.assertTrue(found, f"No few_shot-capable backbone in results: {self._backbones(results)}")
+
+    # ── Test 14: real-time detection → YOLO26 is available ───────────────────
+
+    def test_real_time_detection_includes_yolo26(self):
+        inp = _make_input(
+            task_type="object_detection",
+            data_size="medium",
+            priority="speed",
+            real_time=True,
+        )
+        results = self._run(inp)
+        self.assertEqual(results[0]["backbone"], "yolo26")
+        self.assertIn("yolo26", self._backbones(results))
+        yolo26 = next(r for r in results if r["backbone"] == "yolo26")
+        self.assertIn(yolo26["pretrained"], {"yolo26n_coco", "yolo26s_coco"})
+
+    # ── Test 15: DINOv3 appears for high-quality feature extraction ───────────
+
+    def test_feature_quality_includes_dinov3(self):
+        inp = _make_input(
+            task_type="feature_extraction",
+            data_size="large",
+            priority="accuracy",
+            few_shot=True,
+            description="extract dense visual features for retrieval and few-shot classification",
+        )
+        results = self._run(inp)
+        self.assertEqual(results[0]["backbone"], "dinov3")
+        self.assertIn("dinov3", self._backbones(results))
+        self.assertEqual(results[0]["finetune_strategy"], "head_only")
+
+    # ── Test 16: cross-modal retrieval includes SigLIP2 ──────────────────────
+
+    def test_cross_modal_includes_siglip2(self):
+        inp = _make_input(
+            task_type="feature_extraction",
+            data_size="medium",
+            priority="accuracy",
+            cross_modal=True,
+            description="image text retrieval with multilingual labels",
+        )
+        results = self._run(inp)
+        self.assertIn("siglip2", self._backbones(results))
+
+    # ── Test 17: promptable/open-vocabulary segmentation includes SAM3 ───────
+
+    def test_promptable_segmentation_includes_sam3(self):
+        inp = _make_input(
+            task_type="image_segmentation",
+            data_size="large",
+            priority="accuracy",
+            open_vocabulary=True,
+            text_prompt=True,
+            description="segment every object matching a text prompt in images and videos",
+        )
+        results = self._run(inp)
+        self.assertIn("sam3", self._backbones(results))
+
+
+class TestBudget(unittest.TestCase):
+    """约束感知选型：max_params_m / max_flops_g 预算过滤（Phase 1+2）。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.G   = build_graph()
+        cls.col = build_vector_index()
+
+    def _run(self, input_json):
+        return retrieve_top3_hybrid(input_json, self.G, self.col)
+
+    def test_param_budget_excludes_over_budget_backbones(self):
+        inp = _make_input(priority="balanced", max_params_m=12)
+        results = self._run(inp)
+        self.assertGreater(len(results), 0)
+        for r in results:
+            cost = estimate_cost(r.get("pretrained"), inp, self.G)
+            if cost["params_m"] is not None:
+                self.assertLessEqual(cost["params_m"], 12,
+                                     f"{r['backbone']}/{r.get('pretrained')} over param budget")
+
+    def test_param_budget_downgrades_checkpoint(self):
+        # resnet 在无预算时选 resnet50(25M)，预算内应降级到 resnet18(11.7M)
+        inp = _make_input(priority="balanced", max_params_m=12)
+        picks = {r["backbone"]: r.get("pretrained") for r in self._run(inp)}
+        if "resnet" in picks:
+            self.assertEqual(picks["resnet"], "resnet18_imagenet")
+
+    def test_flops_budget_excludes_over_budget(self):
+        inp = _make_input(priority="balanced", max_flops_g=2.0)
+        for r in self._run(inp):
+            cost = estimate_cost(r.get("pretrained"), inp, self.G)
+            if cost["flops_g"] is not None:
+                self.assertLessEqual(cost["flops_g"], 2.0)
+
+    def test_no_budget_keeps_heavy_models(self):
+        # 无预算时，重型 backbone（dinov2/86M）可以出现
+        without = {r["backbone"] for r in self._run(_make_input(priority="balanced"))}
+        within = {r["backbone"] for r in self._run(_make_input(priority="balanced", max_params_m=12))}
+        # 预算把候选收紧（子集或更小），且无预算集合不小于有预算集合
+        self.assertGreaterEqual(len(without), len(within))
+
+    def test_flops_scales_with_image_size(self):
+        small = estimate_cost("resnet18_imagenet", _make_input(image_size=224), self.G)
+        large = estimate_cost("resnet18_imagenet", _make_input(image_size=448), self.G)
+        # 448 是 224 的 2 倍边长 → 面积 4 倍
+        self.assertAlmostEqual(large["flops_g"], small["flops_g"] * 4, delta=0.1)
 
 
 class TestTaskList(unittest.TestCase):
@@ -356,6 +517,43 @@ class TestTaskList(unittest.TestCase):
         tl = build_task_list(self.top, self.G, fmt="nl")
         self.assertIn("backbone", tl["model_config"])
 
+    def test_nl_model_config_attaches_classification_recipe(self):
+        input_json = _make_input(
+            task_type="classification",
+            data_size="small",
+            priority="accuracy",
+            fine_grained=True,
+        )
+        input_json["data_stats"] = {"resolution_tier": "high", "color_mode": "rgb"}
+        fake = {
+            "backbone": "efficientnet",
+            "pretrained": "efficientnet_b0_imagenet",
+            "head": "classification_head",
+            "loss": "cross_entropy_loss",
+            "optimizer": "adamw",
+            "scratch_viable": False,
+            "finetune_strategy": "full",
+            "freeze_viable": False,
+            "alt_backbones": [],
+            "score": 1.0,
+        }
+
+        tl = build_task_list(
+            fake,
+            self.G,
+            fmt="nl",
+            input_json=input_json,
+            data_stats=input_json["data_stats"],
+        )
+
+        recipe = tl["model_config"]["recipe"]
+        provenance = tl["model_config"]["recipe_provenance"]
+        self.assertEqual(recipe["image_size"], 384)
+        self.assertEqual(recipe["learning_rate"], 1.0e-4)
+        self.assertEqual(recipe["epochs"], 40)
+        self.assertEqual(recipe["augmentation"]["tier"], "heavy")
+        self.assertIn("fine_grained+high_res bump", provenance["image_size"])
+
     def test_invalid_fmt_raises(self):
         with self.assertRaises(ValueError):
             build_task_list(self.top, self.G, fmt="xml")
@@ -376,6 +574,38 @@ class TestTaskList(unittest.TestCase):
         for tl in tls:
             self.assertIn("score", tl)
             self.assertIsNotNone(tl["score"])
+
+
+class TestPhaseBLossEdges(unittest.TestCase):
+    """Phase B：_select_components 消费 loss 节点间的 preferred_when 边。"""
+
+    def _loss_for(self, graph, constraints):
+        if __package__:
+            from .rag_retrieval import _select_components
+        else:
+            from rag_retrieval import _select_components
+        q = _make_input(task_type="classification", **constraints)
+        return _select_components("resnet", "classification", q, graph)["loss"]
+
+    def test_edge_path_fires_distinctly_from_hardcoded(self):
+        # 硬要求：证明边路径确实活着，而非硬编码 fallback。
+        # medical 下硬编码给 cross_entropy；加一条合成边 focal→CE(medical) 后应翻成
+        # focal —— focal 只可能来自边，据此证明死边已激活。
+        base = self._loss_for(build_graph(), {"medical": True})
+        self.assertEqual(base, "cross_entropy_loss")  # 无边时的默认/硬编码结果
+
+        g = build_graph()
+        g.add_edge("focal_loss", "cross_entropy_loss",
+                   relation="preferred_when", condition={"any": ["medical=True"]})
+        self.assertEqual(self._loss_for(g, {"medical": True}), "focal_loss")
+
+    def test_class_imbalance_picks_focal_via_edge(self):
+        # 现实 KB 边 focal→CE(class_imbalance) 现在经 Phase B 生效
+        self.assertEqual(self._loss_for(build_graph(), {"class_imbalance": True}),
+                         "focal_loss")
+
+    def test_no_imbalance_falls_back_to_cross_entropy(self):
+        self.assertEqual(self._loss_for(build_graph(), {}), "cross_entropy_loss")
 
 
 if __name__ == "__main__":

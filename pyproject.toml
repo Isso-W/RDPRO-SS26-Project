@@ -3,22 +3,72 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cv-autodl-agent"
+name = "jiaozi"
 version = "0.1.0"
-description = "Workflow-first CV Auto-DL code generation and ablation submodule."
+description = "GraphRAG-based computer-vision AutoML pipeline and reproducible experiments."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   { name = "Jiaozi Project Team" }
 ]
-dependencies = []
+dependencies = [
+  "chromadb",
+  "datasets",
+  "networkx",
+  "numpy",
+  "openai>=2.0.0",
+  "pandas",
+  "pillow",
+  "scikit-learn",
+  "sentence-transformers",
+  "torch",
+  "torchvision",
+  "transformers",
+]
 
 [project.optional-dependencies]
-llm = [
-  "openai>=2.0.0",
-  "langchain>=1.0.0",
-  "langgraph>=0.2.0"
+kaggle = [
+  "kaggle>=1.7.4.5",
+]
+pipeline-graph = [
+  "skrub>=0.9,<0.10",
+]
+vertex = [
+  "google-cloud-aiplatform",
+]
+dev = [
+  "pytest>=8",
+]
+
+[tool.setuptools]
+py-modules = [
+  "cost_meter",
+  "dataset_analyzer",
+  "env_loader",
+  "features_extraction_api",
+  "pipeline",
+  "vision_benchmark_catalog",
 ]
 
 [tool.setuptools.packages.find]
-include = ["cv_autodl_agent*"]
+namespaces = false
+include = [
+  "analyzer*",
+  "experiments",
+  "experiments.ab_loss_imbalance*",
+  "features*",
+  "ingestion*",
+  "kb_mining*",
+  "module4_agent*",
+  "processors*",
+  "recipe*",
+  "recommender*",
+  "retrieval*",
+]
+exclude = [
+  "experiments.mlestar_kaggle_benchmarks*",
+  "*.tests",
+  "*.tests.*",
+]

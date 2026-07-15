@@ -1,0 +1,222 @@
+"""Predict on a Kaggle competition test set and (optionally) submit.
+
+The competition test labels are hidden, so "running on the test set" means: load the
+trained model from a generated project, run inference over the test images, write
+predictions in the sample_submission format, and submit to Kaggle for scoring.
+
+Usage:
+    # write submission.csv only
+    python kaggle_submit.py cassava --project ./kaggle_run/module4_code --data-root ./kaggle_data
+    # write and submit
+    python kaggle_submit.py cassava --project ./kaggle_run/module4_code --data-root ./kaggle_data \
+        --submit --message "Jiaozi efficientnet baseline"
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
+
+
+def _flatten_config(config: dict) -> dict:
+    merged = dict(config)
+    model_config = config.get("model_config")
+    if isinstance(model_config, dict):
+        for key, value in model_config.items():
+            if value is not None or key not in merged:
+                merged[key] = value
+    return merged
+
+
+def load_model(project_dir: str | Path):
+    """Load the trained model + eval transform from a generated project."""
+    import json
+
+    import torch
+
+    project_dir = Path(project_dir).resolve()
+    if str(project_dir) not in sys.path:
+        sys.path.insert(0, str(project_dir))
+    cwd = os.getcwd()
+    os.chdir(project_dir)
+    try:
+        from model import build_model
+        from train import _build_image_transform
+
+        config = _flatten_config(json.loads(Path("configs.json").read_text(encoding="utf-8"))[0])
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = build_model(config)
+
+        ckpt_path = Path(str(config.get("checkpoint_dir", "checkpoints"))) / "best_model.pt"
+        if not ckpt_path.exists():
+            ckpt_path = Path("checkpoints") / "best_model.pt"
+        if not ckpt_path.exists():
+            raise FileNotFoundError(
+                f"No best_model.pt found ({ckpt_path}). Train the project first: "
+                f"cd {project_dir} && python -u run.py --epochs N"
+            )
+        checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model.to(device).eval()
+        transform = _build_image_transform(config, "test")
+        return model, transform, config, device
+    finally:
+        os.chdir(cwd)
+
+
+def predict_directory(model, transform, device, image_dir: str | Path, batch_size: int = 64):
+    """Run inference over every image in image_dir. Returns [(filename, class_index)]."""
+    import torch
+    from PIL import Image
+
+    files = sorted(p for p in Path(image_dir).rglob("*") if p.suffix.lower() in _IMAGE_EXTS)
+    if not files:
+        raise FileNotFoundError(f"No images found under {image_dir}")
+
+    results: list[tuple[str, int]] = []
+    batch: list = []
+    names: list[str] = []
+
+    def _flush():
+        if not batch:
+            return
+        x = torch.stack(batch).to(device)
+        with torch.no_grad():
+            logits = model(x)
+        for name, idx in zip(names, logits.argmax(dim=1).cpu().tolist()):
+            results.append((name, int(idx)))
+
+    for path in files:
+        image = Image.open(path).convert("RGB")
+        batch.append(transform(image))
+        names.append(path.name)
+        if len(batch) >= batch_size:
+            _flush()
+            batch, names = [], []
+    _flush()
+    print(f"[submit] Predicted {len(results)} test images from {image_dir}")
+    return results
+
+
+def index_to_label_map(train_csv: str | Path, label_column: str) -> dict:
+    """Reconstruct the model's class-index -> original-label map used at training time.
+
+    Mirrors `_build_local_dataloader`: labels are encoded by `sorted(set, key=str)`.
+    """
+    import pandas as pd
+
+    labels = pd.read_csv(train_csv)[label_column].tolist()
+    unique = sorted(set(labels), key=lambda value: str(value))
+    return {index: value for index, value in enumerate(unique)}
+
+
+def write_submission(predictions, index_to_label, sample_submission, out_path):
+    """Fill the sample_submission with predictions, matching ids by filename or stem."""
+    import pandas as pd
+
+    sample = pd.read_csv(sample_submission)
+    columns = list(sample.columns)
+    id_column, target_column = columns[0], columns[-1]
+
+    by_key: dict[str, object] = {}
+    for filename, index in predictions:
+        label = index_to_label.get(index, index)
+        by_key[filename] = label
+        by_key[Path(filename).stem] = label
+
+    def _lookup(raw_id):
+        key = str(raw_id)
+        return by_key.get(key, by_key.get(Path(key).stem))
+
+    filled = []
+    missing = 0
+    for position, raw_id in enumerate(sample[id_column].tolist()):
+        value = _lookup(raw_id)
+        if value is None:
+            missing += 1
+            value = sample.iloc[position][target_column]
+        filled.append(value)
+    sample[target_column] = filled
+    sample.to_csv(out_path, index=False)
+    if missing:
+        print(f"[submit] WARNING: {missing} sample ids had no matching prediction (kept sample default).")
+    print(f"[submit] Wrote {out_path}  (id='{id_column}', target='{target_column}')")
+    return out_path
+
+
+def submit(competition: str, submission_csv: str | Path, message: str) -> None:
+    from kaggle.api.kaggle_api_extended import KaggleApi
+
+    api = KaggleApi()
+    api.authenticate()
+    print(f"[submit] Submitting {submission_csv} to '{competition}' ...")
+    api.competition_submit(str(submission_csv), message, competition)
+    print("[submit] Submitted. Check the competition page for your score.")
+
+
+def predict_and_submit(
+    benchmark_key: str,
+    project_dir: str | Path,
+    data_root: str | Path,
+    out_path: str | Path | None = None,
+    message: str | None = None,
+    do_submit: bool = False,
+    batch_size: int = 64,
+) -> dict:
+    from ingestion.kaggle_loader import ingest_benchmark
+
+    # Re-locate the competition files (download is skipped if already present).
+    info = ingest_benchmark(benchmark_key, data_root)
+    if not info.get("test_dir"):
+        raise FileNotFoundError(
+            f"No test image directory found for {benchmark_key!r}; cannot predict the test set."
+        )
+
+    model, transform, _config, device = load_model(project_dir)
+    predictions = predict_directory(model, transform, device, info["test_dir"], batch_size=batch_size)
+    idx_to_label = index_to_label_map(info["train_csv"], info["label_column"])
+
+    out_path = Path(out_path) if out_path else Path(project_dir) / "submission.csv"
+    sample = info.get("sample_submission")
+    if not sample:
+        raise FileNotFoundError(
+            f"No sample_submission.csv found for {benchmark_key!r}; cannot format a submission."
+        )
+    write_submission(predictions, idx_to_label, sample, out_path)
+
+    if do_submit:
+        submit(info["competition"], out_path, message or f"Jiaozi {benchmark_key} submission")
+
+    return {"submission": str(out_path), "competition": info["competition"], "submitted": do_submit}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Predict a Kaggle test set and optionally submit.")
+    parser.add_argument("benchmark", help="Catalog key, e.g. cassava")
+    parser.add_argument("--project", required=True, help="Generated project dir (with checkpoints/best_model.pt).")
+    parser.add_argument("--data-root", default="./kaggle_data", help="Where the competition data lives.")
+    parser.add_argument("--out", default=None, help="Submission CSV path (default: <project>/submission.csv).")
+    parser.add_argument("--submit", action="store_true", help="Submit to Kaggle after writing the CSV.")
+    parser.add_argument("--message", default=None, help="Submission message.")
+    parser.add_argument("--batch-size", type=int, default=64)
+    args = parser.parse_args()
+
+    result = predict_and_submit(
+        args.benchmark,
+        args.project,
+        args.data_root,
+        out_path=args.out,
+        message=args.message,
+        do_submit=args.submit,
+        batch_size=args.batch_size,
+    )
+    print(result)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

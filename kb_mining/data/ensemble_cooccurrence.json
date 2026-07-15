@@ -1,0 +1,76 @@
+{
+  "efficientnet": {
+    "resnet": 34,
+    "convnext": 25,
+    "vit": 13,
+    "swin_transformer": 12,
+    "unet": 6,
+    "yolov8": 5,
+    "mobilenet_v3": 3,
+    "segformer": 2
+  },
+  "mobilenet_v3": {
+    "efficientnet": 3,
+    "resnet": 2,
+    "vit": 2,
+    "convnext": 1,
+    "swin_transformer": 1
+  },
+  "resnet": {
+    "efficientnet": 34,
+    "convnext": 11,
+    "swin_transformer": 10,
+    "vit": 6,
+    "unet": 6,
+    "yolov8": 4,
+    "mobilenet_v3": 2,
+    "segformer": 2
+  },
+  "vit": {
+    "efficientnet": 13,
+    "convnext": 7,
+    "resnet": 6,
+    "swin_transformer": 6,
+    "mobilenet_v3": 2,
+    "yolov8": 1
+  },
+  "convnext": {
+    "efficientnet": 25,
+    "swin_transformer": 14,
+    "resnet": 11,
+    "vit": 7,
+    "unet": 3,
+    "mobilenet_v3": 1,
+    "segformer": 1
+  },
+  "swin_transformer": {
+    "convnext": 14,
+    "efficientnet": 12,
+    "resnet": 10,
+    "vit": 6,
+    "yolov8": 3,
+    "mobilenet_v3": 1,
+    "unet": 1
+  },
+  "yolov8": {
+    "efficientnet": 5,
+    "resnet": 4,
+    "swin_transformer": 3,
+    "vit": 1,
+    "unet": 1
+  },
+  "unet": {
+    "efficientnet": 6,
+    "resnet": 6,
+    "convnext": 3,
+    "swin_transformer": 1,
+    "segformer": 1,
+    "yolov8": 1
+  },
+  "segformer": {
+    "efficientnet": 2,
+    "resnet": 2,
+    "convnext": 1,
+    "unet": 1
+  }
+}

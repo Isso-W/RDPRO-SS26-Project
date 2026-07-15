@@ -1,7 +1,75 @@
+# Python caches and local environments
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kaggle.json
+.kaggle/
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
+
+# Generated projects, logs, caches, and experiment artifacts
 .demo_run/
 demo_run/
-.tmp_example_test/
-.tmp_cifar10_test/
+.tmp_*/
+tmp_*/
+generated/
+generated_*/
+test_runs/
+runs/
+artifacts/
+checkpoints/
+submissions/
+submission.csv
 colab_demo_output/
+workspace/
+chroma_db_kb/
+recommender/outcomes.jsonl
+
+# Raw datasets and downloaded archives
+data/
+kaggle_data/
+kb_mining/data/meta_kaggle/
+kb_mining/data/posts.jsonl
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.csv
+
+# Small, reviewable CSV inputs used by offline tests and synthetic examples
+!kb_mining/tests/fixtures/*.csv
+!experiments/mlestar_kaggle_benchmarks/examples/**/*.csv
+
+# Model weights and exported binaries
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.bin
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.parquet
+*.feather

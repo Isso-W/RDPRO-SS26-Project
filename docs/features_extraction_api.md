@@ -1,7 +1,7 @@
 # 🥟 饺子项目 (Jiaozi) - 自然语言特征提取 模块 API 文档
 
-**负责人**: 张明达  
-**版本**: v1.2  
+**负责人**: 张明达
+**版本**: v1.2
 **更新日期**: 2026-04-03
 
 ---
@@ -64,7 +64,7 @@
 11.框架(Library / Framework)
 12.输入语言(Input_Language)
 13.输出语言(Output_Language)
-14.协议(License) 
+14.协议(License)
 **需注意：
 1.输入/输出这两个维度输出的内容仅为["文字","图片","音频","视频"]（输出内容与用户实际输入语言保持一致，比如用户输入为英文，则输入/输出两个维度的输出为["Text","Image","Audio","Video"]）；
 2.若用户提出了以上任一维度的具体值，则抓取该值作为输出，若没有提出具体的值，则以null作为输出，若用户没有完整提及以上维度，则依然在list中补全所有维度，未提及的维度统一用null作为输出；
@@ -81,9 +81,9 @@
 - **case_1（标准）**: `我需要一个针对MRI核磁共振图像的医学图像分割模型，最好是PyTorch实现的，输出Mask图，准确率指标要高，语言要中文。`
 
       输出:["Domain: 医学图像", "Task: 图像分割", "Accuracy: 准确率", "Accuracy_range: 高", "is_local_train: null", "Graphics_card: null", "Input: 图片", "Output: 图片", "Size: null", "Library / Framework: PyTorch", "Input_Language: 中文", "Output_Language: 中文", "License: null"]
-  
+
 - **case_2（标准）**: `Is there a JAX implementation for satellite imagery segmentation or classification? Specifically, we are looking for a model that processes multispectral data to generate LULC (Land Use/Land Cover) maps, provided it allows for commercial use.`
-      
+
       输出:["Domain: Remote Sensing", "Task: image to image", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: Image", "Output: Image", "Size: null", "Library / Framework: JAX", "Input_Language: English", "Output_Language: English", "License: commercial use"]
 
 - **case_3（模糊）**: `帮我找个能做智能客服的模型，随便什么框架都行。`
@@ -97,7 +97,7 @@
 - **case_5（口语）**: `我想找个做中文情感分析的，千万别给我推荐那种几百亿参数的LLM，跑不动，给我点轻量级的，准确率别太低就行。`
 
       输出:["Domain: 情感分析", "Task: 文字生成文字", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: 文字", "Output: 文字", "Size: 轻量级", "Library / Framework: null", "Input_Language: 中文", "Output_Language: English", "License: null"]
- 
+
 - **case_6（口语）**: `给金融数据做预测，主要是处理时间序列分析的那种，找个基准模型。`
 
       输出:["Domain: 金融", "Task: 时间序列预测", "Accuracy: null", "Accuracy_range: null", "is_local_train: null", "Graphics_card: null", "is_local_train: null", "Input: 文字", "Output: 文字", "Size: null", "Library / Framework: null", "Input_Language: Chinese", "Output_Language: English", "License: null"]

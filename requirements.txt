@@ -1,0 +1,19 @@
+# Runtime dependencies for the Jiaozi CV Auto-DL pipeline.
+# Install with the same Python interpreter used to run tests, for example:
+#   /usr/bin/python3 -m pip install -r requirements.txt
+
+chromadb
+datasets
+networkx
+numpy
+openai>=2.0.0
+pandas
+pillow
+scikit-learn
+sentence-transformers
+torch
+torchvision
+transformers
+
+# Test runner for the module4_agent pytest suite.
+pytest

@@ -1,13 +1,36 @@
+from __future__ import annotations
+
+import json
 import os
-from openai import OpenAI
+import re
 import textwrap
+
+from env_loader import load_env_file
+
+
+def _provider() -> str:
+    load_env_file()
+    return os.getenv("JIAOZI_LLM_PROVIDER", os.getenv("M1_LLM_PROVIDER", "qwen")).strip().lower()
+
+
+def _client_for_provider(provider: str):
+    from openai import OpenAI
+
+    if provider == "openai":
+        return OpenAI(api_key=os.getenv("OPENAI_API_KEY")), os.getenv("M1_OPENAI_MODEL", "gpt-4o")
+    return (
+        OpenAI(
+            api_key=os.getenv("JIAOZI_DASHSCOPE_API_KEY"),
+            base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        ),
+        os.getenv("M1_QWEN_MODEL", "qwen-plus"),
+    )
+
 
 def extract_model_features_api(user_message: str):
     try:
-        client = OpenAI(
-            api_key = os.getenv("JIAOZI_DASHSCOPE_API_KEY"),
-            base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-        )
+        provider = _provider()
+        client, model = _client_for_provider(provider)
         system_message = textwrap.dedent('''\
                     【身份】Huggingface模型检索专家。
                     【任务】从自然语言提取搜索特征。
@@ -33,17 +56,195 @@ def extract_model_features_api(user_message: str):
                         3.若提及具体的输出语言，则仅使用具体的输出语言，若无提及任何输出语言，则默认将【输出语言】的值置于"English"；
                     【规则】只提取用户提及或能合理推断的维度，未提及的维度直接忽略。（不准有问候语，不准有markdown符号）。''').strip()
         completion = client.chat.completions.create(
-            model="qwen-plus",
+            model=model,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_message}
             ]
         )
+        try:
+            import cost_meter
+            cost_meter.record_llm_call(cost_meter.tokens_from_response(completion))
+        except Exception:
+            pass
         return completion.choices[0].message.content
     except Exception as e:
-        print(f"错误信息：{e}")
+        print(f"[Error] {e}")
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Module 3 对接：CV 任务特征提取 + 校验
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_CV_SYSTEM_PROMPT = textwrap.dedent("""\
+    You are a computer vision task analysis expert. The user will describe a CV task
+    in natural language (in any language). Extract structured fields and return pure
+    JSON only — no extra text, no markdown fences.
+
+    Required fields:
+
+    1. task_type — exactly one of:
+       "classification"  (image classification, recognition, labeling)
+       "object_detection" (object detection, localization, bounding boxes, counting)
+       "image_segmentation" (segmentation, masks, pixel-level annotation)
+       "feature_extraction" (feature extraction, embeddings, similarity retrieval)
+
+    2. priority — exactly one of:
+       "speed"    (user emphasizes fast, real-time, lightweight, low latency, efficient)
+       "accuracy" (user emphasizes high accuracy, best performance, state-of-the-art)
+       "balanced" (no clear preference, or user wants both)
+
+    3. constraints — an object with the following boolean fields:
+       "real_time": real-time inference needed (30fps, video stream, online inference)
+       "edge_deployment": deploy on edge/mobile (phone, embedded, Raspberry Pi, Jetson)
+       "class_imbalance": dataset has class imbalance (rare classes, long-tail distribution)
+       "cross_modal": cross-modal capability needed (image-text alignment, text-to-image search, multimodal)
+       "medical": medical imaging scenario (CT, X-ray, MRI, pathology, ultrasound)
+       "zero_shot": zero-shot capability needed (no labeled data, zero-shot classification)
+       "few_shot": few-shot capability needed (very few labeled samples)
+
+    4. evaluation_metric — exactly one of (how the model will be scored). Set it only when
+       the user mentions or clearly implies a metric; otherwise use "accuracy":
+       "accuracy"  (plain correctness)
+       "macro_f1"  (macro / per-class F1; good for imbalanced classification)
+       "roc_auc"   (ROC AUC; binary scoring, "AUC")
+       "qwk"       (quadratic weighted kappa; ordinal grading / severity levels)
+       "log_loss"  (cross-entropy / log loss; probability-calibrated scoring)
+
+    Rules:
+    - Only extract what the user explicitly mentions or what can be reasonably inferred.
+    - Set any unmentioned constraint to false.
+    - If priority cannot be determined, set it to "balanced".
+    - If no metric is mentioned, set evaluation_metric to "accuracy".
+    - Output pure JSON only — no greetings, no explanations, no markdown.
+""").strip()
+
+_VALID_TASK_TYPES = {
+    "classification", "object_detection", "image_segmentation", "feature_extraction",
+}
+_VALID_PRIORITIES = {"speed", "accuracy", "balanced"}
+_VALID_METRICS = {"accuracy", "macro_f1", "roc_auc", "qwk", "log_loss"}
+_METRIC_ALIASES = {
+    "auc": "roc_auc", "roc": "roc_auc", "auroc": "roc_auc",
+    "f1": "macro_f1", "macro-f1": "macro_f1", "macro f1": "macro_f1", "f1_score": "macro_f1",
+    "kappa": "qwk", "cohen_kappa": "qwk", "quadratic_weighted_kappa": "qwk",
+    "logloss": "log_loss", "cross_entropy": "log_loss", "multiclass_log_loss": "log_loss",
+}
+_CONSTRAINT_KEYS = [
+    "real_time", "edge_deployment", "class_imbalance",
+    "cross_modal", "medical", "zero_shot", "few_shot",
+]
+
+_TASK_TYPE_ALIASES = {
+    "detection":            "object_detection",
+    "det":                  "object_detection",
+    "segmentation":         "image_segmentation",
+    "semantic_segmentation":"image_segmentation",
+    "seg":                  "image_segmentation",
+    "cls":                  "classification",
+    "extraction":           "feature_extraction",
+    "embedding":            "feature_extraction",
+    "retrieval":            "feature_extraction",
+}
+
+
+def _extract_cv_features(user_message: str) -> str | None:
+    """调用配置的模型提取 CV 任务结构化字段，返回原始输出字符串。"""
+    try:
+        provider = _provider()
+        client, model = _client_for_provider(provider)
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": _CV_SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+        )
+        try:
+            import cost_meter
+            cost_meter.record_llm_call(cost_meter.tokens_from_response(completion))
+        except Exception:
+            pass
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"[Module 1] LLM call failed: {e}")
+        return None
+
+
+def parse_module1_output(raw: str, user_message: str) -> dict:
+    """
+    解析 LLM 返回的 JSON 字符串，校验并补全为 Module 3 可消费的 dict。
+
+    容错处理：
+    - 去除 markdown 代码块包裹
+    - enum 值不合法时回退默认值
+    - 缺失字段自动补全
+    - data_size 不在此处提取（由 Module 2 提供），默认留 "medium"
+    """
+    # 去除 markdown 代码块
+    cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`")
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # LLM 返回了非法 JSON，用全默认值兜底——但要让用户知道结果已退化
+        print(
+            "[Module 1] Warning: LLM output is not valid JSON, falling back to defaults "
+            f"(task_type=classification, priority=balanced). Raw output snippet: {cleaned[:200]!r}"
+        )
+        parsed = {}
+
+    # task_type 校验 + 别名映射（LLM 可能返回 null 或非字符串）
+    task_type = str(parsed.get("task_type") or "").lower().strip()
+    if task_type not in _VALID_TASK_TYPES:
+        task_type = _TASK_TYPE_ALIASES.get(task_type, "classification")
+
+    # priority 校验
+    priority = str(parsed.get("priority") or "").lower().strip()
+    if priority not in _VALID_PRIORITIES:
+        priority = "balanced"
+
+    # constraints 校验
+    raw_constraints = parsed.get("constraints", {})
+    if not isinstance(raw_constraints, dict):
+        raw_constraints = {}
+    constraints = {k: bool(raw_constraints.get(k, False)) for k in _CONSTRAINT_KEYS}
+
+    # evaluation_metric 校验 + 别名映射（LLM 没说或非法 → accuracy）
+    metric = str(parsed.get("evaluation_metric") or "").lower().strip()
+    metric = _METRIC_ALIASES.get(metric, metric)
+    if metric not in _VALID_METRICS:
+        metric = "accuracy"
+
+    return {
+        "task_type":         task_type,
+        "data_size":         "medium",
+        "priority":          priority,
+        "constraints":       constraints,
+        "evaluation_metric": metric,
+        "description":       user_message,
+    }
+
+
+def module1_pipeline(user_message: str) -> dict | None:
+    """
+    Module 1 入口：用户自然语言 → Module 3 可消费的结构化 dict。
+
+    返回格式与 Module 3 的 retrieve_top3_hybrid() 输入完全对齐。
+    data_size 字段预填 "medium"，待 Module 2 覆盖。
+    """
+    raw = _extract_cv_features(user_message)
+    if raw is None:
+        return None
+    return parse_module1_output(raw, user_message)
+
 
 if __name__ == "__main__":
-    user_message = input("请输入您对于模型的要求：")
+    user_message = input("Enter your model requirements: ")
+
+    print("\n--- Raw 14-dimension extraction ---")
     result = extract_model_features_api(user_message)
     print(result)
+
+    print("\n--- Module 3 compatible output ---")
+    m3_input = module1_pipeline(user_message)
+    print(json.dumps(m3_input, indent=2, ensure_ascii=False))
